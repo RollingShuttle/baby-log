@@ -538,7 +538,7 @@ function renderDaySheet() {
     el("thead", {}, el("tr", {}, ...heads.map((h) => el("th", {}, h)))),
     rows.length ? el("tbody", {}, ...rows) : el("tbody", {}, el("tr", {}, el("td", { colspan: String(heads.length), class: "empty" }, empty))));
 
-  card.replaceChildren(
+  card.replaceChildren(...[
     el("div", { class: "sheet-head" },
       el("div", { class: "sheet-title" }, `${Core.fmtDay(date)}${born ? ` · day ${Core.dayNumber(born, date)}` : ""}`),
       el("span", { class: "muted small" }, date === todayStr() ? "today" : ""),
@@ -560,7 +560,8 @@ function renderDaySheet() {
         el("span", { class: "other-time" }, Core.fmtTime(ev.time), ev.end ? `–${Core.fmtTime(ev.end)}` : ""),
         el("span", {}, Core.describe(ev, unit())),
         el("span", { class: "t-by muted small" }, ev.logged_by || ""),
-        ev.note ? el("span", { class: `other-note${isCheck(ev) ? " check" : ""}` }, ev.note) : null))) : null);
+        ev.note ? el("span", { class: `other-note${isCheck(ev) ? " check" : ""}` }, ev.note) : null))) : null]
+    .filter(Boolean));   // replaceChildren(null) would print the word "null" under the sheet
 }
 
 // ---------------------------------------------------------------- quick actions from the log bar
@@ -758,7 +759,8 @@ function renderEditor() {
   if (!e) { modal.hidden = true; return; }
   const d = e.draft;
   const isNew = !d.event_id;
-  const isRunning = TIMED.includes(d.type) && d.end === null && !isNew && d.type !== "pump";
+  const isRunning = TIMED.includes(d.type) && d.end === null && !isNew && d.type !== "pump"
+    && !!(d.data && d.data.timer);
   card.className = `modal-card ed-type-${d.type}`;
 
   const title = isNew ? `New ${TYPE_LABEL[d.type].toLowerCase()}`

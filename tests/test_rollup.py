@@ -148,7 +148,10 @@ class TestCorePort(unittest.TestCase):
                          "Vitamin D 1 drop")
         self.assertEqual(rollup.describe(self.ev(type="note")), "Note")
         self.assertEqual(rollup.describe(self.ev(type="note", data={"milestone": True})), "Milestone")
-        self.assertEqual(rollup.describe(self.ev()), "Feeding")
+        # No end and no timer is a feed that is over (a paper row); a timer makes it "Feeding".
+        self.assertEqual(rollup.describe(self.ev()), "Feed")
+        self.assertEqual(rollup.describe(self.ev(data={"timer": {"side": "left", "side_started": T1}}),
+                                         now=datetime.fromisoformat(T1)), "Feeding")
         self.assertEqual(rollup.describe(self.ev(end=T2)), "Feed")
         self.assertEqual(rollup.describe(self.ev(data={"bottles": [{"kind": "formula", "ml": 59}]}), "oz"),
                          "2 oz formula")

@@ -193,14 +193,17 @@ Feed rules: `total_s` is the sum of the sides when they are known, or the typed 
 `approx: true`) when they are not. `left_*` always means the left breast; leftover milk is
 `leftover_ml`. Bottle ml (derived, never stored) = sum of `bottles[].ml`. Amounts are whole ml.
 
-**Timers.** A running event is exactly `end: null` with `timer` non-null. A running feed's
+**Timers.** A running event is exactly `end: null` **with `timer` non-null** — both, always:
+a feed typed in after the fact, or imported from the paper sheet, has no end and no timer, and
+is over. `Core.isRunning` / `rollup.is_running` test both. A running feed's
 `timer.side_started` is an instant; the running side's elapsed time is `now − side_started` on the
 displaying device and is folded into `left_s`/`right_s` on Switch or Stop, each of which is a
 revision. Stop writes `end` and `timer: null` in the same revision; with an explicit end earlier
 than now, the running side's seconds are `end − side_started`, never `now − side_started`. Readers
 decide "running" by `end === null` for feeds and sleeps; `timer` is informational. A timer running
 longer than 60 min (feed) or 6 h (sleep) is *stale*: shown with a warning and a **Set end time**
-action, never auto-stopped.
+action, never auto-stopped. Readers decide "running" by `end === null && data.timer`, never by
+`end` alone.
 
 **Validation — both writers, identical.** `Core.defaults(type)` (JS) and `store.DEFAULTS[type]`
 (Python) return the full `data` object with every key present: feed →
@@ -389,7 +392,7 @@ deleting an already-deleted event or restoring a live one → 409, no child → 
 | `DELETE /api/event/<id>` | `{ok, event: tombstone}`; JSON body `{reason?}` |
 | `POST /api/event/<id>/restore` | `{ok, event}` |
 | `GET /api/deleted` | `{ok, events}` newest tombstone first |
-| `GET /api/needs-check` | `{ok, events}` live events whose `note` starts with `Check: ` |
+| `GET /api/needs-check` | `{ok, events}` live events whose `note` starts with `Check: ` or carries ` — Check: ` after the row's own note (the paper import writes both forms, §10) |
 | `GET /api/children` · `POST /api/children` | `{ok, children}` · 201 `{ok, child}` (create, or revise when `child_id` is sent) |
 | `GET /api/settings` · `POST /api/settings` | `{ok, settings}`; POST is a shallow merge of the listed keys only; unknown keys → 400 |
 | `POST /api/rollup` | `{ok, path}` — regenerate `Baby Log.xlsx` now |

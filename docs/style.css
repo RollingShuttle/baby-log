@@ -36,6 +36,10 @@
   --tabs-h: 56px;
 }
 
+/* The hidden attribute must beat every display:flex/grid below it, or an empty dialog overlay
+   and an empty toast sit on the page and swallow clicks. */
+[hidden] { display: none !important; }
+
 /* Dim red on black for 3 a.m.: everything that was an accent is the one ember colour, so the
    screen never lights the room (§7.4). */
 body.night {

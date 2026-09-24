@@ -933,7 +933,7 @@ function editorTitle() {
   if (!e) return "";
   const d = e.draft;
   if (!e.event) return NEW_TITLE[d.type] || TYPE_LABEL[d.type];
-  const isRunning = TIMED.includes(d.type) && d.end === null && d.type !== "pump";
+  const isRunning = TIMED.includes(d.type) && d.end === null && d.type !== "pump" && !!(d.data && d.data.timer);
   return `${TYPE_LABEL[d.type]} · ${Core.fmtDateTime(d.time)}${isRunning ? " · running" : ""}`;
 }
 
@@ -1005,7 +1005,8 @@ function renderEditor() {
   if (!e) return;
   const d = e.draft;
   const isNew = !e.event;
-  const isRunning = TIMED.includes(d.type) && d.end === null && !isNew && d.type !== "pump";
+  const isRunning = TIMED.includes(d.type) && d.end === null && !isNew && d.type !== "pump"
+    && !!(d.data && d.data.timer);
   const kids = [];
 
   if (e.restored) kids.push(notice("info", "Draft restored"));

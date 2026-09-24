@@ -103,7 +103,10 @@ def on_day(events, day):
 
 
 def is_running(ev):
-    return bool(ev) and ev.get("end") is None and ev.get("type") in ("feed", "sleep")
+    """A timer is going. "No end" alone is not enough: the paper import has no end times, and
+    those feeds must not read as running for ever. Mirrors Core.isRunning."""
+    return (bool(ev) and ev.get("end") is None and ev.get("type") in ("feed", "sleep")
+            and bool((ev.get("data") or {}).get("timer")))
 
 
 def last_of(events, type, before=None):

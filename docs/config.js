@@ -5,9 +5,9 @@
    JavaScript, and it is useless on its own — the registration is locked to the
    Files.ReadWrite.AppFolder scope, to personal accounts, and to its own redirect URIs.
 
-   The committed value is blank on purpose (tests/test_sync.py enforces it); fill it in on deploy.
-   The GitHub Pages URL (with its trailing slash) and http://localhost:8766 must both be registered
-   as Single-page application redirect URIs, or sign-in stops with a redirect_uri mismatch. */
+   The committed value is blank on purpose (tests/test_sync.py and tests/test_phone.py enforce it);
+   fill it in on deploy. The GitHub Pages URL, with its trailing slash, must be registered as a
+   Single-page application redirect URI, or sign-in stops with a redirect_uri mismatch. */
 const CONFIG = {
   CLIENT_ID: "",
   AUTHORITY: "https://login.microsoftonline.com/consumers",

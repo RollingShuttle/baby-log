@@ -217,6 +217,7 @@ const ev = (o) => Object.assign({ event_id: "E-" + Math.random().toString(16).sl
 const feed = (id, time, end, breast, bottles, timer) => ev({ event_id: id, type: "feed", time, end,
   data: Core.validate("feed", { breast: breast || {}, bottles: bottles || [], timer: timer || null }) });
 const NOW = "2026-09-23T18:00:00-05:00";
+const T = { side: "left", side_started: "2026-09-23T17:55:00-05:00" };
 const day = [
   feed("E-f1", "2026-09-23T08:00:00-05:00", "2026-09-23T08:10:00-05:00", { total_s: 600 }, [{ kind: "formula", ml: 30 }]),
   feed("E-f2", "2026-09-23T11:00:00-05:00", "2026-09-23T11:12:00-05:00", { left_s: 300, right_s: 420, total_s: 720 }),
@@ -246,13 +247,17 @@ t("breastSeconds uses the sides when total is null", () => eq(Core.breastSeconds
 t("breastSeconds is 0 with no data", () => eq(Core.breastSeconds(feed("E-x", NOW, NOW)), 0));
 t("isRunning", () => eq([Core.isRunning(day[3]), Core.isRunning(day[0]), Core.isRunning(day[8]), Core.isRunning(day[4])], [true, false, true, false]));
 t("staleTimer boundaries", () => eq([
-  Core.staleTimer(feed("E-x", "2026-09-23T16:59:00-05:00", null), NOW),
-  Core.staleTimer(feed("E-x", "2026-09-23T17:01:00-05:00", null), NOW),
-  Core.staleTimer(ev({ type: "sleep", time: "2026-09-23T11:59:00-05:00", end: null }), NOW),
-  Core.staleTimer(ev({ type: "sleep", time: "2026-09-23T12:01:00-05:00", end: null }), NOW),
+  Core.staleTimer(feed("E-x", "2026-09-23T16:59:00-05:00", null, {}, [], T), NOW),
+  Core.staleTimer(feed("E-x", "2026-09-23T17:01:00-05:00", null, {}, [], T), NOW),
+  Core.staleTimer(ev({ type: "sleep", time: "2026-09-23T11:59:00-05:00", end: null, data: Core.validate("sleep", { timer: { running: true } }) }), NOW),
+  Core.staleTimer(ev({ type: "sleep", time: "2026-09-23T12:01:00-05:00", end: null, data: Core.validate("sleep", { timer: { running: true } }) }), NOW),
   Core.staleTimer(ev({ type: "diaper", time: "2026-09-23T01:00:00-05:00", end: null }), NOW),
   Core.staleTimer(feed("E-x", "2026-09-23T10:00:00-05:00", "2026-09-23T10:10:00-05:00"), NOW),
-], [true, false, true, false, false, false]));
+  Core.staleTimer(feed("E-x", "2026-09-23T08:00:00-05:00", null), NOW),   // no timer: a paper feed is not running
+], [true, false, true, false, false, false, false]));
+t("isRunning needs a timer, not just a missing end", () => eq(
+  [Core.isRunning(feed("E-x", "2026-09-23T08:00:00-05:00", null)), Core.isRunning(feed("E-x", "2026-09-23T08:00:00-05:00", null, {}, [], T))],
+  [false, true]));
 t("lastOf picks the running feed", () => { const l = Core.lastOf(day, "feed", NOW); return l && l.event_id === "E-f4" ? true : canon(l); });
 t("lastOf honours before", () => { const l = Core.lastOf(day, "feed", "2026-09-23T12:00:00-05:00"); return l && l.event_id === "E-f2" ? true : canon(l); });
 t("lastOf is null with none", () => eq(Core.lastOf(day, "growth", NOW), null));

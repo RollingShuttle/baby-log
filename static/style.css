@@ -25,6 +25,10 @@
   --radius: 12px;
 }
 
+/* The hidden attribute must beat every display:flex/grid below it, or an empty dialog overlay
+   and an empty toast sit on the page and swallow clicks. */
+[hidden] { display: none !important; }
+
 * { box-sizing: border-box; }
 html { color-scheme: light; }
 

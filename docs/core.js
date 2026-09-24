@@ -251,7 +251,10 @@ const Core = (() => {
   // Every event whose local date is `day`.
   const onDay = (events, day) => (events || []).filter((ev) => localDate(ev.time) === day);
   // A feed or sleep with no end yet; `timer` is only informational (§3.2).
-  const isRunning = (ev) => !!ev && ev.end === null && (ev.type === "feed" || ev.type === "sleep");
+  // Running means a timer is going, not merely "no end": a feed typed in from the paper sheet
+  // has no end time either, and it must not sit on the Now panel as a 60-hour feed.
+  const isRunning = (ev) => !!ev && ev.end === null && (ev.type === "feed" || ev.type === "sleep")
+    && !!(ev.data && ev.data.timer);
   // Running longer than anyone feeds (60 min) or a newborn sleeps (6 h): warn, never auto-stop.
   function staleTimer(ev, now) {
     if (!isRunning(ev)) return false;

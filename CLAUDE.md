@@ -77,7 +77,7 @@ and the JS tests skip with a message without it. The suite must never depend on 
 
 ## State as of 24 Sep 2026
 
-**Built and committed, 329 tests passing** at `ba848c0`: `store.py` (the journal, defensive
+**Built and committed, 449 tests passing** (`python -m unittest discover -s tests`): `store.py` (the journal, defensive
 reader, index keyed by path/size/mtime), `docs/core.js` (shared logic; `test_core.py` runs the
 whole fixture under Node), `app.py` (every §6.1 route, the debounced `Rollup` worker: startup,
 20 s after an API write, and a 60 s scan for files the phones dropped through OneDrive),
@@ -104,13 +104,20 @@ every Graph call until `backoff_until`. `Sync.pull` lists day folders from `last
 (cap 120, else a catch-up over `events/`), skips zero-byte listings, and marks its own uploads
 seen. Pill texts live in `Sync.statusText`.
 
-**In progress by parallel agents (not on disk at the time of writing):** the phone screens
-`docs/{index.html,style.css,app.js}` + `tests/test_phone.py`; `launch.py`, `run.bat`,
+Also built: the phone screens `docs/{index.html,style.css,app.js}` + `tests/test_phone.py`
+(which also runs the bundle under Node on a fake DOM and IndexedDB); `launch.py`, `run.bat`,
 `update.bat`, `build_exe.bat`, `tools/{setup_machine,make_shortcut,update}.py` and their tests
 (ported from whiskey with the names changed: title `Baby Log`, exe `Baby Log.exe`, mutex
 `Local\BabyLog.%d`, Edge profile `BabyLog\window`, tray `baby_log`, launcher console
-`Baby Log launcher`, clone URL `https://github.com/RollingShuttle/baby-log.git` as a placeholder).
-RUNNING.md describes those from the spec; re-read them against the code once they land.
+`Baby Log launcher`, clone URL `https://github.com/RollingShuttle/baby-log.git` as a placeholder
+until the repository exists).
+
+**Running means a timer is going.** `Core.isRunning` and `rollup.is_running` require
+`end === null` *and* `data.timer`; "no end" alone is a feed typed in after the fact or a paper
+row, which is over. The first browser test of the PC app showed every imported feed as a
+60-hour timer before this was tightened. Two other lessons from that session: every stylesheet
+needs `[hidden] { display: none !important; }` above its `display: flex` classes (an empty
+dialog overlay was swallowing every click), and `replaceChildren(null)` prints the word "null".
 
 **Not deployed — all the owner's, in SETUP.md order:** the Entra registration and its client ID
 in `docs/config.js` (blank on purpose; `tests/test_sync.py` enforces it — relax that test when it
@@ -119,7 +126,5 @@ URI, `python paper.py` for real against the OneDrive folder, `build_exe.bat` and
 the phones' first sign-in. Until then the PC app runs from `python launch.py` against whatever
 `config.yaml` points at, and the phone app logs but cannot upload.
 
-Two small mismatches to keep in mind: `docs/config.js`'s comment says `http://localhost:8766`
-should also be a redirect URI, but SPEC §12 and SETUP.md register only the Pages URL — the
-comment is wrong. And the blank-client-ID test is in `test_sync.py`, not `test_phone.py` as
-SPEC §7.5 says.
+The blank-client-ID assertion lives in both `test_sync.py` and `test_phone.py`; relax both when
+the ID goes in.
