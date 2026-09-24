@@ -1,0 +1,33 @@
+# Baby Log — configuration TEMPLATE.
+# Copy this to config.yaml and fill in the paths for your machine, or let
+#     python tools/setup_machine.py
+# do it: it finds OneDrive and writes config.yaml itself.
+# config.yaml is gitignored because its paths contain a local username; this template is not.
+
+paths:
+  # The OneDrive app folder — the journal. Phones and the PC both read and write it
+  # (guide/SPEC.md §3). Created on first write; the name matches the Entra registration.
+  app_folder: "C:/Users/YOUR_USERNAME/OneDrive/Apps/Baby Log"
+
+  # Where the readable files go: Baby Log.xlsx and Day sheets/. The PC writes these; phones never see them.
+  output_folder: "C:/Users/YOUR_USERNAME/OneDrive/文档/Yisen File"
+
+  local_data: "./data"
+  backups: "./data/backups"
+  backup_keep: 30
+
+server:
+  host: "127.0.0.1"
+  port: 8766
+  bind_lan: false        # true also serves the phones on the home network at http://<pc-ip>:8766
+
+# Microsoft Graph — phone client only. The PC reads the synced folder directly and needs none of
+# this. The client ID is a public identifier from your own Entra app registration (guide/SETUP.md),
+# not a secret — but fill in your own rather than committing it.
+auth:
+  client_id: "YOUR_CLIENT_ID"
+  authority: "https://login.microsoftonline.com/consumers"
+  scopes:
+    - "Files.ReadWrite.AppFolder"     # the ONLY Graph scope. Never widen this.
+  redirect_uri_dev: "http://localhost:8766"
+  redirect_uri_prod: ""               # the GitHub Pages URL, once it exists
