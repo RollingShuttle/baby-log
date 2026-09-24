@@ -294,7 +294,7 @@ input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--diaper);
 .row-time { font-weight: 600; flex-shrink: 0; min-width: 3.2em; }
 .row-main { flex: 1; min-width: 0; }
 .row-name { font-size: 0.95rem; line-height: 1.25; }
-.row-sub { color: var(--muted); font-size: 0.76rem; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-sub { display: block; color: var(--muted); font-size: 0.76rem; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* block, or the note runs straight on from the description */
 .row-by { color: var(--muted); font-size: 0.72rem; flex-shrink: 0; }
 .row-type { color: var(--muted); font-size: 0.66rem; text-transform: uppercase; letter-spacing: .05em; margin-right: 6px; }
 .row .chev { color: var(--muted); font-size: 1.1rem; }
