@@ -1,0 +1,196 @@
+{
+  "about": "Shared fixture for store.py (Python) and docs/core.js (JS). Both validators must accept every 'accept' case (and produce exactly 'expect' after merging over the defaults), reject every 'reject' case, and their built-in defaults must equal 'defaults'. SPEC.md §3.2.",
+  "defaults": {
+    "feed":   {"breast": {"left_s": null, "right_s": null, "total_s": null, "last_side": null, "approx": false}, "bottles": [], "made_ml": null, "leftover_ml": null, "timer": null},
+    "diaper": {"wet": false, "dirty": false, "color": null, "texture": null, "size": null, "rash": false, "blowout": false},
+    "sleep":  {"where": null, "timer": null},
+    "pump":   {"left_ml": null, "right_ml": null, "minutes": null},
+    "growth": {"weight_g": null, "length_cm": null, "head_cm": null},
+    "health": {"temp_c": null, "medicine": null, "dose": null, "symptom": null},
+    "note":   {"milestone": false}
+  },
+  "enums": {
+    "bottle_kind": ["formula", "breast_milk"],
+    "side": ["left", "right"],
+    "color": ["black", "dark_green", "green", "yellow", "brown", "other"],
+    "texture": ["sticky", "seedy", "soft", "solid", "watery"],
+    "size": ["small", "medium", "large"]
+  },
+  "accept": [
+    {"name": "empty feed", "type": "feed", "data": {},
+     "expect": {"breast": {"left_s": null, "right_s": null, "total_s": null, "last_side": null, "approx": false}, "bottles": [], "made_ml": null, "leftover_ml": null, "timer": null}},
+    {"name": "typed minutes and two portions", "type": "feed",
+     "data": {"breast": {"total_s": 900, "approx": true}, "bottles": [{"kind": "formula", "ml": 5}, {"kind": "formula", "ml": 15}]},
+     "expect": {"breast": {"left_s": null, "right_s": null, "total_s": 900, "last_side": null, "approx": true}, "bottles": [{"kind": "formula", "ml": 5}, {"kind": "formula", "ml": 15}], "made_ml": null, "leftover_ml": null, "timer": null}},
+    {"name": "both sides and a running timer", "type": "feed",
+     "data": {"breast": {"left_s": 372, "right_s": 0, "total_s": 372, "last_side": "left"}, "timer": {"side": "right", "side_started": "2026-09-23T20:21:00-05:00"}},
+     "expect": {"breast": {"left_s": 372, "right_s": 0, "total_s": 372, "last_side": "left", "approx": false}, "bottles": [], "made_ml": null, "leftover_ml": null, "timer": {"side": "right", "side_started": "2026-09-23T20:21:00-05:00"}}},
+    {"name": "made and leftover", "type": "feed",
+     "data": {"bottles": [{"kind": "breast_milk", "ml": 22}], "made_ml": 30, "leftover_ml": 8},
+     "expect": {"breast": {"left_s": null, "right_s": null, "total_s": null, "last_side": null, "approx": false}, "bottles": [{"kind": "breast_milk", "ml": 22}], "made_ml": 30, "leftover_ml": 8, "timer": null}},
+    {"name": "one-tap wet", "type": "diaper", "data": {"wet": true},
+     "expect": {"wet": true, "dirty": false, "color": null, "texture": null, "size": null, "rash": false, "blowout": false}},
+    {"name": "full diaper", "type": "diaper", "data": {"wet": true, "dirty": true, "color": "yellow", "texture": "solid", "size": "medium", "rash": false, "blowout": true},
+     "expect": {"wet": true, "dirty": true, "color": "yellow", "texture": "solid", "size": "medium", "rash": false, "blowout": true}},
+    {"name": "running sleep", "type": "sleep", "data": {"timer": {"running": true}},
+     "expect": {"where": null, "timer": {"running": true}}},
+    {"name": "finished sleep in the crib", "type": "sleep", "data": {"where": "crib"},
+     "expect": {"where": "crib", "timer": null}},
+    {"name": "pump", "type": "pump", "data": {"left_ml": 40, "right_ml": 35, "minutes": 20},
+     "expect": {"left_ml": 40, "right_ml": 35, "minutes": 20}},
+    {"name": "weight only", "type": "growth", "data": {"weight_g": 3420},
+     "expect": {"weight_g": 3420, "length_cm": null, "head_cm": null}},
+    {"name": "vitamin d", "type": "health", "data": {"medicine": "Vitamin D", "dose": "1 drop"},
+     "expect": {"temp_c": null, "medicine": "Vitamin D", "dose": "1 drop", "symptom": null}},
+    {"name": "temperature", "type": "health", "data": {"temp_c": 37.2},
+     "expect": {"temp_c": 37.2, "medicine": null, "dose": null, "symptom": null}},
+    {"name": "milestone", "type": "note", "data": {"milestone": true},
+     "expect": {"milestone": true}},
+    {"name": "zero seconds is a number", "type": "feed", "data": {"breast": {"left_s": 0, "right_s": 0, "total_s": 0}},
+     "expect": {"breast": {"left_s": 0, "right_s": 0, "total_s": 0, "last_side": null, "approx": false}, "bottles": [], "made_ml": null, "leftover_ml": null, "timer": null}}
+  ],
+  "reject": [
+    {"name": "unknown type", "type": "bath", "data": {}},
+    {"name": "unknown top-level key", "type": "diaper", "data": {"wet": true, "smell": "bad"}},
+    {"name": "unknown nested key", "type": "feed", "data": {"breast": {"left_s": 60, "middle_s": 3}}},
+    {"name": "bad colour", "type": "diaper", "data": {"dirty": true, "color": "purple"}},
+    {"name": "bad texture", "type": "diaper", "data": {"dirty": true, "texture": "crunchy"}},
+    {"name": "bad size", "type": "diaper", "data": {"wet": true, "size": "huge"}},
+    {"name": "bad bottle kind", "type": "feed", "data": {"bottles": [{"kind": "juice", "ml": 10}]}},
+    {"name": "zero ml portion", "type": "feed", "data": {"bottles": [{"kind": "formula", "ml": 0}]}},
+    {"name": "negative ml portion", "type": "feed", "data": {"bottles": [{"kind": "formula", "ml": -5}]}},
+    {"name": "portion ml is a string", "type": "feed", "data": {"bottles": [{"kind": "formula", "ml": "22"}]}},
+    {"name": "portion missing kind", "type": "feed", "data": {"bottles": [{"ml": 22}]}},
+    {"name": "bottles not a list", "type": "feed", "data": {"bottles": {"kind": "formula", "ml": 22}}},
+    {"name": "negative seconds", "type": "feed", "data": {"breast": {"left_s": -1}}},
+    {"name": "seconds as string", "type": "feed", "data": {"breast": {"total_s": "900"}}},
+    {"name": "bad side", "type": "feed", "data": {"breast": {"last_side": "both"}}},
+    {"name": "timer missing side_started", "type": "feed", "data": {"timer": {"side": "left"}}},
+    {"name": "timer bad side", "type": "feed", "data": {"timer": {"side": "middle", "side_started": "2026-09-23T20:21:00-05:00"}}},
+    {"name": "timer side_started wrong shape", "type": "feed", "data": {"timer": {"side": "left", "side_started": "2026-09-23T20:21:00Z"}}},
+    {"name": "made_ml negative", "type": "feed", "data": {"made_ml": -30}},
+    {"name": "old leftover key", "type": "feed", "data": {"left_ml": 8}},
+    {"name": "wet not a bool", "type": "diaper", "data": {"wet": "yes"}},
+    {"name": "sleep timer wrong shape", "type": "sleep", "data": {"timer": {"side": "left"}}},
+    {"name": "pump ml as string", "type": "pump", "data": {"left_ml": "40"}},
+    {"name": "weight negative", "type": "growth", "data": {"weight_g": -1}},
+    {"name": "temperature as string", "type": "health", "data": {"temp_c": "37.2"}},
+    {"name": "milestone not a bool", "type": "note", "data": {"milestone": 1}},
+    {"name": "data is a list", "type": "note", "data": []},
+    {"name": "infinite number", "type": "pump", "data": {"minutes": "Infinity"}, "note": "JS: pass Infinity; Python: float('inf'). Both reject non-finite."}
+  ],
+  "times": {
+    "accept": ["2026-09-23T17:50:00-05:00", "2026-09-23T17:50:00+00:00", "2026-11-01T01:30:00-06:00", "2026-01-05T09:00:00+08:00"],
+    "reject": ["2026-09-23T17:50:00Z", "2026-09-23T17:50:00.000-05:00", "2026-09-23T17:50-05:00", "2026-09-23 17:50:00-05:00", "2026-09-23", "", null, 1758650000]
+  },
+  "created_at": {
+    "accept": ["2026-09-23T22:50:12.123456+00:00", "2026-09-23T22:50:12.123000+00:00"],
+    "reject": ["2026-09-23T22:50:12.123Z", "2026-09-23T22:50:12+00:00"]
+  },
+  "names": {
+    "accept": [
+      {"name": "E-20260923-225012-a1b2-r1-7c1d.json", "id": "E-20260923-225012-a1b2", "rev": 1, "w": "7c1d"},
+      {"name": "E-20260923-225012-a1b2-r12-0e9f.json", "id": "E-20260923-225012-a1b2", "rev": 12, "w": "0e9f"},
+      {"name": "E-paper-20260921-1400-feed-r1-00aa.json", "id": "E-paper-20260921-1400-feed", "rev": 1, "w": "00aa"},
+      {"name": "C-20260923-220000-0a1b-r2-9e3f.json", "id": "C-20260923-220000-0a1b", "rev": 2, "w": "9e3f"}
+    ],
+    "reject": ["E-20260923-225012-a1b2-r1.json", ".tmp-abc.json", "E-20260923-225012-a1b2-r1-7c1d.json.tmp", "T-20260908-183012-B-18-9f3a-r1.json", "E-20260923-225012-a1b2-r1-7C1D.json", "E-20260923-225012-a1b2-r01-7c1d.json", "notes.txt"]
+  },
+  "resolve": {
+    "about": "Each case lists records (with _file); 'winner' is the _file of the record resolve() must pick for id X.",
+    "cases": [
+      {"name": "higher revision wins", "records": [
+        {"event_id": "X", "revision": 1, "type": "diaper", "end": null, "created_at": "2026-09-23T10:00:00.000000+00:00", "device": "pc", "_file": "X-r1-aaaa.json"},
+        {"event_id": "X", "revision": 2, "type": "diaper", "end": null, "created_at": "2026-09-23T09:00:00.000000+00:00", "device": "d-0001", "_file": "X-r2-bbbb.json"}],
+       "winner": "X-r2-bbbb.json"},
+      {"name": "equal revision, later created_at wins", "records": [
+        {"event_id": "X", "revision": 2, "type": "diaper", "end": null, "created_at": "2026-09-23T10:00:00.000000+00:00", "device": "pc", "_file": "X-r2-aaaa.json"},
+        {"event_id": "X", "revision": 2, "type": "diaper", "end": null, "created_at": "2026-09-23T10:00:01.000000+00:00", "device": "d-0001", "_file": "X-r2-bbbb.json"}],
+       "winner": "X-r2-bbbb.json"},
+      {"name": "equal revision, a stopped feed beats a running one even if older", "records": [
+        {"event_id": "X", "revision": 2, "type": "feed", "end": "2026-09-23T10:20:00-05:00", "created_at": "2026-09-23T15:20:00.000000+00:00", "device": "d-0001", "_file": "X-r2-aaaa.json"},
+        {"event_id": "X", "revision": 2, "type": "feed", "end": null, "created_at": "2026-09-23T15:20:01.000000+00:00", "device": "d-0002", "_file": "X-r2-bbbb.json"}],
+       "winner": "X-r2-aaaa.json"},
+      {"name": "end rule does not apply to diapers", "records": [
+        {"event_id": "X", "revision": 2, "type": "diaper", "end": "2026-09-23T10:20:00-05:00", "created_at": "2026-09-23T15:20:00.000000+00:00", "device": "d-0001", "_file": "X-r2-aaaa.json"},
+        {"event_id": "X", "revision": 2, "type": "diaper", "end": null, "created_at": "2026-09-23T15:20:01.000000+00:00", "device": "d-0002", "_file": "X-r2-bbbb.json"}],
+       "winner": "X-r2-bbbb.json"},
+      {"name": "full tie on created_at, greater device wins", "records": [
+        {"event_id": "X", "revision": 2, "type": "note", "end": null, "created_at": "2026-09-23T15:20:00.000000+00:00", "device": "d-0001", "_file": "X-r2-aaaa.json"},
+        {"event_id": "X", "revision": 2, "type": "note", "end": null, "created_at": "2026-09-23T15:20:00.000000+00:00", "device": "pc", "_file": "X-r2-bbbb.json"}],
+       "winner": "X-r2-bbbb.json"},
+      {"name": "tie on everything, greater w wins", "records": [
+        {"event_id": "X", "revision": 2, "type": "note", "end": null, "created_at": "2026-09-23T15:20:00.000000+00:00", "device": "pc", "_file": "X-r2-aaaa.json"},
+        {"event_id": "X", "revision": 2, "type": "note", "end": null, "created_at": "2026-09-23T15:20:00.000000+00:00", "device": "pc", "_file": "X-r2-bbbb.json"}],
+       "winner": "X-r2-bbbb.json"},
+      {"name": "tombstone is kept by resolve and dropped by live", "records": [
+        {"event_id": "X", "revision": 1, "type": "note", "end": null, "deleted": false, "time": "2026-09-23T10:00:00-05:00", "created_at": "2026-09-23T15:00:00.000000+00:00", "device": "pc", "_file": "X-r1-aaaa.json"},
+        {"event_id": "X", "revision": 2, "type": "note", "end": null, "deleted": true, "time": "2026-09-23T10:00:00-05:00", "created_at": "2026-09-23T15:20:00.000000+00:00", "device": "pc", "_file": "X-r2-bbbb.json"}],
+       "winner": "X-r2-bbbb.json", "live_count": 0}
+    ]
+  },
+  "core_examples": {
+    "describe": [
+      {"ev": {"type": "feed", "data": {"breast": {"left_s": null, "right_s": null, "total_s": 300, "last_side": null, "approx": true}, "bottles": [{"kind": "formula", "ml": 22}], "made_ml": null, "leftover_ml": null, "timer": null}, "end": "2026-09-23T17:55:00-05:00", "time": "2026-09-23T17:50:00-05:00"}, "unit": "ml", "text": "5 min + 22 ml formula"},
+      {"ev": {"type": "diaper", "data": {"wet": true, "dirty": true, "color": "yellow", "texture": null, "size": null, "rash": false, "blowout": false}, "time": "2026-09-23T17:40:00-05:00", "end": null}, "unit": "ml", "text": "Wet + dirty · yellow"},
+      {"ev": {"type": "sleep", "data": {"where": null, "timer": null}, "time": "2026-09-23T13:00:00-05:00", "end": "2026-09-23T14:20:00-05:00"}, "unit": "ml", "text": "Sleep 1 h 20 m"}
+    ],
+    "stepMl": [
+      {"recent": [], "unit": "ml", "ml": 1},
+      {"recent": [30, 21, 17, 10, 9, 12, 18, 20, 27, 22], "unit": "ml", "ml": 1},
+      {"recent": [60, 70, 65, 80, 70, 75, 60, 70, 85, 70], "unit": "ml", "ml": 5},
+      {"recent": [120, 150, 140, 165, 150, 130, 180, 150, 135, 160], "unit": "ml", "ml": 10}
+    ],
+    "chipStepMl": [
+      {"recent": [30, 21, 17, 10, 9, 12, 18, 20, 27, 22], "unit": "ml", "ml": 5},
+      {"recent": [60, 70, 65, 80, 70, 75, 60, 70, 85, 70], "unit": "ml", "ml": 10},
+      {"recent": [120, 150, 140, 165, 150, 130, 180, 150, 135, 160], "unit": "ml", "ml": 20},
+      {"recent": [180, 210, 200, 240, 210, 190, 220, 210, 180, 230], "unit": "ml", "ml": 30}
+    ],
+    "quickAmounts": [
+      {"recent": [30, 21, 17, 10, 9, 12, 18, 20, 27, 22], "unit": "ml", "values": [15, 20, 25, 30]},
+      {"recent": [180, 210, 200, 240, 210, 190, 220, 210, 180, 230], "unit": "ml", "values": [180, 210, 240, 270]},
+      {"recent": [30, 21], "unit": "ml", "custom": [40, 60, 90], "values": [40, 60, 90]}
+    ],
+    "unusual": [
+      {"ml": 61, "recent": [30, 21, 17, 10, 9, 12, 18, 20, 27, 22], "result": true},
+      {"ml": 60, "recent": [30, 21, 17, 10, 9, 12, 18, 20, 27, 22], "result": false},
+      {"ml": 500, "recent": [30, 21], "result": false}
+    ],
+    "ageText": [
+      {"born": "2026-09-21", "now": "2026-09-23T19:05:00-05:00", "text": "2 days old"},
+      {"born": "2026-09-21", "now": "2026-10-04T12:00:00-05:00", "text": "13 days old"},
+      {"born": "2026-09-21", "now": "2026-10-05T12:00:00-05:00", "text": "2 weeks"},
+      {"born": "2026-09-21", "now": "2026-10-14T12:00:00-05:00", "text": "3 weeks 2 days"},
+      {"born": "2026-09-21", "now": "2026-11-21T12:00:00-06:00", "text": "2 months"},
+      {"born": "2026-09-21", "now": "2026-12-05T12:00:00-06:00", "text": "2 months 2 weeks"}
+    ],
+    "sinceText": [
+      {"ms": 4500000, "text": "1 h 15 m"},
+      {"ms": 2700000, "text": "45 m"},
+      {"ms": 183600000, "text": "2 d 3 h"},
+      {"ms": 30000, "text": "0 m"}
+    ],
+    "isNight": [
+      {"now": "2026-09-23T22:30:00-05:00", "from": "21:00", "to": "07:00", "result": true},
+      {"now": "2026-09-24T03:10:00-05:00", "from": "21:00", "to": "07:00", "result": true},
+      {"now": "2026-09-24T07:00:00-05:00", "from": "21:00", "to": "07:00", "result": false},
+      {"now": "2026-09-24T12:00:00-05:00", "from": "21:00", "to": "07:00", "result": false},
+      {"now": "2026-09-24T12:00:00-05:00", "from": "11:00", "to": "13:00", "result": true}
+    ],
+    "fmt": [
+      {"iso": "2026-09-23T17:50:00-05:00", "fmtTime": "17:50", "fmtDay": "Wed 23 Sep", "fmtDateTime": "Wed 23 Sep 17:50", "localDate": "2026-09-23"}
+    ],
+    "fmtAmount": [
+      {"ml": 22, "unit": "ml", "text": "22 ml"},
+      {"ml": 22, "unit": "oz", "text": "0.75 oz"},
+      {"ml": 240, "unit": "oz", "text": "8 oz"},
+      {"ml": 0, "unit": "ml", "text": "0 ml"}
+    ],
+    "fromUnit": [
+      {"v": 0.75, "unit": "oz", "ml": 22},
+      {"v": 22.4, "unit": "ml", "ml": 22},
+      {"v": 8, "unit": "oz", "ml": 237}
+    ]
+  }
+}
