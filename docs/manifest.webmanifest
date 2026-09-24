@@ -1,0 +1,18 @@
+{
+  "name": "Baby Log",
+  "short_name": "Baby Log",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F2F5F4",
+  "theme_color": "#F2F5F4",
+  "icons": [
+    {
+      "src": "icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F5F4">
+  <title>Baby Log</title>
+  <link rel="icon" href="/static/icon.ico" sizes="any">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span id="child-name">Baby Log</span>
+      <span id="child-age" class="age"></span>
+    </div>
+    <!-- Only shown when two or more live children exist (SPEC §3.3) -->
+    <select id="child-chooser" class="chooser" aria-label="Child" hidden></select>
+    <nav class="nav" aria-label="Views">
+      <button class="navbtn active" data-view="today" type="button">Today</button>
+      <button class="navbtn" data-view="trends" type="button">Trends</button>
+      <button class="navbtn" data-view="growth" type="button">Growth</button>
+      <button class="navbtn" data-view="health" type="button">Health</button>
+      <button class="navbtn" data-view="reports" type="button">Reports</button>
+      <button class="navbtn" data-view="settings" type="button">Settings <span id="needs-count" class="count" hidden></span></button>
+    </nav>
+    <div class="topbar-right">
+      <span id="journal-pill" class="pill" title="Journal status">…</span>
+      <span id="label-pill" class="pill pill-label" title="This PC's label"></span>
+    </div>
+  </header>
+
+  <main id="main">
+    <section id="view-today" class="view">
+      <!-- The child form, shown here only while the journal has no child (SPEC §3.3) -->
+      <section id="firstrun" class="card firstrun" hidden></section>
+      <section id="now" class="card now-card" hidden></section>
+      <section id="logbar" class="logbar" hidden></section>
+      <section id="daysheet" class="card daysheet" hidden></section>
+    </section>
+
+    <section id="view-trends" class="view" hidden></section>
+    <section id="view-growth" class="view" hidden></section>
+    <section id="view-health" class="view" hidden></section>
+    <section id="view-reports" class="view" hidden></section>
+    <section id="view-settings" class="view" hidden></section>
+
+    <div id="status" class="statusline" role="status" aria-live="polite" hidden></div>
+  </main>
+
+  <!-- The editor: one dialog for every type, new and existing entries alike (SPEC §6.2) -->
+  <div id="modal" class="modal" hidden>
+    <div id="modal-card" class="modal-card" role="dialog" aria-modal="true" aria-labelledby="ed-title"></div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="/core.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
