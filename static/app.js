@@ -62,7 +62,7 @@ function elapsedText(msv) {
   return h ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`;
 }
 const hourOf = (iso) => Number(String(iso).slice(11, 13)) + Number(String(iso).slice(14, 16)) / 60;
-const isCheck = (ev) => String(ev.note || "").startsWith("Check: ");
+const isCheck = (ev) => /^Check: | — Check: /.test(String(ev.note || ""));   // paper joins "note — Check: …"
 
 function el(tag, props = {}, ...kids) {
   const n = document.createElement(tag);

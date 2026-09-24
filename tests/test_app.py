@@ -353,6 +353,9 @@ class TestWriteEvent(ChildCase):
         other = self.child(name="Two")
         ev = self.event(child_id=other["child_id"])
         self.assertEqual(ev["child_id"], other["child_id"])
+        # Two ids minted in the same second sort by their random suffix, so pin the current
+        # child rather than assume the first one made is the "oldest".
+        self.c.post("/api/settings", json={"child_id": self.kid["child_id"]})
         self.assertEqual(self.event()["child_id"], self.kid["child_id"])
 
     def test_unknown_child_is_400(self):
@@ -595,13 +598,16 @@ class TestDeletedAndNeedsCheck(ChildCase):
 
     def test_needs_check_is_the_check_prefix_only(self):
         keep = self.event(note="Check: 22 or 27 ml?")
+        # The paper import joins a row's own note and its question with " — " (§10).
+        joined = self.event(time=T1, note="green + solid — Check: the rest is unclear")
         self.event(note="check: lower case")
         self.event(note="Please Check: this")
         self.event(note="Checked")
         gone = self.event(time=T2, note="Check: deleted one")
         self.c.delete(f"/api/event/{gone['event_id']}")
         d = self.c.get("/api/needs-check").get_json()
-        self.assertEqual([e["event_id"] for e in d["events"]], [keep["event_id"]])
+        self.assertEqual(sorted(e["event_id"] for e in d["events"]),
+                         sorted([keep["event_id"], joined["event_id"]]))
 
     def test_a_corrected_entry_leaves_needs_check(self):
         ev = self.event(note="Check: 22 or 27 ml?")

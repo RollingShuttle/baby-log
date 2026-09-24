@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport-fit=cover is what lets the safe-area insets in style.css mean anything (SPEC.md §7.5) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- app.js swaps this to #000000 while night mode is on and back again (§7.4) -->
+  <meta name="theme-color" content="#F2F5F4">
+  <meta name="color-scheme" content="light">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Baby Log">
+  <title>Baby Log</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Installed there is no browser chrome and no edge-swipe back, so every pushed screen
+       carries its own chevron (§7.5). The pill sits on every screen (§7.3). -->
+  <header class="bar" id="bar">
+    <div class="bar-row">
+      <button class="back" id="back" type="button" aria-label="Back" hidden>
+        <span aria-hidden="true">&#8249;</span>
+      </button>
+      <div class="titles">
+        <h1 id="title">Baby Log</h1>
+        <div class="subtitle" id="subtitle"></div>
+      </div>
+      <button class="moon" id="moon" type="button" aria-label="Night mode" aria-pressed="false">
+        <span aria-hidden="true">&#9790;</span>
+      </button>
+    </div>
+    <button class="pill" id="pill" type="button" aria-live="polite">…</button>
+  </header>
+
+  <main id="main">
+    <section class="screen" id="screen-label" hidden></section>
+    <section class="screen" id="screen-now"></section>
+    <section class="screen" id="screen-day" hidden></section>
+    <section class="screen" id="screen-trends" hidden></section>
+    <section class="screen" id="screen-settings" hidden></section>
+    <section class="screen" id="screen-editor" hidden></section>
+  </main>
+
+  <!-- Hidden while the keyboard is up so Save stays reachable (§7.5). -->
+  <nav class="tabs" id="tabs" aria-label="Sections">
+    <button class="tab active" data-tab="now" type="button">
+      <span class="glyph" aria-hidden="true">&#9679;</span>Now
+    </button>
+    <button class="tab" data-tab="day" type="button">
+      <span class="glyph" aria-hidden="true">&#9636;</span>Day
+    </button>
+    <button class="tab" data-tab="trends" type="button">
+      <span class="glyph" aria-hidden="true">&#9650;</span>Trends
+    </button>
+    <button class="tab" data-tab="settings" type="button">
+      <span class="glyph" aria-hidden="true">&#9881;</span>Settings
+      <span class="badge" id="tab-badge" hidden></span>
+    </button>
+  </nav>
+
+  <!-- Above the tab bar, inside the bottom safe area, with a 44 px Undo (§7.4). -->
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="config.js"></script>
+  <script src="core.js"></script>
+  <script src="graph.js"></script>
+  <script src="store.js"></script>
+  <script src="sync.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

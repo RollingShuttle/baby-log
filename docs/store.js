@@ -417,7 +417,8 @@ const Store = (() => {
   }
   const deleted = () => Array.from(events.values()).filter((e) => e.deleted)
     .sort((a, b) => -byCreated(a, b));
-  const needsCheck = () => eventsLive().filter((e) => String(e.note || "").startsWith("Check: "));
+  // The paper import joins a row's own note and its question as "note — Check: …" (§10).
+  const needsCheck = () => eventsLive().filter((e) => /^Check: | — Check: /.test(String(e.note || "")));
 
   async function usage() {
     const out = { events: events.size, children: children.size, queue: queue.length,

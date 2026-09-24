@@ -213,6 +213,13 @@ class Rollup:
 
 # -- the app -----------------------------------------------------------------------------------
 
+def _needs_check(rec):
+    """A note flagged for correction: it opens with `Check: ` or carries a ` — Check: ` segment
+    (the paper import's join of a row's own note and the transcriber's question)."""
+    note = str(rec.get("note") or "")
+    return note.startswith("Check: ") or " — Check: " in note
+
+
 def create_app(config_path="config.yaml", *, app_folder=None, output_folder=None, data_dir=None,
                rollup_delay_s=20):
     cfg = _load_cfg(config_path)
@@ -368,8 +375,9 @@ def create_app(config_path="config.yaml", *, app_folder=None, output_folder=None
 
     @app.get("/api/needs-check")
     def api_needs_check():
-        return jsonify({"ok": True, "events": [e for e in journal.events()
-                                               if str(e.get("note") or "").startswith("Check: ")]})
+        # The paper import joins a row's own note and its question as "note — Check: …" (§10),
+        # so the marker may follow a " — " rather than open the note.
+        return jsonify({"ok": True, "events": [e for e in journal.events() if _needs_check(e)]})
 
     # -- writing events ------------------------------------------------------
     @app.post("/api/event")
