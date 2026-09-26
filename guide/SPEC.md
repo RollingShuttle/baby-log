@@ -403,7 +403,8 @@ deleting an already-deleted event or restoring a live one → 409, no child → 
 | `/api/heartbeat`, `/api/goodbye`, `/api/window` | exactly as whiskey's `launch.attach_lifecycle` expects |
 
 **The rollup runs** at startup, 20 s after any API write, and whenever a background scan (every
-60 s) finds the journal's newest `created_at` newer than the last rollup's — phones' entries arrive
+60 s) finds a journal file the last rollup did not see (`Journal.fingerprint()`: file count and
+newest mtime — not `created_at`, which a late phone upload can carry from hours earlier) — phones' entries arrive
 through the OneDrive client with no API call, so this is what keeps `Baby Log.xlsx` current. All
 of it is debounced into one background thread; skipped with a logged warning while
 `~$Baby Log.xlsx` exists. Timers on the PC: `POST /api/event` with `data.timer` set and `end: null`

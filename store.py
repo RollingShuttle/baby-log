@@ -23,6 +23,7 @@ import os
 import re
 import secrets
 import tempfile
+import threading
 import time as _time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -342,6 +343,11 @@ class Journal:
         self._files = 0
         self._scanned_at = None
         self._resolved = None
+        # One Journal serves Flask's request threads, the 60 s scan and the post-write timer.
+        # Without this a write landing mid-iteration raised "dictionary changed size during
+        # iteration" (a 500), and a write landing mid-rescan vanished until the next scan.
+        # Re-entrant because the writers call the readers while they hold it.
+        self._lock = threading.RLock()
 
     # -- setup ---------------------------------------------------------------
     def ensure(self):
@@ -382,54 +388,65 @@ class Journal:
 
     def load(self, force=False):
         """Rescan the tree, parsing only files whose (path, size, mtime) changed since last time.
-        The scan is skipped while the last one is fresh (SCAN_TTL_S) unless forced."""
-        if not force and self._scanned_at is not None and \
-                _time.monotonic() - self._scanned_at < SCAN_TTL_S:
-            return self
-        index, unreadable, files = {}, [], 0
-        for p in self._candidate_files():
-            files += 1
-            key = str(p)
-            if parse_name(p.name) is None:
-                continue
-            try:
-                st = p.stat()
-                known = self._index.get(key)
-                if known and known[0] == st.st_size and known[1] == st.st_mtime_ns:
-                    index[key] = known
+        The scan is skipped while the last one is fresh (SCAN_TTL_S) unless forced. The whole
+        scan holds the lock, so a write on another thread waits and then lands in the new
+        index instead of the one about to be thrown away."""
+        with self._lock:
+            if not force and self._scanned_at is not None and \
+                    _time.monotonic() - self._scanned_at < SCAN_TTL_S:
+                return self
+            index, unreadable, files = {}, [], 0
+            for p in self._candidate_files():
+                files += 1
+                key = str(p)
+                if parse_name(p.name) is None:
                     continue
-                index[key] = (st.st_size, st.st_mtime_ns, self._read(p))
-            except (OSError, ValueError):
-                # Files-On-Demand placeholder, zero bytes mid-download, half-written: skip it
-                # this time and look again next scan.
-                unreadable.append(p.name)
-        self._index, self._unreadable, self._files = index, unreadable, files
-        self._scanned_at = _time.monotonic()
-        self._resolved = None
-        return self
+                try:
+                    st = p.stat()
+                    known = self._index.get(key)
+                    if known and known[0] == st.st_size and known[1] == st.st_mtime_ns:
+                        index[key] = known
+                        continue
+                    index[key] = (st.st_size, st.st_mtime_ns, self._read(p))
+                except (OSError, ValueError):
+                    # Files-On-Demand placeholder, zero bytes mid-download, half-written: skip
+                    # it this time and look again next scan.
+                    unreadable.append(p.name)
+            self._index, self._unreadable, self._files = index, unreadable, files
+            self._scanned_at = _time.monotonic()
+            self._resolved = None
+            return self
 
     def _remember(self, path, rec):
         """Put a file this process just wrote straight into the index; no rescan needed."""
-        st = path.stat()
-        self._index[str(path)] = (st.st_size, st.st_mtime_ns, rec)
-        self._files += 1
-        self._resolved = None
+        with self._lock:
+            st = path.stat()
+            self._index[str(path)] = (st.st_size, st.st_mtime_ns, rec)
+            self._files += 1
+            self._resolved = None
+
+    def _records(self):
+        """Every indexed record, copied under the lock: a request thread iterates the copy
+        while a write on another thread adds to the dict."""
+        with self._lock:
+            self.load()
+            return [rec for (_, _, rec) in self._index.values()]
 
     def _all_events(self):
-        self.load()
-        return [rec for (_, _, rec) in self._index.values() if "event_id" in rec]
+        return [rec for rec in self._records() if "event_id" in rec]
 
     def _all_children(self):
         # An event carries a child_id too; a child record is the one with no event_id.
-        self.load()
-        return [rec for (_, _, rec) in self._index.values()
-                if "child_id" in rec and "event_id" not in rec]
+        return [rec for rec in self._records() if "child_id" in rec and "event_id" not in rec]
 
     def _resolved_events(self):
-        self.load()
-        if self._resolved is None:
-            self._resolved = resolve(self._all_events(), "event_id")
-        return self._resolved
+        # Under the lock too: a _remember between the snapshot and the assignment would
+        # otherwise leave a resolved map that lacks the write it just cleared the cache for.
+        with self._lock:
+            self.load()
+            if self._resolved is None:
+                self._resolved = resolve(self._all_events(), "event_id")
+            return self._resolved
 
     def _highest_revision(self, event_id):
         return max((int(r.get("revision") or 0) for r in self._all_events()
@@ -457,27 +474,30 @@ class Journal:
         if not isinstance(device, str) or not device:
             raise ValueError("device must be a string")
 
-        if child_id is None:
-            child_id = f"C-{stamp()}-{rand4()}"
-            revision = 1
-        else:
-            highest = max((int(r.get("revision") or 0) for r in self._all_children()
-                           if r.get("child_id") == child_id), default=0)
-            if highest == 0:
-                raise KeyError(f"no such child {child_id}")
-            revision = highest + 1
+        # The revision lookup and the write are one step, or two threads revising the same
+        # child would both compute r2.
+        with self._lock:
+            if child_id is None:
+                child_id = f"C-{stamp()}-{rand4()}"
+                revision = 1
+            else:
+                highest = max((int(r.get("revision") or 0) for r in self._all_children()
+                               if r.get("child_id") == child_id), default=0)
+                if highest == 0:
+                    raise KeyError(f"no such child {child_id}")
+                revision = highest + 1
 
-        rec = {
-            "child_id": child_id, "revision": revision, "deleted": False, "reason": None,
-            "name": name, "born": born, "born_time": born_time, "sex": sex,
-            "birth_weight_g": birth_weight_g, "targets": merged,
-            "device": device, "created_at": now_iso(),
-        }
-        path = self._dir("children") / f"{child_id}-r{revision}-{rand4()}.json"
-        _atomic_write_json(path, rec)
-        rec["_file"] = path.name
-        self._remember(path, rec)
-        return rec
+            rec = {
+                "child_id": child_id, "revision": revision, "deleted": False, "reason": None,
+                "name": name, "born": born, "born_time": born_time, "sex": sex,
+                "birth_weight_g": birth_weight_g, "targets": merged,
+                "device": device, "created_at": now_iso(),
+            }
+            path = self._dir("children") / f"{child_id}-r{revision}-{rand4()}.json"
+            _atomic_write_json(path, rec)
+            rec["_file"] = path.name
+            self._remember(path, rec)
+            return rec
 
     def children(self):
         """Live children, oldest id first — the first one is the current child."""
@@ -521,46 +541,49 @@ class Journal:
         if not isinstance(deleted, bool):
             raise ValueError("deleted must be true or false")
 
-        if event_id is None:
-            event_id = f"E-{stamp()}-{rand4()}"
-            revision = 1
-        else:
-            if not isinstance(event_id, str) or not event_id.startswith("E-"):
-                raise ValueError(f"event_id must start with E-, got {event_id!r}")
-            highest = self._highest_revision(event_id)
-            if revision is None:
-                if highest == 0:
-                    raise KeyError(f"no such event {event_id}")
-                revision = highest + 1
-            elif int(revision) <= highest:
-                raise FileExistsError(
-                    f"refusing to overwrite revision {revision} of {event_id}: r{highest} is on "
-                    "file. Journal files are immutable; write a new revision instead.")
+        # From the highest-revision lookup to the write is one critical section: a Stop on the
+        # PC and a Switch from the scan's rescan must not both read r1 and both write r2.
+        with self._lock:
+            if event_id is None:
+                event_id = f"E-{stamp()}-{rand4()}"
+                revision = 1
             else:
-                revision = int(revision)
-            if logged_by is None and highest:
-                logged_by = self._resolved_events()[event_id].get("logged_by")
-        if logged_by is None:
-            raise ValueError("logged_by is required for a new event")
+                if not isinstance(event_id, str) or not event_id.startswith("E-"):
+                    raise ValueError(f"event_id must start with E-, got {event_id!r}")
+                highest = self._highest_revision(event_id)
+                if revision is None:
+                    if highest == 0:
+                        raise KeyError(f"no such event {event_id}")
+                    revision = highest + 1
+                elif int(revision) <= highest:
+                    raise FileExistsError(
+                        f"refusing to overwrite revision {revision} of {event_id}: r{highest} "
+                        "is on file. Journal files are immutable; write a new revision instead.")
+                else:
+                    revision = int(revision)
+                if logged_by is None and highest:
+                    logged_by = self._resolved_events()[event_id].get("logged_by")
+            if logged_by is None:
+                raise ValueError("logged_by is required for a new event")
 
-        rec = {
-            "event_id": event_id,
-            "revision": revision,
-            "deleted": deleted,
-            "reason": reason,
-            "child_id": child_id,
-            "type": type,
-            "time": time,
-            "end": end,
-            "data": data,
-            "note": note,
-            "logged_by": logged_by,
-            "edited_by": edited_by,
-            "device": device,
-            "entered_from": entered_from,
-            "created_at": now_iso(),
-        }
-        return self._write_event_file(rec)
+            rec = {
+                "event_id": event_id,
+                "revision": revision,
+                "deleted": deleted,
+                "reason": reason,
+                "child_id": child_id,
+                "type": type,
+                "time": time,
+                "end": end,
+                "data": data,
+                "note": note,
+                "logged_by": logged_by,
+                "edited_by": edited_by,
+                "device": device,
+                "entered_from": entered_from,
+                "created_at": now_iso(),
+            }
+            return self._write_event_file(rec)
 
     def _write_event_file(self, rec):
         # The day folder is the UTC date of the write, not the event's date (§3.1).
@@ -587,32 +610,35 @@ class Journal:
     def delete_event(self, event_id, reason=None, *, device, edited_by, entered_from=None):
         """A tombstone: the latest record with every field carried, one revision up. Deleting
         something already deleted is an error (API 409), not a second tombstone."""
-        latest = self.event(event_id)
-        if latest is None:
-            raise KeyError(f"no such event {event_id}")
-        if latest.get("deleted"):
-            raise ValueError(f"{event_id} is already deleted")
-        if reason is not None and not isinstance(reason, str):
-            raise ValueError("reason must be a string or null")
-        rec = copy.deepcopy(_public(latest))
-        rec.update(revision=self._highest_revision(event_id) + 1, deleted=True, reason=reason)
-        self._restamp(rec, device=device, edited_by=edited_by, entered_from=entered_from)
-        return self._write_event_file(rec)
+        with self._lock:
+            latest = self.event(event_id)
+            if latest is None:
+                raise KeyError(f"no such event {event_id}")
+            if latest.get("deleted"):
+                raise ValueError(f"{event_id} is already deleted")
+            if reason is not None and not isinstance(reason, str):
+                raise ValueError("reason must be a string or null")
+            rec = copy.deepcopy(_public(latest))
+            rec.update(revision=self._highest_revision(event_id) + 1, deleted=True,
+                       reason=reason)
+            self._restamp(rec, device=device, edited_by=edited_by, entered_from=entered_from)
+            return self._write_event_file(rec)
 
     def restore_event(self, event_id, *, device, edited_by, entered_from=None):
         """Bring a deleted event back as a new revision copied from the latest non-deleted one
         (the tombstone's own body when there is none). Restoring a live event is an error."""
-        latest = self.event(event_id)
-        if latest is None:
-            raise KeyError(f"no such event {event_id}")
-        if not latest.get("deleted"):
-            raise ValueError(f"{event_id} is not deleted")
-        alive = [r for r in self.history(event_id) if not r.get("deleted")]
-        base = max(alive, key=_rank) if alive else latest
-        rec = copy.deepcopy(_public(base))
-        rec.update(revision=self._highest_revision(event_id) + 1, deleted=False, reason=None)
-        self._restamp(rec, device=device, edited_by=edited_by, entered_from=entered_from)
-        return self._write_event_file(rec)
+        with self._lock:
+            latest = self.event(event_id)
+            if latest is None:
+                raise KeyError(f"no such event {event_id}")
+            if not latest.get("deleted"):
+                raise ValueError(f"{event_id} is not deleted")
+            alive = [r for r in self.history(event_id) if not r.get("deleted")]
+            base = max(alive, key=_rank) if alive else latest
+            rec = copy.deepcopy(_public(base))
+            rec.update(revision=self._highest_revision(event_id) + 1, deleted=False, reason=None)
+            self._restamp(rec, device=device, edited_by=edited_by, entered_from=entered_from)
+            return self._write_event_file(rec)
 
     def events(self):
         """Every live event, oldest first."""
@@ -643,12 +669,23 @@ class Journal:
         return out
 
     def stats(self):
-        self.load()
-        recs = [rec for (_, _, rec) in self._index.values()]
-        newest = max((str(r.get("created_at")) for r in recs if r.get("created_at")), default=None)
-        return {"events": len(self.events()), "deleted": len(self.deleted()),
-                "children": len(self.children()), "files": self._files,
-                "newest_at": newest, "unreadable": list(self._unreadable)}
+        with self._lock:
+            recs = self._records()
+            newest = max((str(r.get("created_at")) for r in recs if r.get("created_at")),
+                         default=None)
+            return {"events": len(self.events()), "deleted": len(self.deleted()),
+                    "children": len(self.children()), "files": self._files,
+                    "newest_at": newest, "unreadable": list(self._unreadable)}
+
+    def fingerprint(self):
+        """What the tree holds right now — file count, indexed count, newest mtime — so the
+        rollup scan can tell that *any* file arrived. It cannot key on max(created_at): a
+        phone's queued upload keeps its original created_at (§7.6), so it lands with an older
+        stamp than the last PC write and still has to reach Baby Log.xlsx."""
+        with self._lock:
+            self.load()
+            newest = max((mtime for (_, mtime, _) in self._index.values()), default=0)
+            return (self._files, len(self._index), newest)
 
 
 def resolve_root(cfg, override=None):

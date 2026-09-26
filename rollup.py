@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import html
 import logging
+import math
 import os
 import shutil
 import sys
@@ -72,6 +73,18 @@ PRINT_CSS = _resource_dir() / "static" / "print.css"
 
 
 # -- the Core port (docs/core.js §5) -----------------------------------------------------------
+
+def _round_half_up(x):
+    """Math.round: halves go up (2.5 -> 3, -2.5 -> -2). Python's round() is half-to-even, so a
+    150 s feed read "3 min" on every screen and "2 min" on the printed sheet."""
+    return int(math.floor(x + 0.5))
+
+
+def _round_half_up_to(x, places):
+    """Math.round(x * 10**p) / 10**p, the way Core rounds kg and oz to a fixed number of places."""
+    scale = 10 ** places
+    return math.floor(x * scale + 0.5) / scale
+
 
 def to_dt(x):
     """An aware datetime for an ISO string, a datetime, or None (= now)."""
@@ -196,11 +209,15 @@ def totals(events, day, now=None):
 
 
 def fmt_amount(ml, unit):
-    """"22 ml" / "0.75 oz" — oz to the nearest quarter, as Core.fmtAmount."""
+    """"22 ml" / "0.75 oz" — oz to the nearest quarter, as Core.fmtAmount. A 1–3 ml portion
+    is not nothing: when the quarter would print 0, fall back to Core.toUnit's two places
+    (3 ml -> 0.1 oz), and :g so 0.1 never prints as 0.10."""
     if unit == "oz":
-        q = round(ml / OZ_ML * 4) / 4
+        q = _round_half_up(ml / OZ_ML * 4) / 4
+        if q == 0 and ml > 0:
+            q = _round_half_up_to(ml / OZ_ML, 2)
         return f"{q:g} oz"
-    return f"{round(ml)} ml"
+    return f"{_round_half_up(ml)} ml"
 
 
 def fmt_time(iso):
@@ -256,7 +273,7 @@ def describe(ev, unit="ml", now=None):
         parts = []
         s = breast_seconds(ev, now)
         if s > 0:
-            parts.append(f"{round(s / 60)} min")
+            parts.append(f"{_round_half_up(s / 60)} min")
         by_kind = {}
         for b in data.get("bottles") or []:
             by_kind[b["kind"]] = by_kind.get(b["kind"], 0) + (b.get("ml") or 0)
@@ -285,7 +302,7 @@ def describe(ev, unit="ml", now=None):
     if kind == "growth":
         parts = []
         if data.get("weight_g") is not None:
-            parts.append(f"Weight {_num(round(data['weight_g'] / 10) / 100)} kg")
+            parts.append(f"Weight {_num(_round_half_up(data['weight_g'] / 10) / 100)} kg")
         if data.get("length_cm") is not None:
             parts.append(f"Length {_num(data['length_cm'])} cm")
         if data.get("head_cm") is not None:
@@ -345,6 +362,12 @@ def _sheet(wb, title, headers, rows, widths=None):
         c.alignment = Alignment(vertical="center")
     for r in rows:
         ws.append(r)
+        # openpyxl files any string that opens with "=" as a formula, so a note "=same as the
+        # 3:12 one" opened in Excel as #NAME? with a repair prompt, on every regeneration.
+        # Every string here is text; key off what openpyxl decided rather than re-checking.
+        for c in ws[ws.max_row]:
+            if c.data_type == "f":
+                c.data_type = "s"
     ws.freeze_panes = "A2"
     for i, h in enumerate(headers, start=1):
         ws.column_dimensions[get_column_letter(i)].width = (widths or {}).get(h, max(10, len(h) + 2))
@@ -354,7 +377,7 @@ def _sheet(wb, title, headers, rows, widths=None):
 
 
 def _minutes(seconds):
-    return None if seconds is None else round(seconds / 60, 1)
+    return None if seconds is None else _round_half_up_to(seconds / 60, 1)
 
 
 def _yn(v):
@@ -376,7 +399,7 @@ def _sleep_minutes(ev, now):
     start = to_ms(ev.get("time"))
     if end is None or start is None:
         return None
-    return round(max(0.0, (end - start) / 1000) / 60, 1)
+    return _round_half_up_to(max(0.0, (end - start) / 1000) / 60, 1)
 
 
 def _common(ev):
@@ -450,9 +473,9 @@ def daily_rows(events, d1, d2, now=None):
         date = day.strftime("%Y-%m-%d")
         t = totals(events, date, now)
         out.append({"date": date, "feeds": t["feeds"], "bottle_ml": t["bottle_ml"],
-                    "breast_min": round(t["breast_s"] / 60, 1), "wet": t["wet"],
+                    "breast_min": _round_half_up_to(t["breast_s"] / 60, 1), "wet": t["wet"],
                     "dirty": t["dirty"], "sleeps": t["sleeps"],
-                    "sleep_min": round(t["sleep_s"] / 60, 1), "pumps": t["pumps"],
+                    "sleep_min": _round_half_up_to(t["sleep_s"] / 60, 1), "pumps": t["pumps"],
                     "pump_ml": t["pump_ml"]})
         day += timedelta(days=1)
     return out
@@ -547,12 +570,12 @@ def _breast_cell(ev, now):
     s = breast_seconds(ev, now)
     if not s and br.get("total_s") is None and br.get("left_s") is None and br.get("right_s") is None:
         return ""
-    text = f"{round(s / 60)} min"
+    text = f"{_round_half_up(s / 60)} min"
     sides = []
     if br.get("left_s") is not None:
-        sides.append(f"L {round(br['left_s'] / 60)}")
+        sides.append(f"L {_round_half_up(br['left_s'] / 60)}")
     if br.get("right_s") is not None:
-        sides.append(f"R {round(br['right_s'] / 60)}")
+        sides.append(f"R {_round_half_up(br['right_s'] / 60)}")
     if sides:
         text += f" ({'/'.join(sides)})"
     if br.get("approx"):
@@ -645,7 +668,7 @@ def footer_text(t, unit, targets=None):
 
     parts = [f"{with_target(t['feeds'], 'feeds_per_day')} feeds",
              f"{fmt_amount(t['bottle_ml'], unit)} bottle",
-             f"{round(t['breast_s'] / 60)} min breast",
+             f"{_round_half_up(t['breast_s'] / 60)} min breast",
              f"{with_target(t['wet'], 'wet_per_day')} wet",
              f"{with_target(t['dirty'], 'dirty_per_day')} dirty"]
     if t["sleeps"]:

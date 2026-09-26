@@ -350,8 +350,13 @@ const Core = (() => {
   // The unit's number -> whole ml, the only thing ever stored (§8.1).
   const fromUnit = (v, unit) => Math.round(unit === "oz" ? Number(v) * OZ_ML : Number(v));
   // "22 ml" / "0.75 oz": oz shown to the nearest quarter so 7 ml reads 0.25 and 240 reads 8.
+  // A 1–3 ml portion is not nothing: when the quarter would print 0, fall back to the editor's
+  // two places (toUnit), so 3 ml reads 0.1 oz and the label agrees with the field.
   function fmtAmount(ml, unit) {
-    if (unit === "oz") return `${Math.round((ml / OZ_ML) * 4) / 4} oz`;
+    if (unit === "oz") {
+      const q = Math.round((ml / OZ_ML) * 4) / 4;
+      return `${q === 0 && ml > 0 ? toUnit(ml, "oz") : q} oz`;
+    }
     return `${Math.round(ml)} ml`;
   }
   // The −/+ step that grows with him: fine while feeds are small, coarser later (§5).

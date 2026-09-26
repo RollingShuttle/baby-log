@@ -15,9 +15,11 @@ ROOT = HERE.parent
 sys.path[:0] = [str(HERE), str(ROOT), str(ROOT / "tools")]
 
 import json
+import re
 import shutil
 import tempfile
 import unittest
+import zipfile
 from datetime import datetime, timedelta
 from unittest import mock
 
@@ -26,6 +28,8 @@ import openpyxl
 import rollup
 import store
 
+# The describe / fmtAmount examples test_core.py pins under Node; the port must give the same.
+CASES = json.loads((HERE / "fixtures" / "data_cases.json").read_text(encoding="utf-8"))
 CHILD = "C-20260923-220000-0a1b"
 D1 = "2026-09-23"
 T1 = "2026-09-23T17:50:00-05:00"
@@ -155,6 +159,38 @@ class TestCorePort(unittest.TestCase):
         self.assertEqual(rollup.describe(self.ev(end=T2)), "Feed")
         self.assertEqual(rollup.describe(self.ev(data={"bottles": [{"kind": "formula", "ml": 59}]}), "oz"),
                          "2 oz formula")
+        # Exact halves round up as Math.round does; Python's round() would say "2 min" / 3.42.
+        self.assertEqual(rollup.describe(self.ev(data={"breast": {"total_s": 150}}, end=T2)), "3 min")
+        self.assertEqual(rollup.describe(self.ev(type="growth", data={"weight_g": 3425})),
+                         "Weight 3.43 kg")
+
+    def test_the_shared_core_examples(self):
+        for c in CASES["core_examples"]["describe"]:
+            with self.subTest(c["text"]):
+                self.assertEqual(rollup.describe(c["ev"], c["unit"]), c["text"])
+        for c in CASES["core_examples"]["fmtAmount"]:
+            with self.subTest(c["text"]):
+                self.assertEqual(rollup.fmt_amount(c["ml"], c["unit"]), c["text"])
+        for c in CASES["core_examples"]["sinceText"]:
+            with self.subTest(c["text"]):
+                self.assertEqual(rollup.since_text(c["ms"]), c["text"])
+        for c in CASES["core_examples"]["fmt"]:
+            self.assertEqual(rollup.fmt_time(c["iso"]), c["fmtTime"])
+            self.assertEqual(rollup.fmt_day(c["iso"]), c["fmtDay"])
+            self.assertEqual(rollup.local_date(c["iso"]), c["localDate"])
+
+    def test_rounding_is_half_up_like_math_round(self):
+        self.assertEqual([rollup._round_half_up(x) for x in (2.5, 3.5, 2.4, -2.5, 0)], [3, 4, 2, -2, 0])
+        self.assertEqual(rollup._round_half_up_to(0.25, 1), 0.3)
+        self.assertEqual(rollup._round_half_up_to(3 / rollup.OZ_ML, 2), 0.1)
+        self.assertEqual(rollup._minutes(15), 0.3)
+        self.assertEqual(rollup._minutes(None), None)
+        t = dict(feeds=1, bottle_ml=0, breast_s=2670, wet=0, dirty=0, sleeps=0, sleep_s=0,
+                 pumps=0, pump_ml=0)
+        self.assertIn("45 min breast", rollup.footer_text(t, "ml"))
+        self.assertEqual(rollup._breast_cell(self.ev(data={"breast": {"total_s": 150, "left_s": 90,
+                                                                       "right_s": 60}}), None),
+                         "3 min (L 2/R 1)")
 
     def test_formatting_helpers(self):
         self.assertEqual(rollup.fmt_day(T1), "Wed 23 Sep")
@@ -166,6 +202,10 @@ class TestCorePort(unittest.TestCase):
         self.assertEqual(rollup.fmt_amount(22, "oz"), "0.75 oz")
         self.assertEqual(rollup.fmt_amount(7, "oz"), "0.25 oz")
         self.assertEqual(rollup.fmt_amount(240, "oz"), "8 oz")
+        # Under an eighth of an ounce is not "0 oz": the paper sheet has 1 and 3 ml portions.
+        self.assertEqual(rollup.fmt_amount(3, "oz"), "0.1 oz")
+        self.assertEqual(rollup.fmt_amount(1, "oz"), "0.03 oz")
+        self.assertEqual(rollup.fmt_amount(0, "oz"), "0 oz")
         self.assertEqual(rollup.since_text(75 * 60000), "1 h 15 m")
         self.assertEqual(rollup.since_text(45 * 60000), "45 m")
         self.assertEqual(rollup.since_text((2 * 1440 + 180) * 60000), "2 d 3 h")
@@ -359,6 +399,27 @@ class TestContent(RollupCase):
         row = _rows(wb["Feeds"])[0]
         wb.close()
         self.assertEqual((row["note"], row["logged_by"]), ("今天喝得很好", "妈妈"))
+
+    def test_a_note_that_opens_with_equals_is_text_not_a_formula(self):
+        # openpyxl files any string that starts with "=" as a formula; Excel then showed
+        # #NAME? and a repair prompt, and regenerated it that way every time.
+        self.write(note="=same as the 3:12 one")
+        self.write(type="health", time=T2, logged_by="=Mom",
+                   data={"medicine": "=Vitamin D", "dose": "=1 drop", "symptom": "=none"})
+        self.write(type="sleep", time=T3, end=T4, data={"where": "=crib"})
+        self.build()
+        with zipfile.ZipFile(self.out) as z:
+            sheets = [n for n in z.namelist() if n.startswith("xl/worksheets/")]
+            self.assertTrue(sheets)
+            for name in sheets:
+                self.assertIsNone(re.search(r"<f[\s>]", z.read(name).decode("utf-8")), name)
+        wb = openpyxl.load_workbook(self.out)         # not data_only: a formula would show as one
+        feed, health, sleep = _rows(wb["Feeds"])[0], _rows(wb["Health"])[0], _rows(wb["Sleep"])[0]
+        wb.close()
+        self.assertEqual(feed["note"], "=same as the 3:12 one")
+        self.assertEqual((health["logged_by"], health["medicine"], health["dose"], health["symptom"]),
+                         ("=Mom", "=Vitamin D", "=1 drop", "=none"))
+        self.assertEqual(sleep["where"], "=crib")
 
 
 class TestDaily(RollupCase):

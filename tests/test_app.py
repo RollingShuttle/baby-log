@@ -759,6 +759,40 @@ class TestRollupRoutes(ChildCase):
         self.assertIn("open in Excel", r.get_json()["error"])
         self.assertFalse((self.out / "Baby Log.xlsx").exists())
 
+    def test_rollup_failure_is_a_500_with_the_reason(self):
+        with mock.patch.object(rollup_mod, "build", side_effect=OSError("disk gone")):
+            r = self.c.post("/api/rollup")
+        self.assertEqual(r.status_code, 500)
+        self.assertIn("OSError: disk gone", r.get_json()["error"])
+
+    def test_manual_rebuild_waits_for_the_background_build(self):
+        # Both used to call rollup.build on the same file at once: a click 20 s after a write
+        # raced the timer's build, and on Windows the second os.replace failed against the
+        # first's open backup copy (a 500). The route now takes its turn under the build lock.
+        rollup = self.app.config["rollup"]
+        self.event()
+        results = []
+        with mock.patch.object(rollup_mod, "build", wraps=rollup_mod.build) as build:
+            rollup._build_lock.acquire()               # a background build is in progress
+            try:
+                t = threading.Thread(target=lambda: results.append(self.c.post("/api/rollup")))
+                t.start()
+                t.join(0.3)
+                self.assertTrue(t.is_alive(), "the manual rebuild waits its turn")
+                self.assertEqual(build.call_count, 0)
+            finally:
+                rollup._build_lock.release()
+            t.join(10)
+        self.assertEqual(build.call_count, 1)
+        self.assertEqual(results[0].status_code, 200, results[0].get_json())
+        self.assertIsNotNone(rollup.rollup_at)
+
+    def test_manual_rebuild_counts_as_seen_by_the_scan(self):
+        rollup = self.app.config["rollup"]
+        self.event()
+        self.assertEqual(self.c.post("/api/rollup").status_code, 200)
+        self.assertFalse(rollup.scan_once(), "the manual rebuild saw the journal as it is")
+
     def test_daysheet_writes_into_day_sheets(self):
         self.event()
         r = self.c.post(f"/api/daysheet/{D1}")
@@ -920,6 +954,27 @@ class TestBackgroundRollup(AppCase):
         self.assertFalse(r.scan_once(), "already seen")
         self.child(name="Two")                   # a file newer than the last rollup
         self.assertTrue(r.scan_once())
+
+    def test_the_scan_notices_a_late_phone_file_with_an_older_created_at(self):
+        # A queued phone upload keeps its original created_at (§7.6), so it can land in the
+        # folder *after* a PC write that carries a *newer* one. Keyed on max(created_at) the
+        # scan never moved, and that feed never reached Baby Log.xlsx.
+        r = self.rollup(20)
+        self.child()
+        pc = self.event()                        # the PC write the last rollup saw
+        self.assertTrue(r.scan_once())
+        self.assertFalse(r.scan_once())
+        older = {k: v for k, v in pc.items() if k != "_file"}
+        older.update(event_id="E-20260923-030000-ph01", device="d-0001", entered_from="phone",
+                     created_at="2026-09-23T08:00:05.000000+00:00")
+        self.assertLess(older["created_at"], pc["created_at"])
+        day = self.journal_dir / "events" / "2026-09-23"
+        day.mkdir(parents=True, exist_ok=True)
+        (day / "E-20260923-030000-ph01-r1-abcd.json").write_text(json.dumps(older), encoding="utf-8")
+        self.journal.load(force=True)
+        self.assertEqual(self.journal.stats()["newest_at"], pc["created_at"], "the stamp did not move")
+        self.assertTrue(r.scan_once(), "a new file is a change whatever its created_at")
+        self.assertFalse(r.scan_once(), "and it is seen once")
 
     def test_a_locked_workbook_is_skipped_with_a_warning(self):
         self.out.mkdir(parents=True, exist_ok=True)

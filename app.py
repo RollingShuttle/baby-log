@@ -4,12 +4,15 @@ app.py — the local web server.
 Serves the PC front end and its JSON API at http://127.0.0.1:8766 (SPEC.md §6.1). The journal in
 the OneDrive app folder (store.py) is the only thing written to on a request; `Baby Log.xlsx` and
 the day sheets in Yisen File are regenerated from it by rollup.py in a background thread — at
-startup, 20 s after any API write, and whenever a 60 s scan finds a file newer than the last
-rollup, because the phones' entries arrive through the OneDrive client with no API call at all.
+startup, 20 s after any API write, and whenever a 60 s scan finds a file the last rollup did not
+see, because the phones' entries arrive through the OneDrive client with no API call at all.
 
 The app is a factory (create_app) so the tests can inject a temp journal, a temp output folder and
 a temp data folder, and switch the background threads off. launch.py calls create_app(config)
 with the config path alone and reads STATIC_DIR for the tray icon.
+
+Every rebuild — startup, the post-write timer, the scan and the Rebuild button — goes through
+Rollup.run and its build lock, so two builds never write the same workbook at once.
 """
 from __future__ import annotations
 
@@ -155,7 +158,10 @@ class Rollup:
         self.delay_s = delay_s
         self.enabled = delay_s is not None
         self.rollup_at = None
-        self.newest_seen = None
+        # The journal's fingerprint as the last build saw it — not its newest created_at: a
+        # phone's queued upload lands with an older created_at than the last PC write and
+        # would never have counted as "newer".
+        self.seen = None
         self._build_lock = threading.Lock()
         self._timer_lock = threading.Lock()
         self._timer = None
@@ -166,20 +172,26 @@ class Rollup:
         threading.Thread(target=self.run, name="rollup-startup", daemon=True).start()
         threading.Thread(target=self._scan_forever, name="rollup-scan", daemon=True).start()
 
-    def run(self):
-        """Rebuild now, on this thread. Returns the summary or None."""
+    def run(self, *, raise_errors=False):
+        """Rebuild now, on this thread, one build at a time. Returns the summary, or None when
+        the build was skipped or failed. The Rebuild button passes raise_errors so the person
+        who clicked it sees the reason (Excel has the file, the disk is full); the background
+        callers get a log line instead."""
         with self._build_lock:
             try:
-                if rollup_mod.is_locked(self.output_folder):
+                if not raise_errors and rollup_mod.is_locked(self.output_folder):
                     log.warning("rollup skipped: %s is open in Excel", rollup_mod.WORKBOOK)
                     return None
-                newest = self.journal.stats().get("newest_at")
+                # Captured before the build, so a file that lands during it is not masked.
+                seen = self.journal.fingerprint()
                 summary = rollup_mod.build(self.journal, self.output_folder, self.backup_dir,
                                            self.keep)
                 self.rollup_at = store_mod.now_iso()
-                self.newest_seen = newest
+                self.seen = seen
                 return summary
             except Exception as e:                    # noqa: BLE001 — logged, never raised
+                if raise_errors:
+                    raise
                 log.warning("rollup failed: %s: %s", type(e).__name__, e)
                 return None
 
@@ -195,11 +207,11 @@ class Rollup:
             self._timer.start()
 
     def scan_once(self):
-        """Rebuild when the journal holds a file newer than the last rollup saw — the phones'
+        """Rebuild when the journal holds a file the last rollup did not see — the phones'
         entries arrive through OneDrive with no API call. True when a rebuild ran."""
         try:
-            newest = self.journal.stats().get("newest_at")
-            if newest and (self.newest_seen is None or newest > self.newest_seen):
+            now = self.journal.fingerprint()
+            if now[0] and now != self.seen:
                 return self.run() is not None
         except Exception as e:                        # noqa: BLE001
             log.warning("rollup scan failed: %s: %s", type(e).__name__, e)
@@ -498,14 +510,15 @@ def create_app(config_path="config.yaml", *, app_folder=None, output_folder=None
     # -- the readable files --------------------------------------------------
     @app.post("/api/rollup")
     def api_rollup():
+        """The Rebuild button. Through the worker, not rollup_mod.build directly: a click 20 s
+        after a write used to race the timer's build on the same file, and on Windows the
+        second os.replace fails against the first's open backup copy."""
         try:
-            summary = rollup_mod.build(journal, out_dir, backup_dir, keep)
+            summary = rollup.run(raise_errors=True)
         except RuntimeError as e:
             return _err(e, 409)
         except Exception as e:                        # noqa: BLE001 — surface the real reason
             return _err(f"{type(e).__name__}: {e}", 500)
-        rollup.rollup_at = store_mod.now_iso()
-        rollup.newest_seen = journal.stats().get("newest_at")
         return jsonify({"ok": True, "path": summary["path"], "summary": summary})
 
     @app.post("/api/daysheet/<date>")

@@ -19,6 +19,7 @@ import os
 import re
 import shutil
 import tempfile
+import threading
 import unittest
 from datetime import datetime, timezone
 from unittest import mock
@@ -769,6 +770,95 @@ class TestDefensiveReading(JournalCase):
         self.assertEqual(bare.events(), [])
         self.assertEqual(bare.children(), [])
         self.assertEqual(bare.stats()["files"], 0)
+
+    def test_fingerprint_moves_on_any_new_file_whatever_its_created_at(self):
+        self.j.load(force=True)
+        before = self.j.fingerprint()
+        self.assertEqual(before, (0, 0, 0))
+        self.assertEqual(self.j.fingerprint(), before, "nothing changed, nothing moves")
+        pc = self.feed()
+        after_pc = self.j.fingerprint()
+        self.assertNotEqual(after_pc, before)
+        # A phone's queued upload keeps its original created_at, so it lands *older* than the
+        # last PC write; stats()["newest_at"] does not move, the fingerprint must.
+        day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        old = {k: v for k, v in pc.items() if k != "_file"}
+        old.update(event_id="E-20260923-030000-ph01", created_at="2026-09-23T08:00:05.000000+00:00")
+        self.plant(day, "E-20260923-030000-ph01-r1-abcd.json", old)
+        self.j.load(force=True)
+        self.assertEqual(self.j.stats()["newest_at"], pc["created_at"])
+        self.assertNotEqual(self.j.fingerprint(), after_pc)
+
+
+# -- threads --------------------------------------------------------------------------------
+
+class TestThreads(JournalCase):
+    """One Journal serves Flask's request threads, the 60 s scan and the post-write timer."""
+
+    def test_readers_and_a_writer_share_the_journal_without_errors(self):
+        # Before the lock, a _remember landing while a request iterated the index raised
+        # "dictionary changed size during iteration" and that request answered 500; a write
+        # landing mid-rescan was dropped from the index until the next scan.
+        written, errors = [], []
+
+        def write():
+            try:
+                for i in range(40):
+                    eid = self.feed(note=str(i))["event_id"]
+                    written.append(eid)
+                    if self.j.event(eid) is None:
+                        errors.append(AssertionError(f"{eid} invisible right after its write"))
+            except Exception as e:                    # noqa: BLE001 — reported below
+                errors.append(e)
+
+        def read():
+            try:
+                for i in range(200):
+                    self.j.events()
+                    self.j.stats()
+                    if i % 10 == 0:
+                        self.j.load(force=True)      # the scan thread's rescans interleave too
+            except Exception as e:                    # noqa: BLE001
+                errors.append(e)
+
+        threads = [threading.Thread(target=write)] + [threading.Thread(target=read) for _ in range(2)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(60)
+        self.assertEqual(errors, [])
+        self.assertEqual(len(written), 40)
+        self.assertEqual({e["event_id"] for e in self.j.events()}, set(written))
+        self.assertEqual(self.j.stats()["files"], 40)
+
+    def test_a_write_during_a_rescan_waits_and_is_not_dropped(self):
+        # Shape two of the bug: load() built a fresh dict, a write on another thread landed in
+        # the old one, and load()'s final assignment threw the write away for SCAN_TTL_S.
+        self.feed()
+        listed, proceed = threading.Event(), threading.Event()
+        real = self.j._candidate_files
+
+        def slow_listing():
+            yield from real()
+            listed.set()
+            proceed.wait(5)          # the tree is walked; hold the scan just before it assigns
+
+        done = []
+        with mock.patch.object(self.j, "_candidate_files", slow_listing):
+            scan = threading.Thread(target=lambda: self.j.load(force=True))
+            scan.start()
+            self.assertTrue(listed.wait(5))
+            writer = threading.Thread(target=lambda: done.append(self.feed(time=T2)))
+            writer.start()
+            writer.join(0.3)
+            self.assertTrue(writer.is_alive(), "the write waits for the scan to finish")
+            proceed.set()
+            scan.join(5)
+            writer.join(5)
+        self.assertEqual(len(done), 1)
+        self.assertIsNotNone(self.j.event(done[0]["event_id"]))
+        self.assertEqual(len(self.j.events()), 2)
+        self.assertEqual(self.j.stats()["files"], 2)
 
 
 # -- children -------------------------------------------------------------------------------
