@@ -322,7 +322,7 @@ button.linkish.danger { color: var(--danger); }
 .ed-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 .ed-msg { margin-top: 12px; padding: 9px 12px; border-radius: 8px; font-size: 13.5px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .ed-msg.err { background: #FBEDED; color: var(--danger); }
-.ed-msg.ask { background: var(--warn-soft); color: var(--warn); }
+.ed-msg.ask, .ed-msg.warn { background: var(--warn-soft); color: var(--warn); }   /* warn: a notice with nothing to click */
 .ed-msg.ok { background: #EEF7EF; color: var(--ok); }
 .ed-foot { display: flex; gap: 8px; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); flex-wrap: wrap; }
 .ed-foot .spacer { flex: 1 1 auto; }

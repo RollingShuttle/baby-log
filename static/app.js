@@ -565,6 +565,12 @@ function renderDaySheet() {
 }
 
 // ---------------------------------------------------------------- quick actions from the log bar
+/* One write from the Today screen at a time. The second click of a double-click lands while the
+   first click's POST is still in flight and nothing on screen has changed yet: the 2-minute
+   diaper rule cannot catch it (the first diaper is not on file), `running()` still says no sleep,
+   and a second Switch or Stop writes a redundant revision. Set before the POST, cleared in finally. */
+let writing = false;
+
 function feedButton() {
   const run = running("feed");
   if (run.length) openEditor({ event: run[0] });
@@ -574,6 +580,8 @@ function feedButton() {
 async function sleepButton() {
   const run = running("sleep");
   if (run.length) { openEditor({ event: run[0] }); return; }
+  if (writing) return;
+  writing = true;
   const time = nowIso();
   try {
     const r = await postJSON("/api/event", { type: "sleep", time, end: null, data: { timer: { running: true } }, note: "", logged_by: myLabel() });
@@ -582,6 +590,7 @@ async function sleepButton() {
       { label: "Edit", fn: () => openEditor({ event: r.event }) }]);
     await afterWrite();
   } catch (e) { showStatus("err", e.message); }
+  finally { writing = false; }
 }
 
 // One click, one diaper — unless the last one from this PC was under two minutes ago, in which
@@ -595,6 +604,8 @@ async function quickDiaper(wet, dirty) {
   await writeDiaper(wet, dirty);
 }
 async function writeDiaper(wet, dirty) {
+  if (writing) return;
+  writing = true;
   const time = nowIso();
   try {
     const r = await postJSON("/api/event", { type: "diaper", time, end: null, data: { wet, dirty }, note: "", logged_by: myLabel() });
@@ -604,6 +615,7 @@ async function writeDiaper(wet, dirty) {
       { label: "Edit", fn: () => openEditor({ event: r.event }) }]);
     await afterWrite();
   } catch (e) { showStatus("err", e.message); }
+  finally { writing = false; }
 }
 async function undoNew(ev) {
   try {
@@ -621,6 +633,41 @@ function revise(ev, patch) {
   }, patch));
 }
 
+/* The record on file now. The PC's copy of an entry is a poll old at best, and a phone's revision
+   reaches it only when OneDrive delivers the file, so a Switch, Stop or Save that starts from the
+   held copy would write over what the phone did meanwhile — §3.4 makes the higher revision win,
+   and nothing would say so. Every revision of an existing entry starts from what this returns. */
+async function latest(eventId) {
+  return (await api(`/api/event/${eventId}`)).event;
+}
+// True when the record on file is not the one the click was made on and this PC did not write it:
+// a phone's revision, or a tombstone from anywhere (a revision over a tombstone would quietly bring
+// the entry back). This PC's own newer write is simply the base to go on from.
+function movedElsewhere(cur, held) {
+  if (cur.deleted && !(held && held.deleted)) return true;
+  if (cur.device === "pc") return false;
+  return !held || cur.revision !== held.revision || cur.created_at !== held.created_at;
+}
+// Whose change this was, for the "Updated from …" line — the phone's wording (docs/app.js).
+function whose(rec) {
+  if (rec.entered_from === "paper") return "the paper sheet";
+  if (rec.device === "pc") return "this PC";
+  return `${rec.edited_by || rec.logged_by || "the other"}'s phone`;
+}
+const movedText = (rec) => `${rec.deleted ? "Deleted on" : "Updated from"} ${whose(rec)} — look again`;
+// The held copy was stale: show what is on file now — in the open editor, or on the Now panel —
+// with a line saying whose change it was, instead of writing over it.
+async function lookAgain(rec) {
+  const e = state.editor;
+  if (e && e.draft.event_id === rec.event_id) {
+    openEditor({ event: rec });
+    setMsg(movedText(rec), "warn");
+  } else {
+    showToast(movedText(rec));
+  }
+  await refreshAll();
+}
+
 // The running side's seconds go into its side; total and last side follow; the timer clears.
 function foldTimer(data, endMs) {
   const t = data.timer;
@@ -636,49 +683,72 @@ function foldTimer(data, endMs) {
   return data;
 }
 
+// Switch and Stop fold the timer of the record on file, not the card's copy; a card that is no
+// longer running (stopped from anywhere) has nothing to fold.
 async function switchSide(ev) {
-  const data = foldTimer(clone(ev.data), Date.now());
-  const was = (ev.data.timer && ev.data.timer.side) || data.breast.last_side;
-  const side = was === "left" ? "right" : "left";
-  data.timer = { side, side_started: nowIso() };
-  try { await revise(ev, { data, end: null }); await afterWrite(); } catch (e) { showStatus("err", e.message); }
+  if (writing) return;
+  writing = true;
+  try {
+    const held = await latest(ev.event_id);
+    if (movedElsewhere(held, ev) || !Core.isRunning(held)) { await lookAgain(held); return; }
+    const data = foldTimer(clone(held.data), Date.now());
+    const was = (held.data.timer && held.data.timer.side) || data.breast.last_side;
+    data.timer = { side: was === "left" ? "right" : "left", side_started: nowIso() };
+    await revise(held, { data, end: null });
+    await afterWrite();
+  } catch (e) { showStatus("err", e.message); }
+  finally { writing = false; }
 }
 
 async function stopNowFor(ev) {
-  const end = nowIso();
-  const data = ev.type === "feed" ? foldTimer(clone(ev.data), ms(end)) : Object.assign(clone(ev.data), { timer: null });
+  if (writing) return;
+  writing = true;
   try {
-    const r = await revise(ev, { data, end });
-    showToast(`${TYPE_LABEL[ev.type]} stopped · ${Core.fmtTime(end)}`, [{ label: "Edit", fn: () => openEditor({ event: r.event }) }]);
+    const held = await latest(ev.event_id);
+    if (movedElsewhere(held, ev) || !Core.isRunning(held)) { await lookAgain(held); return; }
+    const end = nowIso();
+    const data = held.type === "feed" ? foldTimer(clone(held.data), ms(end)) : Object.assign(clone(held.data), { timer: null });
+    const r = await revise(held, { data, end });
+    showToast(`${TYPE_LABEL[held.type]} stopped · ${Core.fmtTime(end)}`, [{ label: "Edit", fn: () => openEditor({ event: r.event }) }]);
     await afterWrite();
   } catch (e) { showStatus("err", e.message); }
+  finally { writing = false; }
 }
 
 // Two running feeds become one: the earlier start, the sides added, the later one tombstoned.
 async function mergeFeeds(feeds) {
-  const sorted = feeds.slice().sort((a, b) => ms(a.time) - ms(b.time));
-  const keep = sorted[0], drop = sorted[1];
-  const a = clone(keep.data), b = foldTimer(clone(drop.data), Date.now());
-  const add = (x, y) => (x == null && y == null ? null : (x || 0) + (y || 0));
-  a.breast.left_s = add(a.breast.left_s, b.breast.left_s);
-  a.breast.right_s = add(a.breast.right_s, b.breast.right_s);
-  if (a.breast.left_s != null || a.breast.right_s != null) {
-    a.breast.total_s = (a.breast.left_s || 0) + (a.breast.right_s || 0);
-    a.breast.approx = false;
-  } else if (b.breast.total_s != null) {
-    a.breast.total_s = add(a.breast.total_s, b.breast.total_s);
-  }
-  a.breast.last_side = b.breast.last_side || a.breast.last_side;
-  a.bottles = (a.bottles || []).concat(b.bottles || []);
-  if (a.made_ml == null) a.made_ml = b.made_ml;
-  if (a.leftover_ml == null) a.leftover_ml = b.leftover_ml;
-  const note = [keep.note, drop.note].filter(Boolean).join(" — ");
+  if (writing) return;
+  writing = true;
   try {
+    const fresh = [];
+    for (const f of feeds) {
+      const cur = await latest(f.event_id);
+      if (movedElsewhere(cur, f) || !Core.isRunning(cur)) { await lookAgain(cur); return; }
+      fresh.push(cur);
+    }
+    const sorted = fresh.sort((a, b) => ms(a.time) - ms(b.time));
+    const keep = sorted[0], drop = sorted[1];
+    const a = clone(keep.data), b = foldTimer(clone(drop.data), Date.now());
+    const add = (x, y) => (x == null && y == null ? null : (x || 0) + (y || 0));
+    a.breast.left_s = add(a.breast.left_s, b.breast.left_s);
+    a.breast.right_s = add(a.breast.right_s, b.breast.right_s);
+    if (a.breast.left_s != null || a.breast.right_s != null) {
+      a.breast.total_s = (a.breast.left_s || 0) + (a.breast.right_s || 0);
+      a.breast.approx = false;
+    } else if (b.breast.total_s != null) {
+      a.breast.total_s = add(a.breast.total_s, b.breast.total_s);
+    }
+    a.breast.last_side = b.breast.last_side || a.breast.last_side;
+    a.bottles = (a.bottles || []).concat(b.bottles || []);
+    if (a.made_ml == null) a.made_ml = b.made_ml;
+    if (a.leftover_ml == null) a.leftover_ml = b.leftover_ml;
+    const note = [keep.note, drop.note].filter(Boolean).join(" — ");
     await revise(keep, { data: a, end: null, note });
     await deleteJSON(`/api/event/${drop.event_id}`, { reason: `merged into ${keep.event_id}` });
     showToast(`Merged into the ${Core.fmtTime(keep.time)} feed`);
     await afterWrite();
   } catch (e) { showStatus("err", e.message); }
+  finally { writing = false; }
 }
 
 // ---------------------------------------------------------------- the editor
@@ -703,9 +773,12 @@ function openEditor(opts) {
       time: opts.time || nowIso(), end: null, data: Object.assign(Core.defaults(opts.type), opts.data || {}),
       note: "", logged_by: myLabel() };
   }
+  // A stored portion counts as typed: §8.1 keeps it unless the user touches it, so made / leftover
+  // may only fill in a portion this editor created itself.
+  const bottles = draft.data.bottles || [];
   state.editor = { draft, event: ev, history: null, msg: null, msgKind: "err", confirm: false,
     unusualOk: false, sameAs: opts.sameAs || null, stopAt: false, focusEnd: !!opts.focusEnd,
-    portionsTyped: false, whoOther: false };
+    portionsTyped: bottles.length > 0, whoOther: false, saving: false };
   if (ev) {
     api(`/api/event/${ev.event_id}`).then((r) => {
       if (state.editor && state.editor.event === ev) { state.editor.history = r.history || []; renderHistory(); }
@@ -717,6 +790,14 @@ function openEditor(opts) {
 function closeEditor() {
   state.editor = null;
   document.getElementById("modal").hidden = true;
+}
+
+// The buttons that write go grey while a write is in flight, so a second click has nothing to
+// hit; toggled in place because a full re-render would drop a half-typed Stop at… time.
+function setBusy(e, on) {
+  e.saving = on;
+  if (state.editor !== e) return;
+  for (const b of document.querySelectorAll("#modal-card [data-busy]")) b.disabled = on;
 }
 
 function setMsg(text, kind = "err") {
@@ -840,15 +921,15 @@ function renderEditor() {
     kids.push(el("div", { class: "ed-confirm" },
       `Delete ${TYPE_LABEL[d.type].toLowerCase()} ${Core.fmtTime(d.time)}?`,
       el("button", { class: "ghost", type: "button", onclick: () => { e.confirm = false; renderEditor(); } }, "Keep"),
-      el("button", { class: "ghost danger", type: "button", onclick: deleteEntry }, "Delete")));
+      el("button", { class: "ghost danger", type: "button", "data-busy": "1", disabled: e.saving, onclick: deleteEntry }, "Delete")));
   }
 
   kids.push(el("div", { class: "ed-foot" },
-    !isNew ? el("button", { class: "ghost danger", type: "button", onclick: () => { e.confirm = true; renderEditor(); } }, "Delete") : null,
+    !isNew ? el("button", { class: "ghost danger", type: "button", "data-busy": "1", disabled: e.saving, onclick: () => { e.confirm = true; renderEditor(); } }, "Delete") : null,
     isRunning && d.type === "feed" ? el("button", { class: "ghost", type: "button", onclick: () => openEditor({ type: "feed" }) }, "Start another feed") : null,
     el("span", { class: "spacer" }),
     el("button", { class: "ghost", type: "button", onclick: closeEditor }, "Cancel"),
-    el("button", { class: `primary${d.type === "feed" ? " feed" : ""}`, type: "button", onclick: saveEditor }, "Save")));
+    el("button", { class: `primary${d.type === "feed" ? " feed" : ""}`, type: "button", "data-busy": "1", disabled: e.saving, onclick: saveEditor }, "Save")));
   kids.push(el("div", { id: "ed-history" }));
 
   card.replaceChildren(...kids);
@@ -869,6 +950,7 @@ function changeType(type) {
   d.data = Core.defaults(type);
   if (!TIMED.includes(type)) d.end = null;
   e.unusualOk = false;
+  e.portionsTyped = false;   // the defaults hold no portion for made / leftover to keep off
   renderEditor();
 }
 
@@ -906,7 +988,7 @@ function feedSection(d, e) {
     const key = `${side}_s`;
     const on = timer && timer.side === side;
     const base = br[key] || 0;
-    return el("button", { class: `side${on ? " on" : ""}`, type: "button",
+    return el("button", { class: `side${on ? " on" : ""}`, type: "button", "data-busy": "1", disabled: e.saving,
       title: canRun ? (on ? "Running on this side" : "Start this side") : "Clear End to run a timer",
       onclick: () => startSide(side) },
       el("span", { class: "side-name" }, side),
@@ -923,10 +1005,10 @@ function feedSection(d, e) {
     const stopAtInput = el("input", { type: "datetime-local", step: "60",
       value: dtValue(Core.isoLocal(new Date(ms(d.time) + usualFeedMs()))) });
     out.push(el("div", { class: "row" },
-      el("button", { class: "primary feed", type: "button", onclick: () => stopFeedAt(nowIso()) }, "Stop now"),
+      el("button", { class: "primary feed", type: "button", "data-busy": "1", disabled: e.saving, onclick: () => stopFeedAt(nowIso()) }, "Stop now"),
       el("button", { class: "ghost", type: "button", onclick: () => { e.stopAt = !e.stopAt; renderEditor(); } }, "Stop at…"),
       e.stopAt ? stopAtInput : null,
-      e.stopAt ? el("button", { class: "ghost", type: "button", onclick: () => {
+      e.stopAt ? el("button", { class: "ghost", type: "button", "data-busy": "1", disabled: e.saving, onclick: () => {
         const v = dtParse(stopAtInput.value);
         if (v) stopFeedAt(v); else setMsg("Stop at needs a date and time");
       } }, "Stop") : null));
@@ -1034,12 +1116,18 @@ async function stopFeedAt(endIso) {
 // revision, not a draft (§3.2).
 async function writeFromEditor(patch) {
   const e = state.editor, d = e.draft;
+  if (e.saving) return;   // the second click of a double-click: the first is still writing
   let data;
   try { data = Core.validate(d.type, patch.data || d.data); } catch (x) { setMsg(x.message); return; }
   const body = { child_id: d.child_id, type: d.type, time: d.time, end: patch.end === undefined ? d.end : patch.end,
     data, note: d.note, logged_by: d.logged_by };
   if (d.event_id) body.event_id = d.event_id;
+  setBusy(e, true);
   try {
+    if (d.event_id) {
+      const cur = await latest(d.event_id);
+      if (movedElsewhere(cur, e.event)) { await lookAgain(cur); return; }
+    }
     const r = await postJSON("/api/event", body);
     e.event = r.event;
     e.draft = draftFrom(r.event);
@@ -1051,6 +1139,7 @@ async function writeFromEditor(patch) {
     }).catch(() => {});
     await afterWrite();
   } catch (x) { setMsg(x.message); }
+  finally { setBusy(e, false); }
 }
 
 function diaperSection(d) {
@@ -1070,12 +1159,13 @@ function diaperSection(d) {
   return out;
 }
 
-function sleepSection(d) {
+function sleepSection(d, e) {
   const out = [];
   const run = d.end === null && d.event_id;
   if (run) out.push(el("div", { class: "row", style: "margin-top:0" },
     el("span", { class: "timer", "data-elapsed": d.time }, Core.sinceText(Date.now() - ms(d.time))),
-    el("button", { class: "primary", type: "button", onclick: () => writeFromEditor({ data: Object.assign(clone(d.data), { timer: null }), end: nowIso() }) }, "Stop now")));
+    el("button", { class: "primary", type: "button", "data-busy": "1", disabled: e.saving,
+      onclick: () => writeFromEditor({ data: Object.assign(clone(d.data), { timer: null }), end: nowIso() }) }, "Stop now")));
   out.push(el("label", { class: "field" }, el("span", {}, "Where"),
     el("input", { type: "text", value: d.data.where || "", placeholder: "bassinet, arms, car seat…",
       oninput: (x) => { d.data.where = x.target.value || null; } })));
@@ -1159,6 +1249,7 @@ function validateDraft(d) {
 
 async function saveEditor() {
   const e = state.editor, d = e.draft;
+  if (e.saving) return;   // the second click of a double-click: the first is still writing
   const err = validateDraft(d);
   if (err) { setMsg(err); return; }
   let data = clone(d.data);
@@ -1181,7 +1272,12 @@ async function saveEditor() {
   const body = { child_id: d.child_id, type: d.type, time: d.time, end: TIMED.includes(d.type) ? d.end : null,
     data, note: d.note, logged_by: d.logged_by };
   if (d.event_id) body.event_id = d.event_id;
+  setBusy(e, true);
   try {
+    if (d.event_id) {
+      const cur = await latest(d.event_id);
+      if (movedElsewhere(cur, e.event)) { await lookAgain(cur); return; }
+    }
     const r = await postJSON("/api/event", body);
     closeEditor();
     if (!d.event_id && d.type === "diaper") saveLastDiaper({ event_id: r.event.event_id, ms: Date.now() });
@@ -1189,16 +1285,20 @@ async function saveEditor() {
       [{ label: "Edit", fn: () => openEditor({ event: r.event }) }]);
     await afterWrite();
   } catch (x) { setMsg(x.message); }
+  finally { setBusy(e, false); }
 }
 
 async function deleteEntry() {
   const e = state.editor, d = e.draft;
+  if (e.saving) return;
+  setBusy(e, true);
   try {
     await deleteJSON(`/api/event/${d.event_id}`, {});
     closeEditor();
     showToast("Deleted · ", [{ label: "Undo", fn: () => restoreEntry(d.event_id) }]);
     await afterWrite();
   } catch (x) { setMsg(x.message); }
+  finally { setBusy(e, false); }
 }
 
 async function restoreEntry(id) {
@@ -1295,7 +1395,9 @@ function renderGrowth() {
   const birth = state.child && state.child.birth_weight_g;
   const firstWeight = evs.find((ev) => ev.data.weight_g != null);
   const base = birth != null ? birth : (firstWeight ? firstWeight.data.weight_g : null);
-  const kg = (g) => `${(g / 1000).toFixed(2)} kg`;
+  // Core.describe's rounding, so 3425 g reads 3.43 kg here as on every other screen and in the
+  // sheet (toFixed rounds the binary 3.425 down to 3.42).
+  const kg = (g) => `${Math.round(g / 10) / 100} kg`;
   let prev = null;
   const rows = evs.map((ev) => {
     const w = ev.data.weight_g;
