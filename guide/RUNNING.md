@@ -142,6 +142,13 @@ folder of the last 120 days, the thing to press if an entry from the PC seems mi
 look at the one that won, anything OneDrive refused with **Retry** /
 **Discard**, storage used); **Deleted**; **Needs check (n)**.
 
+**Swiping a row.** On the phone, any entry in the Now list, the Day sheet's Other section or
+Needs check slides sideways: drag it **left** to reveal **Delete** (no question asked — the
+toast offers **Undo** for six seconds, and Settings → Deleted has Restore after that). A row still
+carrying a `Check:` question from the paper sheet also slides **right** to reveal **Looks
+right**, which keeps the entry as read and drops the question, so it leaves Needs check without
+opening anything. Tapping a row still opens its editor.
+
 ---
 
 ## Part 3 — Changing or deleting an entry

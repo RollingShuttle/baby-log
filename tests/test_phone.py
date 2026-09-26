@@ -679,6 +679,23 @@ const ids = (host) => host.querySelectorAll("[data-event-id]").map((n) => n.data
     await G("saveEditor()");
     check("needs check badge", document.getElementById("tab-badge").textContent === "1" && !document.getElementById("tab-badge").hidden);
 
+    // Swipe actions: Looks right drops the question and only the question; Delete tombstones with Undo.
+    G(`openEditor({ event: Store.event(${JSON.stringify(note.event_id)}) }); app.editor.draft.note = "first — Check: 09:10 or 09:40?";`);
+    await G("saveEditor()");
+    G('setTab("settings")');
+    check("needs-check row is wrapped for swiping", !!screen("settings").querySelector(".swipe-check") && !!screen("settings").querySelector(".swipe-act.keep"));
+    check("withoutCheck keeps the parent's own note", G("withoutCheck")("first — Check: 09:10 or 09:40?") === "first" && G("withoutCheck")("Check: x") === "");
+    await G(`markChecked(Store.event(${JSON.stringify(note.event_id)}))`);
+    check("looks right cleared the question", G("Store.event")(note.event_id).note === "first" && G("Store.needsCheck()").length === 0 && toast.textContent.includes("Checked"));
+    G('setTab("now")');
+    check("plain rows are swipeable too", !!screen("now").querySelector(".swipe-act.del") && !screen("now").querySelector(".swipe-act.keep"));
+    await G(`quickDelete(Store.event(${JSON.stringify(note.event_id)}))`);
+    check("swipe delete tombstoned with undo", G("Store.event")(note.event_id).deleted === true && toast.textContent.includes("Deleted note") && toast.textContent.includes("Undo"));
+    await G(`restoreEntry(${JSON.stringify(note.event_id)})`);
+    check("undo of a swipe delete restores", G("Store.event")(note.event_id).deleted === false);
+    G(`openEditor({ event: Store.event(${JSON.stringify(note.event_id)}) }); app.editor.draft.note = "首次微笑";`);
+    await G("saveEditor()");
+
     // Drafts: typed fields land in bl.draft after 300 ms and go on Cancel; restored on boot.
     G('openEditor({ type: "sleep" }); app.editor.draft.data.where = "bassinet"; markDirty();');
     check("no draft before the debounce", localStorage.getItem("bl.draft") === null);
@@ -774,6 +791,28 @@ const ids = (host) => host.querySelectorAll("[data-event-id]").map((n) => n.data
   process.exit(0);
 })();
 """
+
+
+class TestSwipeActions(unittest.TestCase):
+    """A sideways drag on a row deletes it or, on a paper row, says it looks right. Checked
+    statically here; the smoke run below exercises the two actions themselves."""
+
+    def test_every_row_list_is_swipeable(self):
+        src = code("app.js")
+        self.assertIn("recent.map(swipeRow)", src)
+        self.assertIn("others.map(swipeRow)", src)
+        self.assertIn("needs.map(swipeRow)", src)
+
+    def test_the_wrapper_leaves_vertical_scrolling_to_the_browser(self):
+        css = text("style.css")
+        self.assertRegex(css, r"\.swipe\s*\{[^}]*touch-action:\s*pan-y")
+
+    def test_a_swipe_delete_needs_no_confirm_sheet_but_offers_undo(self):
+        src = code("app.js")
+        fn = src[src.index("async function quickDelete"):src.index("const CHECK_TAIL_RE")]
+        self.assertNotIn("confirming", fn)
+        self.assertIn('"Undo"', fn)
+        self.assertIn("pullIfStale", fn, "the same stale-pull guard as the editor's Delete")
 
 
 class TestUnderNode(unittest.TestCase):

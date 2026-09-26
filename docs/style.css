@@ -288,6 +288,17 @@ input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--diaper);
   background: var(--surface); border: 1px solid var(--line);
   border-left: 3px solid var(--muted); border-radius: 12px; color: var(--ink);
 }
+/* a row that slides sideways to reveal Delete (right edge) or Looks right (left edge) */
+.swipe { position: relative; overflow: hidden; border-radius: 12px; margin-bottom: 6px; touch-action: pan-y; }
+.swipe .row { margin-bottom: 0; position: relative; z-index: 1; transition: transform .16s ease-out; }
+.swipe.dragging .row { transition: none; }
+.swipe-act {
+  position: absolute; top: 0; bottom: 0; width: 96px; border: 0; z-index: 0;
+  font: inherit; font-weight: 600; font-size: 0.9rem; color: #fff; min-height: 44px;
+}
+.swipe-act.del { right: 0; background: var(--danger); border-radius: 0 12px 12px 0; }
+.swipe-act.keep { left: 0; background: var(--ok); border-radius: 12px 0 0 12px; }
+body.night .swipe-act { color: var(--bg); }
 .row-feed { border-left-color: var(--feed); }
 .row-diaper { border-left-color: var(--diaper); }
 .row-sleep { border-left-color: var(--wet); }

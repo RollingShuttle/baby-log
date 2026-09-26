@@ -339,7 +339,7 @@ function renderNow() {
   const recent = evs.slice(-10).reverse();
   kids.push(el("div", { class: "card" },
     el("div", { class: "h2" }, "Recent", el("span", { class: "sub" }, "tap an entry to change it")),
-    recent.length ? el("div", { class: "rows" }, ...recent.map(eventRow)) : el("div", { class: "empty" }, "Nothing logged yet.")));
+    recent.length ? el("div", { class: "rows" }, ...recent.map(swipeRow)) : el("div", { class: "empty" }, "Nothing logged yet.")));
   fill(host, ...kids);
 }
 
@@ -470,6 +470,121 @@ function eventRow(ev) {
       ev.note ? el("span", { class: `row-sub${isCheck(ev) ? " check" : ""}` }, ev.note) : null),
     el("span", { class: "row-by" }, ev.logged_by || ""),
     el("span", { class: "chev" }, "›"));
+}
+
+// ---------------------------------------------------------------- swipe actions on a row
+/** eventRow wrapped so a sideways drag does what a parent does most at 3 a.m. without opening
+    anything: drag left → Delete (the Undo in the toast stands in for a confirm sheet — the swipe
+    is the deliberate part); on a paper row that still carries a `Check:` question, drag right →
+    Looks right, which drops the question from the note. Pointer events cover a finger and a
+    mouse alike; `touch-action: pan-y` on the wrapper leaves vertical scrolling to the browser, so
+    only a sideways drag reaches this code. One row is open at a time; a tap anywhere else closes
+    it, and the tap that ends a drag never opens the editor underneath. */
+const SWIPE_OPEN = 96;                 // the width of one action button, in px
+let openSwipe = null;
+function swipeRow(ev) {
+  const row = eventRow(ev);
+  const check = isCheck(ev);
+  const wrap = el("div", { class: `swipe${check ? " swipe-check" : ""}`, "data-event-id": ev.event_id },
+    check ? el("button", { class: "swipe-act keep", type: "button", onclick: () => markChecked(ev) }, "Looks right") : null,
+    el("button", { class: "swipe-act del", type: "button", onclick: () => quickDelete(ev) }, "Delete"),
+    row);
+  let x0 = 0, y0 = 0, x = 0, mode = null, dragged = false;   // mode: null (undecided) | "h" | "v"
+  const setX = (v) => { x = v; if (row.style) row.style.transform = v ? `translateX(${v}px)` : ""; };
+  const close = () => { setX(0); wrap.classList.remove("open-left", "open-right"); if (openSwipe === wrap) openSwipe = null; };
+  const open = (side) => {
+    if (openSwipe && openSwipe !== wrap) openSwipe._close();
+    setX(side === "left" ? -SWIPE_OPEN : SWIPE_OPEN);
+    wrap.classList.add(side === "left" ? "open-left" : "open-right");
+    openSwipe = wrap;
+  };
+  wrap._close = close;
+  row.addEventListener("pointerdown", (p) => {
+    if (p.pointerType === "mouse" && p.button !== 0) return;
+    x0 = p.clientX; y0 = p.clientY; mode = null; dragged = false;
+  });
+  row.addEventListener("pointermove", (p) => {
+    if (mode === "v" || (!x0 && !y0)) return;
+    const mx = p.clientX - x0, my = p.clientY - y0;
+    if (mode === null) {
+      if (Math.abs(my) > 8 && Math.abs(my) > Math.abs(mx)) { mode = "v"; return; }   // a scroll, not a swipe
+      if (Math.abs(mx) <= 8) return;
+      mode = "h"; dragged = true;
+      wrap.classList.add("dragging");
+      if (row.setPointerCapture) try { row.setPointerCapture(p.pointerId); } catch (_) { /* a synthetic pointer */ }
+    }
+    const base = wrap.classList.contains("open-left") ? -SWIPE_OPEN : wrap.classList.contains("open-right") ? SWIPE_OPEN : 0;
+    setX(Math.max(-SWIPE_OPEN, Math.min(check ? SWIPE_OPEN : 0, base + mx)));
+  });
+  const settle = () => {
+    if (mode !== "h") { x0 = y0 = 0; mode = null; return; }
+    wrap.classList.remove("dragging");
+    if (x <= -SWIPE_OPEN / 2) open("left");
+    else if (x >= SWIPE_OPEN / 2 && check) open("right");
+    else close();
+    x0 = y0 = 0; mode = null;
+  };
+  row.addEventListener("pointerup", settle);
+  row.addEventListener("pointercancel", settle);
+  // The click that ends a drag, or a tap on an open row, must not open the editor underneath.
+  wrap.addEventListener("click", (c) => {
+    const onAction = c.target && c.target.closest && c.target.closest(".swipe-act");
+    if (onAction) { close(); return; }
+    if (dragged || openSwipe === wrap) {
+      if (c.stopPropagation) c.stopPropagation();
+      if (c.preventDefault) c.preventDefault();
+      dragged = false;
+      close();
+    }
+  }, true);
+  return wrap;
+}
+document.addEventListener("pointerdown", (p) => {
+  if (openSwipe && !(openSwipe.contains && openSwipe.contains(p.target))) openSwipe._close();
+});
+
+/** Delete from a swipe: no confirm sheet (the swipe was the decision), Undo in the toast instead,
+    and the same stale-pull guard as the editor's Delete so a paper row is not tombstoned on top of
+    a change from the PC. */
+async function quickDelete(ev) {
+  if (busy.has(ev.event_id)) return;
+  busy.add(ev.event_id);
+  try {
+    await pullIfStale(null);
+    const held = Store.event(ev.event_id) || ev;
+    if (held.deleted) return;
+    await Store.tombstone(held, "swipe");
+    Sync.afterWrite();
+    if (app.lastDiaper && app.lastDiaper.event_id === ev.event_id) saveLastDiaper(null);
+    renderTab();
+    showToast(`Deleted ${(TYPE_LABEL[ev.type] || ev.type).toLowerCase()} ${Core.fmtTime(ev.time)}`,
+      [{ label: "Undo", fn: () => restoreEntry(ev.event_id) }]);
+  } catch (x) { showToast(errText(x)); } finally { busy.delete(ev.event_id); }
+}
+
+/** "Looks right": the paper reading stands, so the question goes and the row leaves Needs check.
+    Only the `Check:` part is dropped; a note of the parent's own before it stays. */
+const CHECK_TAIL_RE = /(^|\s—\s)Check: [\s\S]*$/;
+function withoutCheck(note) { return String(note || "").replace(CHECK_TAIL_RE, "").trim(); }
+async function markChecked(ev) {
+  if (busy.has(ev.event_id)) return;
+  busy.add(ev.event_id);
+  try {
+    await pullIfStale(null);
+    const held = Store.event(ev.event_id) || ev;
+    if (held.deleted || !isCheck(held)) return;
+    const before = held.note || "";
+    await Store.revise(held, { note: withoutCheck(before) });
+    Sync.afterWrite();
+    renderTab();
+    showToast(`Checked · ${Core.fmtTime(ev.time)} stands as read`, [{ label: "Undo", fn: async () => {
+      try {
+        await Store.revise(Store.event(ev.event_id) || held, { note: before });
+        Sync.afterWrite();
+        renderTab();
+      } catch (x) { showToast(errText(x)); }
+    } }]);
+  } catch (x) { showToast(errText(x)); } finally { busy.delete(ev.event_id); }
 }
 
 // ---------------------------------------------------------------- quick actions
@@ -707,7 +822,7 @@ function renderDay() {
         diapers.length ? diapers.map(diaperCell) : el("div", { class: "empty" }, "No diapers"))),
     others.length ? el("div", { class: "other-h" },
       el("div", { class: "h3" }, "Other"),
-      el("div", { class: "rows" }, ...others.map(eventRow))) : null);
+      el("div", { class: "rows" }, ...others.map(swipeRow))) : null);
 }
 
 // ---------------------------------------------------------------- Trends (7-day totals, §7.4)
@@ -901,8 +1016,8 @@ function renderNeedsCard() {
   if (!card) return;
   const needs = Store.needsCheck();
   fill(card,
-    el("div", { class: "h2" }, `Needs check (${needs.length})`, el("span", { class: "sub" }, "hard-to-read paper readings — open, correct, and drop the “Check:” from the note")),
-    needs.length ? el("div", { class: "rows" }, ...needs.map(eventRow)) : el("div", { class: "empty" }, "Nothing left to check."));
+    el("div", { class: "h2" }, `Needs check (${needs.length})`, el("span", { class: "sub" }, "hard-to-read paper readings — swipe right if it looks right, left to delete, or tap to correct it")),
+    needs.length ? el("div", { class: "rows" }, ...needs.map(swipeRow)) : el("div", { class: "empty" }, "Nothing left to check."));
 }
 
 function renderDeletedCard() {
