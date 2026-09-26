@@ -124,6 +124,32 @@ class TestOneDriveDiscovery(unittest.TestCase):
             self.assertEqual(sm.choose_root([work, personal]), personal)
             self.assertEqual(sm.find_app_folder([work, personal]), personal / sm.APP_FOLDER_TAIL)
 
+    def test_a_work_onedrive_with_its_own_documents_folder_does_not_win(self):
+        """Found on the owner's PC: the school OneDrive is listed first and has a 文档 folder of
+        its own, so 'has the documents folder' chose it and the journal would have been created
+        where the phones' personal sign-in can never see it. Yisen File decides; failing that,
+        an Apps folder; failing that, the personal name."""
+        with tempfile.TemporaryDirectory() as d:
+            work, personal = Path(d) / "OneDrive - email.example.edu", Path(d) / "OneDrive"
+            (work / "文档").mkdir(parents=True)
+            (personal / "文档" / "Yisen File").mkdir(parents=True)
+            self.assertEqual(sm.choose_root([work, personal]), personal)
+            self.assertEqual(sm.find_app_folder([work, personal]), personal / sm.APP_FOLDER_TAIL)
+
+    def test_an_apps_folder_marks_the_onedrive_other_journals_use(self):
+        with tempfile.TemporaryDirectory() as d:
+            work, personal = Path(d) / "OneDrive - email.example.edu", Path(d) / "OneDrive"
+            (work / "文档").mkdir(parents=True)
+            (personal / "Apps" / "Whiskey Tasting Book").mkdir(parents=True)
+            self.assertEqual(sm.choose_root([work, personal]), personal)
+
+    def test_with_nothing_to_go_on_the_personal_name_wins_over_a_work_one(self):
+        with tempfile.TemporaryDirectory() as d:
+            work, personal = Path(d) / "OneDrive - email.example.edu", Path(d) / "OneDrive"
+            work.mkdir()
+            personal.mkdir()
+            self.assertEqual(sm.choose_root([work, personal]), personal)
+
     def test_the_output_folder_is_found_however_deep_the_folder_is_localised(self):
         """The documents folder is named in the account's own language, so the path cannot be
         assumed — only the folder name can."""

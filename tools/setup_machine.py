@@ -58,16 +58,23 @@ def find_dir(roots, name, limit=6):
 
 
 def choose_root(roots):
-    """The OneDrive the baby files live in: one that already has the app folder, else one that
-    has the documents folder or Yisen File, else the first. A work OneDrive is usually listed
-    too, and putting the journal there would be wrong quietly."""
+    """The OneDrive the baby files live in: one that already has the app folder; else the one
+    that holds Yisen File; else one with an Apps folder (other app journals live there); else a
+    personal one over a work one. A work OneDrive is usually listed too — and first, on this
+    PC — and it has a localised documents folder of its own, so "has 文档" is no evidence at
+    all. Putting the journal there would be wrong quietly: the phones sign in to the personal
+    account and would never see it."""
     for root in roots:
         if (root / APP_FOLDER_TAIL).is_dir():
             return root
     for root in roots:
-        if (root / OUTPUT_FOLDER_TAIL.parts[0]).is_dir() or find_dir([root], OUTPUT_FOLDER_TAIL.name):
+        if find_dir([root], OUTPUT_FOLDER_TAIL.name):
             return root
-    return roots[0]
+    for root in roots:
+        if (root / APP_FOLDER_TAIL.parts[0]).is_dir():
+            return root
+    personal = [r for r in roots if " - " not in r.name]     # "OneDrive - <org>" is a work sign-in
+    return (personal or roots)[0]
 
 
 def find_app_folder(roots):
