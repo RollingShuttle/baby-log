@@ -585,7 +585,8 @@ a stale path is re-assigned; 429 → retryable, 400 → permanent, 401 → signe
 
 Build to the six phone mockups in the proposal: **Now**, **Log a feed**, **Diaper**, **Day**,
 **Night mode**, **Settings**; tabs Now · Day · Trends · Settings. The sheets for sleep, pump,
-growth (weight), health and note live under **More**. Rules:
+growth (weight) sit on the Now log bar beside the diaper buttons (as the approved mockup shows);
+health and note live under **More**. Rules:
 
 - **Every surface that shows an entry opens its editor** (§8.3): Now's since-last tiles and running
   cards, Now's recent list (the last 10 events of any type), every cell of the Day sheet and every

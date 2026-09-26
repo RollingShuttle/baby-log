@@ -105,8 +105,8 @@ label. The **Settings** tab carries a small number while anything is under Needs
 
 ### Logging on the phone
 
-The tabs are **Now · Day · Trends · Settings**; the sleep, pump, weight, health and note sheets
-are under **More**.
+The tabs are **Now · Day · Trends · Settings**. The log buttons on Now are **Feed**,
+**Wet · Dirty · Both**, then **Sleep · Pump · Weight · More**; health and notes are under **More**.
 
 - **Now** is the whole point: since the last feed and the last diaper, any running feed or
   sleep with its clock, the next-feed guess, today's counts, and the last ten entries. The one-tap

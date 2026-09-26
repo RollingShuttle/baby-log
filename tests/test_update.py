@@ -242,6 +242,14 @@ class TestTheLauncher(unittest.TestCase):
         self.assertIn('cd /d "%~dp0"', bat)
         self.assertIn("launch.py", bat)
 
+    def test_run_bat_keeps_its_own_flag_away_from_the_launcher(self):
+        """run.bat re-runs itself with -started to get a minimised console. Forwarding %* would
+        hand that flag to launch.py, whose parser rejects it, and the app would never start."""
+        bat = (ROOT / "run.bat").read_text(encoding="utf-8")
+        line = next(l for l in bat.splitlines() if l.strip().startswith("python launch.py"))
+        self.assertNotIn("%*", line)
+        self.assertNotIn("stops the app", bat)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

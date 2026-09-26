@@ -142,12 +142,12 @@ Back in the Entra portal, on the `Baby Log` registration:
    (`test_the_client_id_is_blank_in_the_committed_file`); if `tests/test_phone.py` carries the
    same check, relax that one too. Change each to assert the value *looks like* a GUID instead
    of asserting it is empty.
-3. Bump `VERSION` in `docs/sw.js` (`"v1"` → `"v2"`): a phone that has already installed the app
+3. Bump `VERSION` in `docs/sw.js` to the next number: a phone that has already installed the app
    keeps the old copy until that number changes.
 4. Commit and push:
 
    ```
-   git add docs/config.js docs/sw.js tests/test_sync.py
+   git add docs/config.js docs/sw.js tests/test_sync.py tests/test_phone.py
    git commit -m "Add the client ID"
    git push
    ```
@@ -245,7 +245,7 @@ up after the next sign-in. The number in the pill is how many entries are waitin
 |---|---|
 | Sign-in fails with a "redirect URI" message | The address in Part 2 step C does not match the page exactly — check the trailing slash and the capitalisation. |
 | Sign-in works but the pill says `Sync failed · … · tap for details` and the details say **`accessDenied`** or **`serviceReadOnly`** | See below — a known Microsoft problem on brand-new AppFolder-only registrations. |
-| `Sync failed` naming `not configured` | `docs/config.js` still has a blank `CLIENT_ID`, or the push has not reached Pages yet. |
+| Settings → Sync says `Sign-in is not configured yet` and the pill leads to Settings | `docs/config.js` still has a blank `CLIENT_ID`, or the push has not reached Pages yet. |
 | The phone still shows an old version after a push | Bump `VERSION` in `docs/sw.js` and push again; then close the app fully and reopen it twice. |
 | The PC says `Who is this log for?` | The journal has no child. Run `python paper.py` (Part 3). |
 | The PC window never appears | Read `error.log` in the project folder; the reason is written there. |

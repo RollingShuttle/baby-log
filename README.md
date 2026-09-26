@@ -71,7 +71,8 @@ JS tests and the suite skips them cleanly when none exists.
 Trends (14-day table and the hand-drawn 24-hour rhythm chart), Growth, Health, Reports, Settings,
 and one editor dialog for every type of entry, with the entry's revision history at its foot.
 
-**Phone** — Now, Day, Trends, Settings, with sleep / pump / weight / health / note under More;
+**Phone** — Now, Day, Trends, Settings, with Sleep · Pump · Weight beside the diaper buttons and
+health / note under More;
 one-tap diapers with `Undo · Edit`; the feed timer visible and controllable from every device;
 night mode; editor drafts that survive iOS killing the app; a status pill on every screen.
 
