@@ -75,12 +75,12 @@ class TestShell(unittest.TestCase):
 
 
 class TestConfig(unittest.TestCase):
-    def test_the_client_id_is_blank_in_the_committed_file(self):
-        """Blank until the Entra registration exists (SPEC.md §12); relax to whiskey's
-        blank-or-GUID form when it is filled in."""
+    def test_the_client_id_is_a_guid(self):
+        """Filled in on 26 Sep 2026 from the owner's Entra registration. It must look like an
+        Application (client) ID — a typo here fails silently as a sign-in that never returns."""
         m = re.search(r'CLIENT_ID:\s*"([^"]*)"', text("config.js"))
         self.assertIsNotNone(m, "config.js lost its CLIENT_ID line")
-        self.assertEqual(m.group(1).strip(), "")
+        self.assertRegex(m.group(1).strip(), r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
     def test_the_rest_of_the_configuration(self):
         cfg = code("config.js")

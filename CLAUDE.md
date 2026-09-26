@@ -134,11 +134,11 @@ sheet imported for real (37 entries + Yisen; a second run skips 37), `Baby Log.e
 launched once, Desktop and Start-menu shortcuts made, and `Baby Log.xlsx` written into Yisen File
 by the startup rollup.
 
-**Not deployed — all the owner's, in SETUP.md order:** the Entra registration and its client ID
-in `docs/config.js` (blank on purpose; `tests/test_sync.py` enforces it — relax that test when it
-is filled in, and any twin in `test_phone.py`), the GitHub repository and Pages, the redirect
-URI, and the phones' first sign-in. Until then the PC app runs from `python launch.py` against whatever
+**Deployed 26 Sep 2026:** the repository is https://github.com/RollingShuttle/baby-log (public,
+branch `main`), the Entra registration `Baby Log` exists and its client ID is in `docs/config.js`
+(`test_sync.py` and `test_phone.py` now check it is a GUID), with
+`https://rollingshuttle.github.io/baby-log/` as the SPA redirect URI. **Still the owner's:** turning
+on GitHub Pages for `/docs` on `main` if not yet done, and the phones' first sign-in. Until then the PC app runs from `python launch.py` against whatever
 `config.yaml` points at, and the phone app logs but cannot upload.
 
-The blank-client-ID assertion lives in both `test_sync.py` and `test_phone.py`; relax both when
-the ID goes in.
+

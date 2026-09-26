@@ -194,12 +194,12 @@ class TestIosRules(unittest.TestCase):
 
 
 class TestSafety(unittest.TestCase):
-    def test_the_client_id_is_blank_in_the_committed_file(self):
-        """Blank until the Entra registration exists (SPEC.md §12); relax to whiskey's
-        blank-or-GUID form when it is filled in."""
+    def test_the_client_id_is_a_guid(self):
+        """Filled in on 26 Sep 2026 from the owner's Entra registration. It must look like an
+        Application (client) ID — a typo here fails silently as a sign-in that never returns."""
         m = re.search(r'CLIENT_ID:\s*"([^"]*)"', text("config.js"))
         self.assertIsNotNone(m, "config.js lost its CLIENT_ID line")
-        self.assertEqual(m.group(1).strip(), "")
+        self.assertRegex(m.group(1).strip(), r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
     def test_no_system_dialogs(self):
         """confirm() and alert() block the page and look nothing like the app; every ask is an
@@ -655,7 +655,9 @@ const ids = (host) => host.querySelectorAll("[data-event-id]").map((n) => n.data
     G('setTab("settings")');
     await sleep(10);
     const st = screen("settings").textContent;
-    check("settings has every section", ["This phone", "Child", "Sync", "Needs check (0)", "Deleted (0)", "Not signed in", "Sign in is not configured".replace("Sign in", "Sign-in")].every((s) => st.includes(s)), st.slice(0, 200));
+    // With the client ID filled in (26 Sep 2026) the "not configured" notice is gone and the Sync
+    // card offers Sign in instead.
+    check("settings has every section", ["This phone", "Child", "Sync", "Needs check (0)", "Deleted (0)", "Not signed in", "Sign in"].every((s) => st.includes(s)) && !st.includes("not configured"), st.slice(0, 200));
     check("usage shown", st.includes("entries on this phone"));
     check("child form filled", screen("settings").querySelectorAll("input").some((i) => i.value === "Yisen"));
 
