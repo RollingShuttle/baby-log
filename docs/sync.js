@@ -21,8 +21,14 @@ const Sync = (() => {
   const CAP = 120;              // folders per pull before it is a catch-up instead
   const KEEP_DAYS = 120;        // how far back a catch-up looks — what the phone shows (§7.2)
   const FULL_EVERY_DAYS = 30;   // a catch-up this old is repeated
+  // A normal pull re-lists this many days before the last pull: the day folder is the UTC date
+  // of the write, but the PC's OneDrive client uploads when it can (paused, metered, asleep), so
+  // a file can land in a folder a day or two after the last pull walked past it.
+  const LOOKBACK_DAYS = 3;
+  const STALE_MS = 5 * 60000;   // a revise pulls first when the last pull is older than this
   const POLL_MS = 45000, JITTER_MS = 10000;
   const SEEN_BATCH = 25;        // names written back to bl.seen this often mid-folder
+  const CONFLICTS_KEEP = 20;    // collisions remembered for Settings, newest first
   const hasDoc = typeof document !== "undefined";
   const pad = (n) => String(n).padStart(2, "0");
 
@@ -34,13 +40,13 @@ const Sync = (() => {
   const shift = (ymd, n) => new Date(dayMs(ymd) + n * DAY).toISOString().slice(0, 10);
   const daysBetween = (a, b) => Math.round((dayMs(b) - dayMs(a)) / DAY);
 
-  /** The UTC day folders a normal pull lists: the day before the last pull through today. More
-      than 120 of them (or no last pull at all) means a catch-up instead; the list is then the
-      most recent 120. */
+  /** The UTC day folders a normal pull lists: three days before the last pull through today.
+      More than 120 of them (or no last pull at all) means a catch-up instead; the list is then
+      the most recent 120. */
   function foldersToList(lastSyncIso, todayUtc = utcDate()) {
     const last = C.localDate(lastSyncIso);
     if (!isDay(last)) return { folders: [], catch_up: true };
-    let start = shift(last, -1);
+    let start = shift(last, -LOOKBACK_DAYS);
     if (start > todayUtc) start = todayUtc;     // a clock that ran ahead: never list the future
     const n = daysBetween(start, todayUtc) + 1;
     const folders = [];
@@ -64,10 +70,22 @@ const Sync = (() => {
   const classify = (status, body) => graph().classify(status, body);
   const backoffMs = (retryAfter, attempt) => graph().backoffMs(retryAfter, attempt);
 
-  /** A revise or tombstone must pull first when the last pull is older than 24 h (§7.3). */
+  /** A revise or tombstone must pull first when the last pull is older than a few poll
+      intervals. §7.3 said 24 h; that let a phone build a revision on a base the PC had already
+      deleted or stopped hours earlier, and §3.4 then settled the collision silently. */
   function stalePull(meta, now = Date.now()) {
     const at = Date.parse((meta && meta.last_sync_at) || "");
-    return Number.isNaN(at) || now - at > DAY;
+    return Number.isNaN(at) || now - at > STALE_MS;
+  }
+
+  /** A downloaded record at the same revision as the held one, from another device, for an
+      entry this phone has queued or uploaded: both sides revised the same base, and §3.4 picks
+      one on every device alike — so the collision is real and somebody should look at it. */
+  function isConflict(held, rec, queued) {
+    if (!held || !rec || rec.revision !== held.revision) return false;
+    if (!rec.device || rec.device === held.device) return false;
+    const id = rec.event_id != null ? rec.event_id : rec.child_id;
+    return !!(queued && queued.has(id));
   }
 
   const clock = (iso) => {
@@ -116,6 +134,10 @@ const Sync = (() => {
   let started = false;
   let syncing = false;
   const listeners = [];
+  // Ids this phone uploaded this session. A queued item leaves the queue the moment its PUT
+  // lands, so this is how a later pull still knows "we wrote revision n of that too" when the
+  // other device's copy turns up — even a run or two later, as the PC's file may land late.
+  const uploaded = new Set();
 
   const online = () => typeof navigator === "undefined" || navigator.onLine !== false;
   const visible = () => !hasDoc || document.visibilityState !== "hidden";
@@ -152,6 +174,8 @@ const Sync = (() => {
     message: (e && e.message) || String(e),
   });
   const kindOf = (e) => (e && e.kind) || (e && e.name === "SignedOutError" ? "signed_out" : "retryable");
+  const idOf = (item) => (item && item.body && (item.body.event_id || item.body.child_id)) || null;
+  const heldOf = (id) => (String(id).startsWith("C-") ? Store.child(id) : Store.event(id));
 
   // -- flush ----------------------------------------------------------------------------------------
 
@@ -172,9 +196,16 @@ const Sync = (() => {
       try {
         await Graph.putJSON(path, item.body);
         await Store.drop(item.qid);
-        // Our own file need not come back down: mark it seen in its folder.
+        // Our own file need not come back down: mark it seen in its folder, and stamp its name
+        // on the held record so wanted() passes it over in folders bl.seen has forgotten.
         const parts = path.split("/");
         if (parts[0] === "events") Store.markSeen(parts[1], [parts[2]]);
+        const id = idOf(item);
+        if (id) {
+          uploaded.add(id);
+          const held = heldOf(id);
+          if (held && held.revision === item.body.revision) await Store.setFile(id, parts[parts.length - 1]);
+        }
         out.sent += 1;
       } catch (e) {
         const kind = kindOf(e);
@@ -197,38 +228,59 @@ const Sync = (() => {
   /** Is this listed file worth downloading? Not when the held record already is (or outranks)
       it — but an equal revision under a different w is a concurrent write and may win. */
   function wanted(parsed, name) {
-    const held = parsed.id.startsWith("C-") ? Store.child(parsed.id) : Store.event(parsed.id);
+    const held = heldOf(parsed.id);
     if (!held) return true;
     if (parsed.rev > held.revision) return true;
     return parsed.rev === held.revision && held._file !== name;
   }
 
+  /** Remember a collision for Settings (newest first, one entry per id) and for this pull's
+      "applied" event. `other` is the downloaded side, whichever way §3.4 went: the toast says
+      who else wrote it, not who won. */
+  function noteConflict(id, rec, counts) {
+    if (counts.conflicts.includes(id)) return;
+    counts.conflicts.push(id);
+    const other = { device: rec.device || null, edited_by: rec.edited_by || null, logged_by: rec.logged_by || null,
+                    entered_from: rec.entered_from || null, deleted: !!rec.deleted };
+    const rest = (Store.meta().conflicts || []).filter((c) => c.event_id !== id);
+    Store.setMeta({ conflicts: [{ event_id: id, at: C.nowIso(), other }].concat(rest).slice(0, CONFLICTS_KEEP) });
+  }
+
+  /** Download one listed file and apply it. False when nothing usable came back — the folder
+      must then not be retired, because the file may simply still be uploading. */
+  async function fetchApply(f, dir, parsed, counts) {
+    const text = await Graph.getText(f.downloadUrl, `${dir}/${f.name}`);
+    let rec = null;
+    try { rec = text === null ? null : JSON.parse(text); } catch { rec = null; }
+    counts.downloaded += 1;
+    if (!rec) { counts.bad += 1; return false; }
+    if (isConflict(heldOf(parsed.id), rec, counts.queued)) noteConflict(parsed.id, rec, counts);
+    if (await Store.applyRemote(rec, f.name)) {
+      counts.applied += 1;
+      counts.changed.push(parsed.id);
+    }
+    return true;
+  }
+
+  /** One day folder. Resolves true when the pass skipped nothing: a zero-size listing (still
+      uploading) or an empty download means the folder has to be listed again. */
   async function pullFolder(day, counts) {
     const files = await Graph.listFolder(`events/${day}`);
     const seen = new Set(Store.seen(day));
     let batch = [];
+    let clean = true;
     const flushSeen = () => { if (batch.length) { Store.markSeen(day, batch); batch = []; } };
     for (const f of files) {
       if (f.isFolder || seen.has(f.name)) continue;
       const parsed = C.parseName(f.name);
       if (!parsed) continue;                    // OneDrive's temp files and the like
-      if (f.size === 0) continue;               // still uploading; leave it for the next pull
-      if (wanted(parsed, f.name)) {
-        const text = await Graph.getText(f.downloadUrl, `events/${day}/${f.name}`);
-        let rec = null;
-        try { rec = text === null ? null : JSON.parse(text); } catch { rec = null; }
-        counts.downloaded += 1;
-        if (rec && await Store.applyRemote(rec, f.name)) {
-          counts.applied += 1;
-          counts.changed.push(parsed.id);
-        } else if (!rec) {
-          counts.bad += 1;
-        }
-      }
+      if (f.size === 0) { clean = false; continue; }   // still uploading; leave it for the next pull
+      if (wanted(parsed, f.name) && !(await fetchApply(f, `events/${day}`, parsed, counts))) clean = false;
       batch.push(f.name);
       if (batch.length >= SEEN_BATCH) flushSeen();
     }
     flushSeen();
+    return clean;
   }
 
   async function pullChildren(counts) {
@@ -236,22 +288,15 @@ const Sync = (() => {
       if (f.isFolder) continue;
       const parsed = C.parseName(f.name);
       if (!parsed || f.size === 0 || !wanted(parsed, f.name)) continue;
-      const text = await Graph.getText(f.downloadUrl, `children/${f.name}`);
-      let rec = null;
-      try { rec = text === null ? null : JSON.parse(text); } catch { rec = null; }
-      counts.downloaded += 1;
-      if (rec && await Store.applyRemote(rec, f.name)) {
-        counts.applied += 1;
-        counts.changed.push(parsed.id);
-      } else if (!rec) {
-        counts.bad += 1;
-      }
+      await fetchApply(f, "children", parsed, counts);
     }
   }
 
   /** First sign-in, or a month since the last full pass: every day folder within 120 days that
       is not yet fully caught up. Days older than yesterday are marked done once listed clean,
-      so an interrupted catch-up resumes where it stopped. */
+      so an interrupted catch-up resumes where it stopped — and only when clean, because bl.done
+      is never revisited: a folder retired with a half-uploaded file in it would keep that file
+      from every phone for good. */
   async function catchUp(today, counts) {
     const done = new Set(Store.done());
     const yesterday = shift(today, -1);
@@ -261,23 +306,27 @@ const Sync = (() => {
       .filter((d) => daysBetween(d, today) <= KEEP_DAYS && !done.has(d))
       .sort();
     for (const day of folders) {
-      await pullFolder(day, counts);
-      if (day < yesterday) Store.markDone(day);
+      const clean = await pullFolder(day, counts);
+      if (clean && day < yesterday) Store.markDone(day);
     }
     counts.folders += folders.length;
   }
 
   /** List the folders since the last pull (or catch up), apply what is new, then children/.
-      last_sync_at moves only after a pull that finished with no error. */
+      last_sync_at moves only after a pull that finished with no error. The "applied" event
+      carries the ids that changed and the ids that collided (§3.4 settled those; app.js says
+      so), whether or not the pull got to the end. */
   async function pull() {
     if (!signedIn()) return { skipped: "signed_out" };
     if (inBackoff()) return { skipped: "backoff" };
-    const counts = { folders: 0, downloaded: 0, applied: 0, bad: 0, changed: [], catch_up: false };
+    const counts = { folders: 0, downloaded: 0, applied: 0, bad: 0, changed: [], conflicts: [], catch_up: false,
+                     queued: new Set(Store.queue().map(idOf).filter(Boolean).concat(Array.from(uploaded))) };
     const m = Store.meta();
     const today = utcDate();
     const plan = foldersToList(m.last_sync_at, today);
     const fullAt = Date.parse(m.full_sync_at || "");
     counts.catch_up = plan.catch_up || Number.isNaN(fullAt) || Date.now() - fullAt > FULL_EVERY_DAYS * DAY;
+    const report = () => { if (counts.changed.length || counts.conflicts.length) emit("applied", { ids: counts.changed, conflicts: counts.conflicts }); };
     try {
       if (counts.catch_up) {
         await catchUp(today, counts);
@@ -291,13 +340,13 @@ const Sync = (() => {
       if (kind !== "signed_out") Store.setMeta({ last_error: errorInfo(e) });
       counts.stopped = kind;
       counts.error = errorInfo(e);
-      if (counts.changed.length) emit("applied", { ids: counts.changed });
+      report();
       return counts;
     }
     const patch = { last_sync_at: C.nowIso(), last_error: null };
     if (counts.catch_up) patch.full_sync_at = patch.last_sync_at;
     Store.setMeta(patch);
-    if (counts.changed.length) emit("applied", { ids: counts.changed });
+    report();
     return counts;
   }
 
@@ -363,9 +412,17 @@ const Sync = (() => {
     if (timer) { clearTimeout(timer); timer = null; }
   }
 
+  /** Settings → Sync now: forget which folders were caught up and run a full catch-up. This is
+      the way back for a file that landed in a folder after bl.done retired it. */
+  function fullSync() {
+    Store.clearDone();
+    Store.setMeta({ full_sync_at: null });
+    return run();
+  }
+
   return {
-    foldersToList, pathFor, classify, backoffMs, stalePull, statusText, status,
-    flush, pull, run, afterWrite: run, start, stop, state, onChange,
+    foldersToList, pathFor, classify, backoffMs, stalePull, isConflict, statusText, status,
+    flush, pull, run, afterWrite: run, fullSync, start, stop, state, onChange,
     isSyncing: () => syncing,
   };
 })();

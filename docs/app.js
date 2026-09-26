@@ -503,7 +503,13 @@ async function quickDiaper(wet, dirty) {
   }
   await writeDiaper(wet, dirty);
 }
+// A one-tap diaper in flight. The 2-minute rule cannot catch a double tap on the 60 px button:
+// app.lastDiaper is only set once the first write has landed, so the second tap would write a
+// twin. This flag is what catches it.
+let writing = false;
 async function writeDiaper(wet, dirty) {
+  if (writing) return;
+  writing = true;
   const time = nowIso();
   try {
     const rec = await Store.newEvent({ type: "diaper", time, end: null, data: { wet, dirty }, note: "" });
@@ -514,6 +520,7 @@ async function writeDiaper(wet, dirty) {
       { label: "Edit", fn: () => openEditor({ event: Store.event(rec.event_id) || rec }) }]);
     renderTab();
   } catch (e) { showToast(errText(e)); }
+  finally { writing = false; }
 }
 async function undoNew(rec) {
   try {
@@ -553,7 +560,14 @@ async function guardOther(ev) {
   return cur;
 }
 
+// One write per running card at a time: while the guard's flush-then-pull is on the network a
+// second tap on Switch would switch straight back, and one on Stop would write a redundant
+// revision. Keyed by entry so a Wet tap meanwhile still goes through.
+const busy = new Set();
+
 async function switchSide(ev) {
+  if (busy.has(ev.event_id)) return;
+  busy.add(ev.event_id);
   try {
     const held = await guardOther(ev);
     const data = foldTimer(clone(held.data), Date.now());
@@ -563,9 +577,12 @@ async function switchSide(ev) {
     Sync.afterWrite();
     renderTab();
   } catch (e) { showToast(errText(e)); renderTab(); }
+  finally { busy.delete(ev.event_id); }
 }
 
 async function stopNowFor(ev) {
+  if (busy.has(ev.event_id)) return;
+  busy.add(ev.event_id);
   const end = nowIso();
   try {
     const held = await guardOther(ev);
@@ -575,6 +592,7 @@ async function stopNowFor(ev) {
     showToast(`${TYPE_LABEL[held.type]} stopped · ${Core.fmtTime(end)}`, [{ label: "Edit", fn: () => openEditor({ event: Store.event(rec.event_id) || rec }) }]);
     renderTab();
   } catch (e) { showToast(errText(e)); renderTab(); }
+  finally { busy.delete(ev.event_id); }
 }
 
 // Two running feeds become one: the earlier start, the sides added, the later one tombstoned.
@@ -836,6 +854,7 @@ function renderSyncCard() {
   const signedIn = Graph.isSignedIn();
   const who = Graph.who() || m.signed_in_as;
   const failed = Store.failed();
+  const conflicts = m.conflicts || [];
   const usage = el("div", { class: "muted small", id: "usage" }, "…");
   Store.usage().then((u) => {
     const mb = u.usage == null ? "" : ` · ${(u.usage / 1048576).toFixed(1)} MB used${u.quota ? ` of ${Math.round(u.quota / 1048576)}` : ""}`;
@@ -855,8 +874,19 @@ function renderSyncCard() {
     usage,
     el("div", { class: "actions" },
       Graph.configured() && !signedIn ? el("button", { class: "btn primary", type: "button", onclick: () => act("sign in", () => Graph.signIn()) }, "Sign in") : null,
-      signedIn ? el("button", { class: "btn", type: "button", onclick: () => act("sync", () => Sync.run()) }, "Sync now") : null,
+      // The full catch-up, not the 45 s pull: the one way to recover a PC file that landed in a
+      // day folder after that folder was retired.
+      signedIn ? el("button", { class: "btn", type: "button", onclick: () => act("sync", () => Sync.fullSync()) }, "Sync now") : null,
       signedIn ? el("button", { class: "btn ghost", type: "button", onclick: () => act("sign out", () => Graph.signOut()) }, "Sign out") : null),
+    signedIn ? el("div", { class: "muted small" }, "Sync now checks every day folder of the last 120 days.") : null,
+    conflicts.length ? el("div", {},
+      el("div", { class: "h3" }, `Changed on two devices (${conflicts.length})`),
+      el("div", { class: "muted small" }, "This phone and another device both changed these while apart; one version won. Open each and check it."),
+      ...conflicts.map((c) => el("button", { class: "qrow openable", type: "button", "data-event-id": c.event_id, onclick: () => openConflict(c.event_id) },
+        el("span", { class: "grow" }, conflictText(c), el("div", { class: "muted small" }, clockOf(c.at))),
+        el("span", { class: "chev" }, "›"))),
+      el("div", { class: "actions" },
+        el("button", { class: "linkish", type: "button", onclick: () => act("clear", () => { Store.setMeta({ conflicts: [] }); }) }, "Clear the list"))) : null,
     failed.length ? el("div", {},
       el("div", { class: "h3" }, `Stuck (${failed.length})`),
       ...failed.map((fl) => el("div", { class: "qrow" },
@@ -998,6 +1028,17 @@ function renderSyncLine() {
   const line = document.getElementById("ed-syncing");
   if (line && app.editor) line.hidden = !app.editor.syncing;
 }
+// Save and Delete go dark while a write is in flight, so a second tap from a sleepy thumb
+// cannot write the entry twice; renderEditor draws them that way too if it runs mid-save. Only
+// the editor still on screen is touched — the ids are reused by the next one.
+function setSaving(e, on) {
+  e.saving = on;
+  if (app.editor !== e) return;
+  for (const id of ["ed-save", "ed-delete"]) {
+    const b = document.getElementById(id);
+    if (b) b.disabled = on;
+  }
+}
 
 function renderEditor() {
   const e = app.editor;
@@ -1090,10 +1131,10 @@ function renderEditor() {
   }
 
   kids.push(el("div", { class: "ed-foot" },
-    el("button", { class: `btn wide${d.type === "feed" ? " feed" : " primary"}`, type: "button", onclick: saveEditor }, isNew ? "Save" : "Save changes"),
+    el("button", { class: `btn wide${d.type === "feed" ? " feed" : " primary"}`, id: "ed-save", type: "button", disabled: e.saving, onclick: saveEditor }, isNew ? "Save" : "Save changes"),
     isRunning && d.type === "feed" ? el("button", { class: "btn ghost wide", type: "button", onclick: () => openEditor({ type: "feed" }) }, "Start another feed") : null,
     el("button", { class: "btn ghost wide", type: "button", onclick: closeEditor }, "Cancel"),
-    !isNew ? el("button", { class: "btn danger wide", type: "button", onclick: () => { e.confirming = true; renderEditor(); } }, "Delete") : null));
+    !isNew ? el("button", { class: "btn danger wide", id: "ed-delete", type: "button", disabled: e.saving, onclick: () => { e.confirming = true; renderEditor(); } }, "Delete") : null));
 
   fill(host, ...kids);
   renderMsg();
@@ -1275,15 +1316,23 @@ async function stopFeedAt(endIso) {
   await writeFromEditor({ data, end: endIso });
 }
 
+// A portion left at 0 — "Another portion" tapped and not yet typed, or an amount cleared — is
+// not a bottle. Every write path drops those the same way, so a side tap or Stop now on such a
+// draft is not refused by a validator that Save would have satisfied.
+const cleanFeed = (data) => { data.bottles = (data.bottles || []).filter((b) => b && b.ml > 0); return data; };
+
 // A timer action writes at once and the editor re-reads the saved record — a Switch is a
 // revision, not a draft (§3.2). On another device's feed the flush-then-pull guard runs first.
 async function writeFromEditor(patch) {
   const e = app.editor, d = e.draft;
+  if (e.saving) return;                       // a second tap while the first write is in flight
+  const raw = clone(patch.data || d.data);
+  if (d.type === "feed") cleanFeed(raw);
   let data;
-  try { data = Core.validate(d.type, patch.data || d.data); } catch (x) { setMsg(x.message); return; }
+  try { data = Core.validate(d.type, raw); } catch (x) { setMsg(x.message); return; }
   const fields = { type: d.type, time: d.time, end: patch.end === undefined ? d.end : patch.end, data, note: d.note, logged_by: d.logged_by };
   if (d.child_id) fields.child_id = d.child_id;
-  e.saving = true;
+  setSaving(e, true);
   try {
     let held = e.event;
     if (held) held = await guardOther(held);
@@ -1294,10 +1343,10 @@ async function writeFromEditor(patch) {
     e.draft = draftFrom(rec);
     e.stopAt = false; e.msg = null; e.restored = false; e.notice = null;
     stopDraft(); Store.clearDraft();
+    e.saving = false;
     renderEditor();
     renderHeader();
-  } catch (x) { setMsg(errText(x)); }
-  e.saving = false;
+  } catch (x) { setSaving(e, false); setMsg(errText(x)); }
 }
 
 function diaperSection(d) {
@@ -1408,8 +1457,8 @@ function validateDraft(d) {
   return null;
 }
 
-/** A revise or tombstone pulls first when the last pull is older than 24 h; the editor shows
-    "Syncing…" and proceeds when it finishes or fails (§7.3). */
+/** A revise or tombstone pulls first when the last pull is older than a few poll intervals
+    (Sync.stalePull); the editor shows "Syncing…" and proceeds when it finishes or fails (§7.3). */
 async function pullIfStale(e) {
   if (!Sync.stalePull(Store.meta()) || !Graph.isSignedIn() || navigator.onLine === false) return;
   if (e) { e.syncing = true; renderSyncLine(); }
@@ -1419,11 +1468,12 @@ async function pullIfStale(e) {
 
 async function saveEditor() {
   const e = app.editor, d = e.draft;
+  if (e.saving) return;                       // a second tap while the first write is in flight
   const err = validateDraft(d);
   if (err) { setMsg(err); return; }
   let data = clone(d.data);
   if (d.type === "feed") {
-    data.bottles = data.bottles.filter((b) => b.ml > 0);
+    cleanFeed(data);
     if (d.end !== null && data.timer) data = foldTimer(data, ms(d.end));
     // A feed typed in after the fact has no timer: it is over, so it gets its end (Core.isRunning
     // reads end === null as "still going").
@@ -1440,7 +1490,7 @@ async function saveEditor() {
   try { data = Core.validate(d.type, data); } catch (x) { setMsg(x.message); return; }
   const fields = { type: d.type, time: d.time, end: TIMED.includes(d.type) ? d.end : null, data, note: d.note, logged_by: d.logged_by };
   if (d.child_id) fields.child_id = d.child_id;
-  e.saving = true;
+  setSaving(e, true);
   try {
     let rec;
     if (e.event) {
@@ -1456,7 +1506,7 @@ async function saveEditor() {
     showToast(`${TYPE_LABEL[d.type]} ${wasNew ? "saved" : "updated"} · ${Core.fmtTime(rec.time)}`,
       [{ label: "Edit", fn: () => openEditor({ event: Store.event(rec.event_id) || rec }) }]);
   } catch (x) {
-    e.saving = false;
+    setSaving(e, false);
     setMsg(errText(x));
   }
 }
@@ -1464,7 +1514,8 @@ async function saveEditor() {
 async function deleteEntry() {
   const e = app.editor;
   const ev = e && e.event;
-  if (!ev) return;
+  if (!ev || e.saving) return;
+  setSaving(e, true);
   try {
     await pullIfStale(e);
     await Store.tombstone(Store.event(ev.event_id) || ev, null);
@@ -1473,6 +1524,7 @@ async function deleteEntry() {
     closeEditor();
     showToast("Deleted", [{ label: "Undo", fn: () => restoreEntry(ev.event_id) }]);
   } catch (x) {
+    e.saving = false;
     e.confirming = false;
     renderEditor();
     setMsg(errText(x));
@@ -1481,21 +1533,32 @@ async function deleteEntry() {
 
 // ---------------------------------------------------------------- sync events
 /** After a pull changes records: the screen underneath re-renders, and an open editor on one of
-    them re-reads it with a one-line notice (§7.3). */
+    them re-reads it with a one-line notice (§7.3). A collision — this phone and another device
+    both wrote the same revision, and §3.4 picked one — is said out loud on whatever screen is
+    open, not only inside an editor. */
 function onSync(kind, detail) {
   renderPill();
   if (kind !== "applied") return;
   const ids = (detail && detail.ids) || [];
+  const conflicts = (detail && detail.conflicts) || [];
   const e = app.editor;
   if (e && e.event && ids.includes(e.event.event_id)) {
     const rec = Store.event(e.event.event_id);
     if (rec && rec !== e.event) {
+      // A pull can hand back a byte-identical copy of the record on screen (the phone's own
+      // upload under another file name): swap the object, but only a change of substance may
+      // touch what is being typed.
+      const same = rec.revision === e.event.revision && rec.created_at === e.event.created_at
+        && rec.device === e.event.device && rec.deleted === e.event.deleted;
       e.event = rec;
-      if (!e.saving) e.draft = draftFrom(rec);
-      e.notice = rec.deleted ? `Deleted on ${whose(rec)}` : `Updated from ${whose(rec)}`;
-      renderEditor();
+      if (!same) {
+        if (!e.saving) e.draft = draftFrom(rec);
+        e.notice = rec.deleted ? `Deleted on ${whose(rec)}` : `Updated from ${whose(rec)}`;
+        renderEditor();
+      }
     }
   }
+  if (conflicts.length) showConflicts(conflicts);
   if (ids.some((id) => String(id).startsWith("C-"))) {
     const card = document.getElementById("settings-child");
     if (card) delete card.dataset.child;
@@ -1503,6 +1566,32 @@ function onSync(kind, detail) {
   if (currentScreen() === "settings") renderSettings({ listsOnly: true });
   else renderTab();
   renderHeader();
+}
+
+// ---------------------------------------------------------------- collisions
+/* Sync remembers each one under meta.conflicts as {event_id, at, other}; `other` is the
+   downloaded side, whichever way the rule went, because that is who to compare notes with. */
+const conflictEntry = (id) => (Store.meta().conflicts || []).find((c) => c.event_id === id) || { event_id: id, other: null };
+/** "Feed 02:10 · Updated from the PC" — the editor's own wording, on a toast or a Settings row. */
+function conflictText(c) {
+  const rec = Store.event(c.event_id);
+  const other = c.other || null;
+  const line = other && other.deleted ? `Deleted on ${whose(other)}` : `Updated from ${whose(other)}`;
+  return rec ? `${TYPE_LABEL[rec.type] || rec.type} ${Core.fmtTime(rec.time)} · ${line}` : line;
+}
+function openConflict(id) {
+  const rec = Store.event(id);
+  if (rec && !rec.deleted) openEditor({ event: rec });
+  else if (rec) { setTab("settings"); showToast("It is in the Deleted list — Restore brings it back"); }
+}
+function showConflicts(ids) {
+  const first = ids[0];
+  const rec = Store.event(first);
+  const more = ids.length > 1 ? ` · ${ids.length - 1} more in Settings` : "";
+  const action = rec && !rec.deleted
+    ? { label: "Edit", fn: () => openEditor({ event: Store.event(first) || rec }) }
+    : { label: "Settings", fn: () => setTab("settings") };
+  showToast(conflictText(conflictEntry(first)) + more, [action], 10000);
 }
 
 // ---------------------------------------------------------------- clocks
@@ -1558,12 +1647,14 @@ async function boot() {
     navigator.serviceWorker.register("sw.js").catch(() => { /* http:// dev, or unsupported */ });
   }
 
-  await Graph.resume();          // settles a redirect sign-in before anything reads the account
   Sync.onChange(onSync);
   setTab("now");
   restoreDraft();
   updateBadge();
-  Sync.start();
+  // The sign-in library comes from a CDN the service worker does not cache, so nothing on
+  // screen waits for it (§7.1): resume() settles a redirect sign-in in the background, and only
+  // the sync loop starts after it.
+  Graph.resume().then(() => { renderPill(); Sync.start(); });
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
@@ -1571,9 +1662,19 @@ async function boot() {
     renderPill();
     if (currentScreen() !== "editor") renderTab();
     tick();
+    resumeIfSignedOut();
   });
+  window.addEventListener("online", resumeIfSignedOut);
   setInterval(tick, 1000);
   setInterval(everyMinute, 60000);
+}
+
+// A library load that failed at boot (no signal in the nursery) is tried again when the phone
+// comes back to the app or to the network, so the cached account syncs without a tap on the
+// pill. Sync's own triggers cannot do this: they skip while signed out.
+function resumeIfSignedOut() {
+  if (!Graph.configured() || Graph.isSignedIn()) return;
+  Graph.resume().then((ok) => { if (ok) { renderPill(); Sync.run(); } });
 }
 
 boot();

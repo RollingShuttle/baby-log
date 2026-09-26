@@ -553,7 +553,7 @@ result is checked.
   and keeps the rest. A permanent failure (4xx other than 401/403) moves the item to `bl.failed`
   with the status and message and continues; Settings lists failed items with **Retry** and
   **Discard**. 401/403 stop the flush and mark signed out. `drop(qid)` after a successful PUT.
-- `Sync.pull()` — lists every UTC day folder from `localDate(meta.last_sync_at) − 1 day` through UTC
+- `Sync.pull()` — lists every UTC day folder from `localDate(meta.last_sync_at) − 3 days` through UTC
   today (capped at 120 folders, in which case it is a catch-up), downloads every listed file whose
   name is not in `seen[folder]` and whose `(id, rev)` from `Core.parseName` is not already held —
   an equal-`rev` file with a different `w` **is** downloaded — applies each with
@@ -561,7 +561,12 @@ result is checked.
   is set only after a pull completes with no errors. **Catch-up** (first sign-in, or
   `meta.full_sync_at` older than 30 days): list `events/` (folders only); for every folder within
   120 days of today and not in `bl.done`, list it and download what is not held; add the date to
-  `done` if it is older than UTC yesterday; set `full_sync_at` when the loop finishes clean.
+  `done` only when the pass was clean (no zero-byte listing, no unreadable download) and it is
+  older than UTC yesterday; set `full_sync_at` when the loop finishes clean. Settings → **Sync now**
+  clears `done` and forces a catch-up. **Collisions are named, not hidden:** when a downloaded
+  record has the same revision as one this phone wrote (different `device`), the §3.4 winner still
+  stands, but the id goes onto `meta.conflicts`, a toast says `Feed 02:10 · Updated from the PC`
+  (or `Deleted on …`) with Edit, and Settings lists them under *Changed on two devices*.
 - Runs on open (after `Graph.resume()` and `handleRedirectPromise`), on `visibilitychange` to
   visible, on `online`, after every local write (flush then pull), and every **45 s ± 10 s jitter**
   while the page is visible. Never while hidden, never while `meta.backoff_until` is in the future.
@@ -569,7 +574,7 @@ result is checked.
   from the new record with a one-line notice `Updated from Mom's phone`. A Switch/Stop on a feed
   whose latest revision was written by another device runs flush-then-pull first and refuses with
   "Updated on Dad's phone — look again" if the pull changed it.
-- A pull is mandatory before any revise/tombstone when `last_sync_at` is older than 24 h (the
+- A pull is mandatory before any revise/tombstone when `last_sync_at` is older than 5 minutes (the
   editor shows a `Syncing…` line and proceeds when it finishes or fails).
 - The **status pill** sits on every screen: `Synced 1 min ago` · `Syncing…` · `Offline · 2
   waiting` · `Signed out · 3 waiting · tap to sign in` · `Signed out · showing data from 14:02` ·
@@ -579,7 +584,7 @@ result is checked.
 `sync.js` keeps its pure helpers (`Sync.foldersToList(lastSyncIso, todayUtc)`,
 `Sync.pathFor(item, todayUtc)`, `Sync.classify(status, body)`, `Sync.backoffMs(retryAfter,
 attempt)`) on the `Sync` object and ends with a Node `module.exports` guard so `tests/test_sync.py`
-can run them under Node (skipping without Node): a 3-day-old `last_sync_at` yields four folders;
+can run them under Node (skipping without Node): a 3-day-old `last_sync_at` yields seven folders;
 a stale path is re-assigned; 429 → retryable, 400 → permanent, 401 → signed out.
 
 ### 7.4 Screens (`app.js`, `index.html`, `style.css`)

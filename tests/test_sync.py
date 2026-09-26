@@ -160,6 +160,51 @@ class TestSource(unittest.TestCase):
         body = src[src.index("async function tick"):src.index("function start")]
         self.assertIn("visible() && !inBackoff()", body)
 
+    def test_a_failed_library_load_is_not_cached_and_cannot_hang(self):
+        """A CDN fetch that fails or hangs at boot must not pin ensure() for the session: the
+        next resume() has to fetch the script again once there is a signal."""
+        src = code("graph.js")
+        body = src[src.index("async function ensure"):src.index("function markSignedIn")]
+        self.assertIn("loading = null", body)
+        load = src[src.index("function loadScript"):src.index("async function ensure")]
+        self.assertIn("setTimeout", load)
+        self.assertIn("s.remove()", load)
+        self.assertIn("LOAD_TIMEOUT_MS = 15000", src)
+
+    def test_a_folder_is_retired_only_after_a_clean_pass(self):
+        """bl.done is never revisited, so a folder with a half-uploaded file in it must be
+        listed again next time rather than frozen out for good."""
+        src = code("sync.js")
+        folder = src[src.index("async function pullFolder"):src.index("async function pullChildren")]
+        self.assertIn("return clean", folder)
+        self.assertIn("if (f.size === 0) { clean = false; continue; }", folder)
+        fetch = src[src.index("async function fetchApply"):src.index("async function pullFolder")]
+        self.assertIn("if (!rec) { counts.bad += 1; return false; }", fetch)
+        catch = src[src.index("async function catchUp"):src.index("async function pull()")]
+        self.assertIn("if (clean && day < yesterday) Store.markDone(day);", catch)
+
+    def test_sync_now_forgets_done_and_forces_a_catch_up(self):
+        src = code("sync.js")
+        body = src[src.index("function fullSync"):]
+        body = body[:body.index("\n  }")]
+        self.assertIn("Store.clearDone()", body)
+        self.assertIn("full_sync_at: null", body)
+        self.assertIn("const clearDone", code("store.js"))
+
+    def test_an_upload_stamps_the_held_record_and_a_pull_reports_collisions(self):
+        """The phone's own upload must not come back down as a change (F6), and a same-revision
+        copy from another device is a collision the pull reports rather than hides (F1)."""
+        src = code("sync.js")
+        flush = src[src.index("async function flush"):src.index("function wanted")]
+        self.assertIn("uploaded.add(id)", flush)
+        self.assertIn("held.revision === item.body.revision", flush)
+        self.assertIn("Store.setFile(id, parts[parts.length - 1])", flush)
+        pull = src[src.index("async function pull()"):src.index("function run()")]
+        self.assertIn('emit("applied", { ids: counts.changed, conflicts: counts.conflicts })', pull)
+        self.assertIn("isConflict(heldOf(parsed.id), rec, counts.queued)", src)
+        self.assertIn("async function setFile", code("store.js"))
+        self.assertIn("conflicts: []", code("store.js"))
+
 
 SCRIPT = r"""
 process.env.TZ = "America/Chicago";
@@ -191,11 +236,13 @@ const day = (n) => new Date(Date.parse(TODAY + "T00:00:00Z") + n * DAY).toISOStr
 const at = (n, hhmm) => `${day(n)}T${hhmm}:00.000000+00:00`;
 
 // -- foldersToList -------------------------------------------------------------------------------
-t("a pull two days after the last lists four folders", () =>
-  eq(Sync.foldersToList(at(-2, "10:15"), TODAY), { folders: [day(-3), day(-2), day(-1), TODAY], catch_up: false }));
-t("the day before the last pull is always included", () =>
-  eq(Sync.foldersToList(at(0, "00:00"), TODAY), { folders: [day(-1), TODAY], catch_up: false }));
-t("three days back means five folders", () => eq(Sync.foldersToList(at(-3, "23:59"), TODAY).folders.length, 5));
+// Three days before the last pull through today: a PC file can land in its folder a day or two
+// after that folder was last listed (the OneDrive client uploads when it can).
+t("a pull two days after the last lists six folders", () =>
+  eq(Sync.foldersToList(at(-2, "10:15"), TODAY), { folders: [day(-5), day(-4), day(-3), day(-2), day(-1), TODAY], catch_up: false }));
+t("the three days before the last pull are always included", () =>
+  eq(Sync.foldersToList(at(0, "00:00"), TODAY), { folders: [day(-3), day(-2), day(-1), TODAY], catch_up: false }));
+t("three days back means seven folders", () => eq(Sync.foldersToList(at(-3, "23:59"), TODAY).folders.length, 7));
 t("no last pull is a catch-up", () => eq(Sync.foldersToList(null, TODAY), { folders: [], catch_up: true }));
 t("garbage is a catch-up", () => eq(Sync.foldersToList("never", TODAY).catch_up, true));
 t("more than 120 folders is capped and a catch-up", () => {
@@ -205,9 +252,10 @@ t("more than 120 folders is capped and a catch-up", () => {
   return r.folders[r.folders.length - 1] === TODAY ? true : "does not end today";
 });
 t("exactly 120 folders is still a normal pull", () => {
-  const r = Sync.foldersToList(at(-118, "12:00"), TODAY);
+  const r = Sync.foldersToList(at(-116, "12:00"), TODAY);
   return r.folders.length === 120 && !r.catch_up ? true : canon(r);
 });
+t("one day more is a catch-up", () => eq(Sync.foldersToList(at(-117, "12:00"), TODAY).catch_up, true));
 t("a clock that ran ahead never lists the future", () =>
   eq(Sync.foldersToList(at(+3, "12:00"), TODAY), { folders: [TODAY], catch_up: false }));
 
@@ -263,12 +311,29 @@ t("a missing attempt counts as the first", () => eq(Sync.backoffMs(undefined, un
 
 // -- stalePull -----------------------------------------------------------------------------------
 const NOW = Date.parse("2026-09-24T12:00:00Z");
-t("stalePull after 24 h or never", () => eq([
+t("stalePull after 5 min or never", () => eq([
+  Sync.stalePull({ last_sync_at: "2026-09-24T11:56:00.000000+00:00" }, NOW),   // 4 min ago
+  Sync.stalePull({ last_sync_at: "2026-09-24T11:54:00.000000+00:00" }, NOW),   // 6 min ago
   Sync.stalePull({ last_sync_at: "2026-09-24T11:00:00.000000+00:00" }, NOW),
   Sync.stalePull({ last_sync_at: "2026-09-23T11:00:00.000000+00:00" }, NOW),
   Sync.stalePull({ last_sync_at: null }, NOW),
   Sync.stalePull({}, NOW),
-], [false, true, true, true]));
+], [false, true, true, true, true, true]));
+
+// -- isConflict ----------------------------------------------------------------------------------
+// The phone built revision 2 from a stale base while the PC also wrote revision 2 (a deletion,
+// say); §3.4 settles which one wins, and the pull must say so rather than hide it.
+const mine = { event_id: "E-1", revision: 2, device: "d-0001", created_at: "2026-09-24T03:00:00.000000+00:00" };
+const pcs = { event_id: "E-1", revision: 2, device: "pc", created_at: "2026-09-24T02:00:00.000000+00:00", deleted: true };
+const q = new Set(["E-1"]);
+t("same revision from another device on an entry this phone wrote is a conflict", () => eq(Sync.isConflict(mine, pcs, q), true));
+t("not when this phone never queued or uploaded that entry", () => eq(Sync.isConflict(mine, pcs, new Set()), false));
+t("not when the devices match — our own upload echoed", () => eq(Sync.isConflict(mine, { ...pcs, device: "d-0001" }, q), false));
+t("not across revisions — the higher one simply wins", () =>
+  eq([Sync.isConflict(mine, { ...pcs, revision: 3 }, q), Sync.isConflict(mine, { ...pcs, revision: 1 }, q)], [false, false]));
+t("nothing held is nothing to collide with", () => eq([Sync.isConflict(null, pcs, q), Sync.isConflict(mine, null, q)], [false, false]));
+t("a child collides the same way", () =>
+  eq(Sync.isConflict({ child_id: "C-1", revision: 2, device: "d-0001" }, { child_id: "C-1", revision: 2, device: "pc" }, new Set(["C-1"])), true));
 
 // -- statusText ----------------------------------------------------------------------------------
 const base = { syncing: false, online: true, signed_in: true, waiting: 0, failed: 0,

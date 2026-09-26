@@ -295,6 +295,44 @@ class TestEditingSurfaces(unittest.TestCase):
                     "Not saved — storage full"):
             self.assertIn(msg, src)
 
+    def test_feed_portions_are_cleaned_on_every_write_path(self):
+        """"Another portion" leaves a 0 ml row; Save dropped it and a side tap did not, so the
+        two paths disagreed about one draft."""
+        src = code("app.js")
+        self.assertIn("const cleanFeed = (data) =>", src)
+        for fn, end in (("async function saveEditor(", "async function deleteEntry("),
+                        ("async function writeFromEditor(", "function diaperSection(")):
+            body = src[src.index(fn):src.index(end)]
+            self.assertIn("cleanFeed(", body, f"{fn} does not clean the portions")
+            self.assertLess(body.index("cleanFeed("), body.index("Core.validate("))
+
+
+class TestDoubleTaps(unittest.TestCase):
+    """iOS has no click delay at width=device-width: a sleepy double tap must write once."""
+
+    def test_save_and_the_timer_actions_refuse_a_second_tap(self):
+        src = code("app.js")
+        for fn in ("async function saveEditor(", "async function writeFromEditor("):
+            body = src[src.index(fn):]
+            body = body[:body.index("\n}")]
+            self.assertIn("if (e.saving) return;", body, f"{fn} has no in-flight guard")
+            self.assertIn("setSaving(e, true)", body)
+        foot = src[src.index('class: "ed-foot"'):]
+        foot = foot[:foot.index("renderMsg();")]
+        self.assertIn('id: "ed-save", type: "button", disabled: e.saving', foot)
+        self.assertIn('id: "ed-delete", type: "button", disabled: e.saving', foot)
+
+    def test_one_tap_diapers_and_the_running_card_are_guarded(self):
+        src = code("app.js")
+        diaper = src[src.index("async function writeDiaper("):src.index("async function undoNew(")]
+        self.assertIn("if (writing) return;", diaper)
+        self.assertIn("finally { writing = false; }", diaper)
+        for fn in ("async function switchSide(", "async function stopNowFor("):
+            body = src[src.index(fn):]
+            body = body[:body.index("\n}")]
+            self.assertIn("if (busy.has(ev.event_id)) return;", body, f"{fn} has no in-flight guard")
+            self.assertIn("finally { busy.delete(ev.event_id); }", body)
+
 
 class TestDraftsAndSync(unittest.TestCase):
     def test_the_open_editor_is_written_to_a_draft(self):
@@ -340,14 +378,49 @@ class TestDraftsAndSync(unittest.TestCase):
         self.assertLess(delete.index("pullIfStale(e)"), delete.index("Store.tombstone("))
 
     def test_boot_order(self):
-        """Store.open() → label → Graph.resume() → render → Sync.start() (§7.4)."""
+        """Store.open() → label → render → Graph.resume() in the background → Sync.start() after
+        it (§7.1: the sign-in library, fetched from a CDN, is never on the critical path)."""
         block = code("app.js")
         block = block[block.index("async function boot("):]
         order = [block.index(s) for s in ("await Store.open()", "askLabel()", "serviceWorker.register",
-                                          "await Graph.resume()", 'setTab("now")', "restoreDraft()", "Sync.start()")]
+                                          'setTab("now")', "restoreDraft()", "Graph.resume()", "Sync.start()")]
         self.assertEqual(order, sorted(order))
+        self.assertNotIn("await Graph.resume()", block, "the first render must not wait on the CDN")
+        self.assertIn("Graph.resume().then(() => { renderPill(); Sync.start(); })", block)
         self.assertIn('"visibilitychange"', block)
         self.assertIn("Who is holding this phone?", code("app.js"))
+
+    def test_a_failed_library_load_is_retried_when_the_phone_comes_back(self):
+        """Sync's own triggers skip while signed out, so the app has to call Graph.resume() again
+        itself on visibilitychange and online."""
+        block = code("app.js")
+        block = block[block.index("async function boot("):]
+        self.assertIn("resumeIfSignedOut()", block[:block.index("function resumeIfSignedOut(")])
+        self.assertIn('addEventListener("online", resumeIfSignedOut)', block)
+        retry = block[block.index("function resumeIfSignedOut("):]
+        self.assertIn("if (!Graph.configured() || Graph.isSignedIn()) return;", retry)
+        self.assertIn("Graph.resume().then((ok) => { if (ok) { renderPill(); Sync.run(); } })", retry)
+
+    def test_an_echo_of_the_open_record_keeps_the_typed_fields(self):
+        """A byte-identical copy under another file name is not a change: the object is swapped,
+        the draft and the notice are left alone."""
+        src = code("app.js")
+        block = src[src.index("function onSync("):src.index("function tick(")]
+        self.assertIn("rec.revision === e.event.revision && rec.created_at === e.event.created_at", block)
+        self.assertIn("rec.device === e.event.device && rec.deleted === e.event.deleted", block)
+        self.assertIn("if (!same) {", block)
+
+    def test_a_collision_is_said_on_any_screen_and_listed_in_settings(self):
+        src = code("app.js")
+        block = src[src.index("function onSync("):src.index("function tick(")]
+        self.assertIn("showConflicts(conflicts)", block)
+        self.assertIn("Deleted on ${whose(other)}", block)
+        self.assertIn("Updated from ${whose(other)}", block)
+        card = src[src.index("function renderSyncCard("):src.index("function renderNeedsCard(")]
+        self.assertIn("Changed on two devices", card)
+        self.assertIn('"data-event-id": c.event_id', card)
+        self.assertIn("Sync.fullSync()", card)
+        self.assertIn('"Sync now"', card)
 
     def test_the_pill_taps_to_sign_in_or_to_details(self):
         src = code("app.js")
@@ -647,6 +720,51 @@ const ids = (host) => host.querySelectorAll("[data-event-id]").map((n) => n.data
     await G("stopNowFor(Store.event(" + JSON.stringify(theirs.event_id) + "))");
     const stopped = G("Store.event")(theirs.event_id);
     check("stopped their feed after the guard", stopped.end !== null && stopped.revision === 2 && stopped.data.breast.left_s >= 590 && stopped.edited_by === "Dad", JSON.stringify(stopped.data.breast));
+
+    // A double tap writes once: Save on a new entry, the one-tap diaper, and Save/Delete go dark.
+    const before = G("Store.events()").length;
+    G('openEditor({ type: "growth" }); app.editor.draft.data.weight_g = 3600;');
+    await G("Promise.all([saveEditor(), saveEditor()])");
+    check("double-tapped Save wrote one entry", G("Store.events()").length === before + 1, G("Store.events()").length - before);
+    await G("Promise.all([writeDiaper(true, false), writeDiaper(true, false)])");
+    check("double-tapped Wet wrote one diaper", G("Store.events()").length === before + 2, G("Store.events()").length - before);
+    G(`openEditor({ event: Store.event(${JSON.stringify(note.event_id)}) })`);
+    G("setSaving(app.editor, true)");
+    const saveBtn = document.getElementById("ed-save"), delBtn = document.getElementById("ed-delete");
+    check("Save and Delete disabled while saving", saveBtn && saveBtn.disabled && delBtn && delBtn.disabled);
+    G("setSaving(app.editor, false)");
+    check("and enabled again", !saveBtn.disabled && !delBtn.disabled);
+    G("closeEditor()");
+
+    // An empty portion row ("Another portion" not yet typed) does not refuse a side tap or a Stop.
+    G('openEditor({ type: "feed" }); app.editor.draft.data.bottles.push({ kind: "formula", ml: 0 });');
+    await G('startSide("left")');
+    check("side tap with an empty portion starts the timer", G("app.editor.event && app.editor.event.data.timer && app.editor.event.data.timer.side") === "left" && G("app.editor.event.data.bottles.length") === 0 && !G("app.editor.msg"), G("app.editor.msg"));
+    await G("stopFeedAt(nowIso())");
+    check("stop with no portions", G("app.editor.event.end") !== null && !G("app.editor.msg"), G("app.editor.msg"));
+    G("closeEditor()");
+
+    // An echo of the record on screen (same substance, new object, new file name) leaves the typed note alone.
+    const pump2 = G("Store.event")(pump.event_id);
+    G(`openEditor({ event: Store.event(${JSON.stringify(pump.event_id)}) }); app.editor.draft.note = "typed while syncing";`);
+    check("echo applied", await G("Store").applyRemote(Object.assign({}, pump2), `${pump.event_id}-r${pump2.revision}-ffff.json`));
+    G(`onSync("applied", { ids: [${JSON.stringify(pump.event_id)}] })`);
+    check("echo keeps the typed note and shows no notice", G("app.editor.draft.note") === "typed while syncing" && !G("app.editor.notice") && G("app.editor.event._file") === `${pump.event_id}-r${pump2.revision}-ffff.json`, G("app.editor.draft.note"));
+    G("closeEditor()");
+    check("setFile stamps the held record", await G("Store").setFile(pump.event_id, "stamp.json") && G("Store.event")(pump.event_id)._file === "stamp.json");
+
+    // A collision reported by a pull: a toast on the open screen, and a row in Settings that opens the entry.
+    const feedId = feed.event_id;
+    G(`Store.setMeta({ conflicts: [{ event_id: ${JSON.stringify(feedId)}, at: Core.nowIso(), other: { device: "pc", edited_by: null, logged_by: "Dad", entered_from: "pc", deleted: false } }] })`);
+    G("renderNow()");
+    G(`onSync("applied", { ids: [], conflicts: [${JSON.stringify(feedId)}] })`);
+    check("collision toast names the other device", !toast.hidden && toast.textContent.includes("Feed") && toast.textContent.includes("Updated from the PC") && toast.querySelectorAll(".toast-btn")[0].textContent === "Edit", toast.textContent);
+    G('setTab("settings")');
+    await sleep(10);
+    check("settings lists the collision", screen("settings").textContent.includes("Changed on two devices (1)") && ids(screen("settings")).includes(feedId) && screen("settings").textContent.includes("Updated from the PC"), screen("settings").textContent.slice(0, 200));
+    screen("settings").querySelectorAll("button.qrow")[0].click();
+    check("the row opens the editor", visible() === "editor" && G("app.editor.event.event_id") === feedId, visible());
+    G("closeEditor()");
   } catch (e) {
     check("smoke run threw", false, (e && e.stack) || String(e));
   }

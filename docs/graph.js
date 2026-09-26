@@ -56,12 +56,21 @@ const Graph = (() => {
   const meta = () => (typeof Store !== "undefined" ? Store.meta() : {});
   const setMeta = (patch) => { if (typeof Store !== "undefined") Store.setMeta(patch); };
 
+  const LOAD_TIMEOUT_MS = 15000;
+
+  // A hung CDN fetch (one bar at 3 a.m.) must not pin `loading` for minutes: give up, drop the
+  // tag, and let the next resume() add a fresh one. If the old tag does load later it only sets
+  // window.msal, which the next ensure() is glad to find.
   function loadScript(src) {
     return new Promise((resolve, reject) => {
       const s = document.createElement("script");
+      const timer = setTimeout(() => {
+        s.remove();
+        reject(new Error("the Microsoft sign-in library did not load in time"));
+      }, LOAD_TIMEOUT_MS);
       s.src = src;
-      s.onload = resolve;
-      s.onerror = () => reject(new Error("could not load the Microsoft sign-in library"));
+      s.onload = () => { clearTimeout(timer); resolve(); };
+      s.onerror = () => { clearTimeout(timer); reject(new Error("could not load the Microsoft sign-in library")); };
       document.head.append(s);
     });
   }
@@ -70,6 +79,8 @@ const Graph = (() => {
     if (client) return client;
     if (!configured()) throw new Error("not configured");
     if (!loading) {
+      // A failed load is not cached: `loading` is cleared so a later resume() or signIn()
+      // fetches the script again once there is a signal.
       loading = (async () => {
         if (!window.msal) await loadScript(CONFIG.MSAL_SRC);
         msal = window.msal;
@@ -90,7 +101,7 @@ const Graph = (() => {
         // ended signed out: the next token() call decides again.
         if (account) markSignedIn();
         return client;
-      })();
+      })().catch((e) => { loading = null; throw e; });
     }
     return loading;
   }

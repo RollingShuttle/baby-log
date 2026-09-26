@@ -353,6 +353,7 @@ input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--diaper);
 .qrow .grow { flex: 1 1 auto; min-width: 0; }
 .qrow .when { color: var(--muted); font-size: 0.72rem; }
 .qrow.openable { width: 100%; text-align: left; border: 0; font-family: inherit; color: var(--ink); min-height: 44px; }
+.qrow .chev { color: var(--muted); font-size: 1.1rem; }
 
 /* ---------------------------------------------------------------- editor */
 .ed-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }

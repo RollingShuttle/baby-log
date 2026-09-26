@@ -44,6 +44,7 @@ const Store = (() => {
   const META = {
     last_sync_at: null, full_sync_at: null, signed_out: false, last_error: null,
     signed_in_as: null, backoff_until: null,
+    conflicts: [],   // [{event_id, at, other}] — same-revision collisions a pull found (§3.4 chose; someone should look)
   };
   const EVENT_FIELDS = ["child_id", "type", "time", "end", "data", "note", "logged_by"];
   const CHILD_FIELDS = ["name", "born", "born_time", "sex", "birth_weight_g", "targets"];
@@ -196,6 +197,9 @@ const Store = (() => {
     if (!d.includes(folder)) d.push(folder);
     return write(K.done, d.sort());
   }
+  // Settings → Sync now: every folder is listed again, which recovers a file that landed in a
+  // day folder after that folder was retired.
+  const clearDone = () => remove(K.done);
   const draft = () => read(K.draft, null);
   const setDraft = (d) => write(K.draft, d);
   const clearDraft = () => remove(K.draft);
@@ -403,6 +407,20 @@ const Store = (() => {
     return true;
   }
 
+  /** After Sync uploads a record this phone wrote: stamp the file name on the held copy, so a
+      later listing does not fetch our own bytes back (an equal revision under another name is
+      otherwise "wanted", and the re-download echoes as a change to an open editor). The record
+      is mutated in place — nothing about it changed but its bookkeeping — and the IndexedDB
+      copy is refreshed on a best-effort basis: the memory stamp is what this session needs. */
+  async function setFile(id, fileName) {
+    const isChild = String(id).startsWith("C-");
+    const held = (isChild ? children : events).get(id);
+    if (!held) return false;
+    held._file = String(fileName || "");
+    try { await commit([{ store: isChild ? "children" : "events", op: "put", value: held }]); } catch { /* see above */ }
+    return true;
+  }
+
   // -- reads, all from memory --------------------------------------------------------------------
   const eventsLive = () => Core.live(Array.from(events.values()), "event_id");
   const event = (id) => events.get(id) || null;
@@ -454,10 +472,10 @@ const Store = (() => {
     StorageError,
     open,
     settings, setSettings, meta, setMeta,
-    seen, markSeen, done, markDone, draft, setDraft, clearDraft,
+    seen, markSeen, done, markDone, clearDone, draft, setDraft, clearDraft,
     failed, fail, retryFailed, discardFailed,
     queue: queueList, setQueuePath, drop,
-    newEvent, revise, tombstone, restore, reviseChild, applyRemote,
+    newEvent, revise, tombstone, restore, reviseChild, applyRemote, setFile,
     events: eventsLive, event, children: childrenLive, child, deleted, needsCheck,
     usage, prune,
     ready: () => !!db,
