@@ -106,7 +106,9 @@ seen. Pill texts live in `Sync.statusText`.
 
 Also built: the phone screens `docs/{index.html,style.css,app.js}` + `tests/test_phone.py`
 (which also runs the bundle under Node on a fake DOM and IndexedDB); `launch.py`, `run.bat`,
-`update.bat`, `build_exe.bat`, `tools/{setup_machine,make_shortcut,update}.py` and their tests
+`update.bat`, `build_exe.bat`, `push.bat` + `tools/push.py` (the owner's no-command-line push:
+bumps `docs/sw.js` when docs/ changed, runs the suite, commits under the noreply identity,
+pushes), `tools/{setup_machine,make_shortcut,update}.py` and their tests
 (ported from whiskey with the names changed: title `Baby Log`, exe `Baby Log.exe`, mutex
 `Local\BabyLog.%d`, Edge profile `BabyLog\window`, tray `baby_log`, launcher console
 `Baby Log launcher`, clone URL `https://github.com/RollingShuttle/baby-log.git` as a placeholder

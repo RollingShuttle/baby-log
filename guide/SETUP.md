@@ -137,20 +137,9 @@ Back in the Entra portal, on the `Baby Log` registration:
    ```
 
    Paste the ID from Part 1 step 7 between the quotes.
-2. A test insists the committed value is blank, so it must be relaxed now that it is filled in —
-   the whiskey project did the same. It lives in `tests/test_sync.py`
-   (`test_the_client_id_is_blank_in_the_committed_file`); if `tests/test_phone.py` carries the
-   same check, relax that one too. Change each to assert the value *looks like* a GUID instead
-   of asserting it is empty.
-3. Bump `VERSION` in `docs/sw.js` to the next number: a phone that has already installed the app
-   keeps the old copy until that number changes.
-4. Commit and push:
-
-   ```
-   git add docs/config.js docs/sw.js tests/test_sync.py tests/test_phone.py
-   git commit -m "Add the client ID"
-   git push
-   ```
+2. Double-click `push.bat`. It bumps the phone app's version, runs the tests, commits and
+   pushes. (Done on 26 Sep 2026: the ID is in, and the two tests that used to insist it was
+   blank now check that it looks like one. If the ID ever changes, this step is the whole job.)
 
 Pages picks the change up within a minute or two.
 

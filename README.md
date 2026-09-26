@@ -44,7 +44,7 @@ tests/                  one file per module — python tests/test_<module>.py
 tests/fixtures/         data_cases.json, the shared validation fixture
 tools/                  scripts run by hand: setup_machine, make_shortcut, update; paper_sheet.json
 guide/                  SPEC.md, SETUP.md, RUNNING.md
-run.bat update.bat build_exe.bat        the three things you double-click
+run.bat update.bat push.bat build_exe.bat   the things you double-click
 ```
 
 ## Modules

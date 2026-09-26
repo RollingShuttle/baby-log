@@ -254,6 +254,13 @@ is original.
 the latest version, reinstalls anything new, closes the app if it is running, rebuilds it and
 refreshes the icon. If there is nothing new it says so and stops.
 
+**Sending a change out (no command line):** double-click `push.bat`. It asks in one line what
+changed (or just press Enter), runs the tests, and puts the change on GitHub — which is where
+the phones and the other computers get it from. It refuses to push while any test fails, bumps
+the phone app's version by itself when anything under `docs/` changed, and says so when there is
+nothing to push. The phones pick a change up on their own within a minute or two; other PCs get
+it with `update.bat`.
+
 ---
 
 ## Part 6 — Things that are normal, not faults
