@@ -136,7 +136,10 @@ The tabs are **Now · Day · Trends · Settings**. The log buttons on Now are **
 
 Your label, units, step and quick amounts, night hours; Yisen's record (the phone can change it
 but not create it — that is the PC's job); **Sign in** / **Sign out** with *Signed in as …*; the
-sync details (last sync, how many entries are waiting, anything OneDrive refused with **Retry** /
+sync details (last sync, how many entries are waiting, **Sync now** — which re-reads every day
+folder of the last 120 days, the thing to press if an entry from the PC seems missing —
+*Changed on two devices*, which lists entries both a phone and the PC changed at once so you can
+look at the one that won, anything OneDrive refused with **Retry** /
 **Discard**, storage used); **Deleted**; **Needs check (n)**.
 
 ---

@@ -77,7 +77,7 @@ and the JS tests skip with a message without it. The suite must never depend on 
 
 ## State as of 24 Sep 2026
 
-**Built and committed, 449 tests passing** (`python -m unittest discover -s tests`): `store.py` (the journal, defensive
+**Built and committed, 473 tests passing** (`python -m unittest discover -s tests`): `store.py` (the journal, defensive
 reader, index keyed by path/size/mtime), `docs/core.js` (shared logic; `test_core.py` runs the
 whole fixture under Node), `app.py` (every §6.1 route, the debounced `Rollup` worker: startup,
 20 s after an API write, and a 60 s scan for files the phones dropped through OneDrive),
@@ -119,11 +119,25 @@ row, which is over. The first browser test of the PC app showed every imported f
 needs `[hidden] { display: none !important; }` above its `display: flex` classes (an empty
 dialog overlay was swallowing every click), and `replaceChildren(null)` prints the word "null".
 
+**Reviewed 24–26 Sep 2026.** An adversarial review (five finders, a skeptic each) produced 21
+findings; every one is fixed and ticked in `guide/REVIEW.md`, which also keeps the refuted ones
+with the skeptic's reason. Lessons that changed the code: the journal needs a lock under Flask's
+threads; rounding is half-up everywhere (`rollup._round_half_up`, never `round()`); the rollup
+scan keys on `Journal.fingerprint()`, not `created_at`; the phone looks back three day folders,
+marks a folder done only after a clean pass, names a collision instead of hiding it, and renders
+before MSAL loads; `run.bat` must not forward `%*`; and `tools/setup_machine.py` must never let
+the school OneDrive (listed first, with its own 文档 folder) win — Yisen File decides.
+
+**Done on the owner's PC (26 Sep 2026):** `config.yaml` written by `setup_machine.py`
+(journal `C:/Users/mikey/OneDrive/Apps/Baby Log`, output `…/OneDrive/文档/Yisen File`), the paper
+sheet imported for real (37 entries + Yisen; a second run skips 37), `Baby Log.exe` built and
+launched once, Desktop and Start-menu shortcuts made, and `Baby Log.xlsx` written into Yisen File
+by the startup rollup.
+
 **Not deployed — all the owner's, in SETUP.md order:** the Entra registration and its client ID
 in `docs/config.js` (blank on purpose; `tests/test_sync.py` enforces it — relax that test when it
 is filled in, and any twin in `test_phone.py`), the GitHub repository and Pages, the redirect
-URI, `python paper.py` for real against the OneDrive folder, `build_exe.bat` and the shortcut,
-the phones' first sign-in. Until then the PC app runs from `python launch.py` against whatever
+URI, and the phones' first sign-in. Until then the PC app runs from `python launch.py` against whatever
 `config.yaml` points at, and the phone app logs but cannot upload.
 
 The blank-client-ID assertion lives in both `test_sync.py` and `test_phone.py`; relax both when
