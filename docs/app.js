@@ -274,6 +274,15 @@ function updateBadge() {
 
 // A 6-second toast with Undo / Edit style actions, above the tab bar (§7.4). One at a time.
 let toastTimer = null;
+/** Asks the running service worker for its VERSION; null when there is none (http:// dev). */
+function swVersion(cb) {
+  const c = typeof navigator !== "undefined" && navigator.serviceWorker && navigator.serviceWorker.controller;
+  if (!c || typeof MessageChannel === "undefined") { cb(null); return; }
+  const ch = new MessageChannel();
+  ch.port1.onmessage = (e) => cb(e.data && e.data.version);
+  try { c.postMessage("version", [ch.port2]); } catch (_) { cb(null); }
+}
+
 function showToast(text, actions = [], msv = 6000) {
   const t = document.getElementById("toast");
   const kids = [el("span", { class: "toast-text" }, text)];
@@ -1097,6 +1106,9 @@ function renderSyncCard() {
     const mb = u.usage == null ? "" : ` · ${(u.usage / 1048576).toFixed(1)} MB used${u.quota ? ` of ${Math.round(u.quota / 1048576)}` : ""}`;
     usage.textContent = `${u.events} ${u.events === 1 ? "entry" : "entries"} on this phone · ${u.queue} waiting${mb}`;
   }).catch(() => { usage.textContent = ""; });
+  // Which shell is actually running — the one fact that settles "did the phone update?".
+  const version = el("div", { class: "muted small", id: "app-version" }, "");
+  swVersion((v) => { version.textContent = v ? `Phone app ${v}` : ""; });
   const act = async (label, fn) => { try { await fn(); } catch (e) { showToast(errText(e)); } renderSyncCard(); renderPill(); };
   fill(card,
     el("div", { class: "h2" }, "Sync"),
@@ -1108,6 +1120,7 @@ function renderSyncCard() {
     el("div", { class: "muted small" }, m.last_sync_at ? `Last sync ${clockOf(m.last_sync_at)}${m.full_sync_at ? ` · full catch-up ${Core.fmtDay(Core.isoLocal(new Date(Date.parse(m.full_sync_at))))}` : ""}` : "Never synced on this phone"),
     m.last_error && m.last_error.message ? el("div", { class: "muted small" }, `Last error ${clockOf(m.last_error.at)} · ${m.last_error.code || ""} ${m.last_error.message}`) : null,
     usage,
+    version,
     el("div", { class: "actions" },
       Graph.configured() && !signedIn ? el("button", { class: "btn primary", type: "button", onclick: () => act("sign in", () => Graph.signIn()) }, "Sign in") : null,
       // The full catch-up, not the 45 s pull: the one way to recover a PC file that landed in a
@@ -1862,7 +1875,17 @@ async function boot() {
   if (!myLabel().trim()) await askLabel();
 
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(() => { /* http:// dev, or unsupported */ });
+    // updateViaCache "none": the worker script itself is fetched past GitHub Pages' ten-minute
+    // cache. And a new version announces itself instead of waiting for the visit after next —
+    // the "close it twice" ritual is gone.
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" })
+      .then((reg) => { app.sw = reg; reg.update().catch(() => {}); })
+      .catch(() => { /* http:// dev, or unsupported */ });
+    let hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!hadController) { hadController = true; return; }   // the very first install, not an update
+      showToast("New version ready", [{ label: "Reload", fn: () => location.reload() }], 120000);
+    });
   }
 
   Sync.onChange(onSync);
@@ -1876,6 +1899,7 @@ async function boot() {
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
+    if (app.sw) app.sw.update().catch(() => {});         // every time it comes to the front
     applyNight();
     renderPill();
     if (currentScreen() !== "editor") renderTab();

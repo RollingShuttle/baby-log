@@ -71,6 +71,17 @@ class TestBundle(unittest.TestCase):
             if name:
                 self.assertTrue((DOCS / name).exists(), f"sw.js caches {name}, which does not exist")
 
+    def test_updates_are_fetched_past_the_pages_cache(self):
+        """GitHub Pages serves every file with max-age=600. The owner's phone installed the new
+        VERSION with the old shell five minutes after a deploy: the worker script and the shell
+        must both be fetched past the HTTP cache, and a new version must say so."""
+        self.assertIn('register("sw.js", { updateViaCache: "none" })', code("app.js"))
+        self.assertIn('new Request(u, { cache: "reload" })', code("sw.js"))
+        self.assertIn('"controllerchange"', code("app.js"))
+        self.assertIn("New version ready", text("app.js"))
+        self.assertIn("app.sw.update()", code("app.js"), "checked again every time it comes to the front")
+        self.assertIn('e.ports[0].postMessage({ version: VERSION })', code("sw.js"))
+
     def test_the_manifest_is_valid_and_points_at_the_icon(self):
         m = json.loads(text("manifest.webmanifest"))
         self.assertEqual(m["start_url"], ".")

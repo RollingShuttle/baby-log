@@ -2,7 +2,7 @@
    with no connection at all (SPEC.md §7.5). Journal files are never cached — they are read through
    Graph and held in IndexedDB. Uploads are never cached — they go through the queue.
    Bump VERSION on every change to docs/, or the old shell is served until the visit after next. */
-const VERSION = "v7";
+const VERSION = "v8";
 const SHELL = "shell-" + VERSION;
 const SHELL_FILES = [
   "./", "./index.html", "./style.css", "./config.js",
@@ -10,8 +10,19 @@ const SHELL_FILES = [
   "./manifest.webmanifest", "./icon-180.png",
 ];
 
+// GitHub Pages sends every file with a ten-minute cache. A new worker installing in that window
+// would fill its cache from the browser's HTTP cache and ship the *old* shell under the new
+// VERSION — which is exactly what happened on the owner's phone five minutes after a deploy. So
+// the shell is fetched past the HTTP cache.
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(SHELL).then((c) => c.addAll(SHELL_FILES)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(SHELL)
+    .then((c) => c.addAll(SHELL_FILES.map((u) => new Request(u, { cache: "reload" }))))
+    .then(() => self.skipWaiting()));
+});
+
+// The page asks which version is actually running (Settings shows it), through the port it sends.
+self.addEventListener("message", (e) => {
+  if (e.data === "version" && e.ports && e.ports[0]) e.ports[0].postMessage({ version: VERSION });
 });
 
 self.addEventListener("activate", (e) => {

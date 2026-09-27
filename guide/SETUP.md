@@ -235,7 +235,7 @@ up after the next sign-in. The number in the pill is how many entries are waitin
 | Sign-in fails with a "redirect URI" message | The address in Part 2 step C does not match the page exactly — check the trailing slash and the capitalisation. |
 | Sign-in works but the pill says `Sync failed · … · tap for details` and the details say **`accessDenied`** or **`serviceReadOnly`** | See below — a known Microsoft problem on brand-new AppFolder-only registrations. |
 | Settings → Sync says `Sign-in is not configured yet` and the pill leads to Settings | `docs/config.js` still has a blank `CLIENT_ID`, or the push has not reached Pages yet. |
-| The phone still shows an old version after a push | Bump `VERSION` in `docs/sw.js` and push again; then close the app fully and reopen it twice. |
+| The phone still shows an old version after a push | Wait ten minutes — GitHub keeps every file that long — then open the app: it says *New version ready* with **Reload**. Settings → Sync shows *Phone app vN*, the number in `docs/sw.js`, so you can check. (Before v8 the phone had to be closed and reopened twice instead.) |
 | The PC says `Who is this log for?` | The journal has no child. Run `python paper.py` (Part 3). |
 | The PC window never appears | Read `error.log` in the project folder; the reason is written there. |
 | `OneDrive\Apps\Baby Log` is not in File Explorer | Normal until something writes to it. Run `python tools/setup_machine.py`, which creates it. |

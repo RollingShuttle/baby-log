@@ -277,6 +277,11 @@ it with `update.bat`.
 
 ## Part 6 — Things that are normal, not faults
 
+- **After a push, the phone says *New version ready* with a Reload button** — within about ten
+  minutes of the push (GitHub keeps files that long), the next time the app is opened. Tap Reload
+  when you are not in the middle of an entry. Settings → Sync shows *Phone app vN* so you can
+  tell which version is running.
+
 - **The app is still by the clock after you close its window.** Deliberate. It is what keeps
   `Baby Log.xlsx` current while you are not looking. Quit it from that icon if you want it gone.
 - **The phone asks you to sign in about once a day.** Microsoft's limit, not adjustable. It
