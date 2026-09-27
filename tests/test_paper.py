@@ -99,7 +99,7 @@ class SheetTests(PaperCase):
         self.assertEqual(ev["data"]["breast"]["total_s"], 900)
         self.assertTrue(ev["data"]["breast"]["approx"])
         self.assertEqual(ev["data"]["bottles"],
-                         [{"kind": "formula", "ml": 5}, {"kind": "formula", "ml": 15}])
+                         [{"kind": "formula", "ml": 5, "formula": None}, {"kind": "formula", "ml": 15, "formula": None}])
         self.assertIsNone(ev["data"]["made_ml"])
         self.assertIsNone(ev["data"]["leftover_ml"])
         self.assertEqual(ev["note"], "")

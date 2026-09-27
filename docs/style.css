@@ -80,7 +80,7 @@ body {
 }
 
 /* Every number lines up: since-last clocks, the sheet, the totals, the tables. */
-.num, .timer, .tile-big, .total, .row-time, .side-time, .t-num, td,
+.num, .timer, .tile-big, .total, .row-time, .t-num, td,
 input[type="number"], input[type="datetime-local"], input[type="date"], input[type="time"] {
   font-variant-numeric: tabular-nums;
 }
@@ -382,17 +382,21 @@ body.night .swipe-act { color: var(--bg); }
 }
 .confirm-sheet .actions .btn { min-height: 48px; }
 
-.sides { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.side {
-  padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2);
-  text-align: left; display: flex; flex-direction: column; gap: 2px; min-height: 72px; font-family: inherit; color: var(--ink);
-}
-.side.on { background: var(--feed-soft); border-color: var(--feed); }
-.side-name { font-size: 0.7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.side.on .side-name { color: var(--feed); }
-.side-time { font-size: 1.4rem; font-weight: 600; }
-.side-sub { font-size: 0.74rem; color: var(--muted); }
 .portion { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+/* One bottle portion: the row (kind, amount, remove) and its formula chips beneath. */
+.portion-wrap { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.portion-wrap:last-child { border-bottom: 0; }
+.chips.formula { margin-top: 4px; }
+/* "Other…" turned into a field: narrow enough to sit among the chips, 16 px like every input. */
+.chips .formula-other { width: 11em; min-height: 44px; }
+/* A paper row's breast minutes: read-only, one line (§6.2). */
+.breast-line { margin-bottom: 8px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); }
+/* The quick-amount range (§8.1): from / to / step beside the chips, saved as they change. */
+.range { display: flex; gap: 6px; align-items: flex-end; margin-top: 8px; }
+.range label { flex: 1 1 0; min-width: 0; margin: 0; }
+.range label > span { display: block; color: var(--muted); font-size: 0.72rem; margin-bottom: 2px; }
+.range input { padding-left: 8px; padding-right: 8px; text-align: center; }
+.range .unit { flex: 0 0 auto; padding-bottom: 12px; }
 .amt { display: inline-flex; align-items: center; }
 .amt input { width: 84px; text-align: center; border-radius: 0; }
 .amt button {
@@ -411,6 +415,12 @@ body.night .swipe-act { color: var(--bg); }
 .toggle.wet.on { background: var(--wet); border-color: var(--wet); }
 .toggle.dirty.on { background: var(--dirty); border-color: var(--dirty); }
 .flags { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---------------------------------------------------------------- Catch up */
+/* The strip logs one entry per tap and stays put for the next; only the time clears (§7.4). */
+.cu-strip { display: flex; flex-direction: column; gap: 8px; }
+.cu-when { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cu-added { color: var(--ok); font-size: 0.86rem; min-height: 1.3em; }
 
 /* ---------------------------------------------------------------- toast */
 .toast {

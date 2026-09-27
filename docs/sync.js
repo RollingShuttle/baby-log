@@ -103,9 +103,16 @@ const Sync = (() => {
   const errorNewer = (s) => !!(s.last_error && s.last_error.at && (!s.last_sync_at || s.last_error.at > s.last_sync_at));
 
   /** The pill's words for a state (§7.3, §7.6). Signed out never reads as an error: logging
-      works, entries queue, and the pill says so. */
+      works, entries queue, and the pill says so. While a run is on, the phase and its count
+      (so a tap on the pill visibly does something); for six seconds after, what it did. */
   function statusText(s = state()) {
-    if (s.syncing) return "Syncing…";
+    if (s.syncing) {
+      const p = s.progress;
+      if (p && p.phase === "sending") return `Syncing… sending ${p.done} of ${p.total}`;
+      if (p && p.phase === "listing") return `Syncing… checking ${p.total} ${p.total === 1 ? "day" : "days"}`;
+      if (p && p.phase === "reading") return `Syncing… reading ${p.total} new`;
+      return "Syncing…";
+    }
     if (!s.online) return s.waiting ? `Offline · ${s.waiting} waiting` : "Offline";
     if (!s.signed_in) {
       if (s.waiting) return `Signed out · ${s.waiting} waiting · tap to sign in`;
@@ -113,6 +120,12 @@ const Sync = (() => {
     }
     if (s.failed) return `${s.failed} stuck · tap`;
     if (errorNewer(s)) return `Sync failed · ${clock(s.last_error.at)} · tap for details`;
+    if (s.last_result) {
+      const parts = [];
+      if (s.last_result.sent) parts.push(`${s.last_result.sent} sent`);
+      if (s.last_result.received) parts.push(`${s.last_result.received} new`);
+      return `Synced · ${parts.length ? parts.join(" · ") : "nothing new"}`;
+    }
     if (s.last_sync_at) return `Synced ${ago((s.now || Date.now()) - Date.parse(s.last_sync_at))}`;
     return "Not synced yet";
   }
@@ -133,6 +146,12 @@ const Sync = (() => {
   let timer = null;
   let started = false;
   let syncing = false;
+  // What the run in flight is doing ({phase, done, total, sent, received}), and what the last
+  // clean run did ({sent, received, at}) — shown on the pill for RESULT_MS after it (§7.3).
+  let progress = null;
+  let lastResult = null;
+  let runSent = 0;         // the flush's count, so the pull's progress events can carry it
+  const RESULT_MS = 6000;
   const listeners = [];
   // Ids this phone uploaded this session. A queued item leaves the queue the moment its PUT
   // lands, so this is how a later pull still knows "we wrote revision n of that too" when the
@@ -152,11 +171,14 @@ const Sync = (() => {
       const t = Date.parse(i.created_at || "");
       if (!Number.isNaN(t) && (oldest === null || t < oldest)) oldest = t;
     }
+    const recent = lastResult && now - lastResult.at < RESULT_MS;
     return {
       syncing, online: online(), signed_in: signedIn(),
       waiting: q.length, failed: Store.failed().length,
       last_sync_at: m.last_sync_at, last_error: m.last_error,
       stale: oldest !== null && now - oldest > DAY,
+      progress: syncing && progress ? { ...progress } : null,
+      last_result: recent ? { sent: lastResult.sent, received: lastResult.received } : null,
       now,
     };
   }
@@ -166,6 +188,12 @@ const Sync = (() => {
     for (const fn of listeners.slice()) {
       try { fn(kind, detail || {}); } catch (e) { console.error(e); }
     }
+  }
+  /** One step of the run in flight, for the pill: "sending 2 of 5", "checking 4 days",
+      "reading 12 new", then "done" with the totals. */
+  function report(phase, done, total, received) {
+    progress = { phase, done, total, sent: runSent, received: received || 0 };
+    emit("progress", { ...progress });
   }
   const errorInfo = (e) => ({
     at: C.nowIso(),
@@ -186,7 +214,11 @@ const Sync = (() => {
     if (!signedIn()) return { skipped: "signed_out" };
     if (inBackoff()) return { skipped: "backoff" };
     const out = { sent: 0, failed: 0, stopped: null };
-    for (const item of Store.queue()) {
+    const items = Store.queue();
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      runSent = out.sent;
+      report("sending", i + 1, items.length, 0);
       const path = pathFor(item, utcDate());
       if (path !== item.path) {
         // Written back before the PUT so a retry sends the same bytes to the same place. If even
@@ -207,6 +239,7 @@ const Sync = (() => {
           if (held && held.revision === item.body.revision) await Store.setFile(id, parts[parts.length - 1]);
         }
         out.sent += 1;
+        runSent = out.sent;
       } catch (e) {
         const kind = kindOf(e);
         if (kind === "permanent") {
@@ -264,19 +297,29 @@ const Sync = (() => {
 
   /** One day folder. Resolves true when the pass skipped nothing: a zero-size listing (still
       uploading) or an empty download means the folder has to be listed again. */
-  async function pullFolder(day, counts) {
+  async function pullFolder(day, counts, at, of) {
+    report("listing", at || 1, of || 1, counts.applied);
     const files = await Graph.listFolder(`events/${day}`);
     const seen = new Set(Store.seen(day));
     let batch = [];
     let clean = true;
     const flushSeen = () => { if (batch.length) { Store.markSeen(day, batch); batch = []; } };
+    // What this folder holds that the phone has not: counted first so the pill can say how many.
+    const todo = [];
     for (const f of files) {
       if (f.isFolder || seen.has(f.name)) continue;
       const parsed = C.parseName(f.name);
       if (!parsed) continue;                    // OneDrive's temp files and the like
       if (f.size === 0) { clean = false; continue; }   // still uploading; leave it for the next pull
-      if (wanted(parsed, f.name) && !(await fetchApply(f, `events/${day}`, parsed, counts))) clean = false;
-      batch.push(f.name);
+      todo.push({ f, parsed, fetch: wanted(parsed, f.name) });
+    }
+    counts.to_read += todo.filter((t) => t.fetch).length;
+    for (const t of todo) {
+      if (t.fetch) {
+        report("reading", counts.downloaded + 1, counts.to_read, counts.applied);
+        if (!(await fetchApply(t.f, `events/${day}`, t.parsed, counts))) clean = false;
+      }
+      batch.push(t.f.name);
       if (batch.length >= SEEN_BATCH) flushSeen();
     }
     flushSeen();
@@ -305,8 +348,9 @@ const Sync = (() => {
       .map((f) => f.name)
       .filter((d) => daysBetween(d, today) <= KEEP_DAYS && !done.has(d))
       .sort();
-    for (const day of folders) {
-      const clean = await pullFolder(day, counts);
+    for (let i = 0; i < folders.length; i++) {
+      const day = folders[i];
+      const clean = await pullFolder(day, counts, i + 1, folders.length);
       if (clean && day < yesterday) Store.markDone(day);
     }
     counts.folders += folders.length;
@@ -319,7 +363,7 @@ const Sync = (() => {
   async function pull() {
     if (!signedIn()) return { skipped: "signed_out" };
     if (inBackoff()) return { skipped: "backoff" };
-    const counts = { folders: 0, downloaded: 0, applied: 0, bad: 0, changed: [], conflicts: [], catch_up: false,
+    const counts = { folders: 0, downloaded: 0, to_read: 0, applied: 0, bad: 0, changed: [], conflicts: [], catch_up: false,
                      queued: new Set(Store.queue().map(idOf).filter(Boolean).concat(Array.from(uploaded))) };
     const m = Store.meta();
     const today = utcDate();
@@ -331,7 +375,7 @@ const Sync = (() => {
       if (counts.catch_up) {
         await catchUp(today, counts);
       } else {
-        for (const day of plan.folders) await pullFolder(day, counts);
+        for (let i = 0; i < plan.folders.length; i++) await pullFolder(plan.folders[i], counts, i + 1, plan.folders.length);
         counts.folders += plan.folders.length;
       }
       await pullChildren(counts);
@@ -364,16 +408,27 @@ const Sync = (() => {
           break;
         }
         syncing = true;
+        runSent = 0;
+        progress = null;
         emit("status");
         try {
           result.flush = await flush();
+          runSent = result.flush.sent || 0;
           result.pull = await pull();
+          // The outcome, kept on the pill for six seconds — only after a run that finished
+          // clean; a stopped one is what "Sync failed" is for.
+          if (!result.flush.stopped && !result.flush.skipped && !result.pull.stopped && !result.pull.skipped) {
+            lastResult = { sent: runSent, received: result.pull.applied || 0, at: Date.now() };
+            report("done", 1, 1, lastResult.received);
+            setTimeout(() => emit("status", {}), RESULT_MS + 200);   // the pill's usual words come back
+          }
         } catch (e) {
           // Only a bug reaches here: flush and pull report their own failures.
           console.error(e);
           Store.setMeta({ last_error: errorInfo(e) });
         } finally {
           syncing = false;
+          progress = null;
         }
       } while (again);
       return result;

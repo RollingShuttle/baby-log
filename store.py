@@ -203,10 +203,17 @@ def _check_feed(d):
     if not isinstance(d["bottles"], list):
         raise ValueError("data.bottles must be a list")
     for i, p in enumerate(d["bottles"]):
-        _object(p, f"bottles[{i}]", ("kind", "ml"))
+        # `formula` is optional on the way in (older records and the paper import carry only
+        # kind and ml) and always present on the way out, so every stored portion has one shape.
+        if isinstance(p, dict) and "formula" not in p:
+            p["formula"] = None
+        _object(p, f"bottles[{i}]", ("kind", "ml", "formula"))
         if p["kind"] not in ENUMS["bottle_kind"]:
             raise ValueError(f"data.bottles[{i}].kind must be formula or breast_milk, got {p['kind']!r}")
         _amount(p["ml"], f"bottles[{i}].ml", positive=True)
+        f = p["formula"]
+        if f is not None and (not isinstance(f, str) or f == ""):
+            raise ValueError(f"data.bottles[{i}].formula must be a non-empty string or null, got {f!r}")
     _amount(d["made_ml"], "made_ml")
     _amount(d["leftover_ml"], "leftover_ml")
     if d["timer"] is not None:

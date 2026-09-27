@@ -205,10 +205,33 @@ class TestSource(unittest.TestCase):
         self.assertIn("async function setFile", code("store.js"))
         self.assertIn("conflicts: []", code("store.js"))
 
+    def test_a_run_reports_its_phases_and_its_outcome(self):
+        """§7.3: the pill shows the work — per item sent, per folder listed, per file read, and
+        the outcome for six seconds after a clean run."""
+        src = code("sync.js")
+        self.assertIn('emit("progress", { ...progress })', src)
+        flush = src[src.index("async function flush"):src.index("function wanted")]
+        self.assertIn('report("sending", i + 1, items.length, 0)', flush)
+        folder = src[src.index("async function pullFolder"):src.index("async function pullChildren")]
+        self.assertIn('report("listing"', folder)
+        self.assertIn('report("reading", counts.downloaded + 1, counts.to_read, counts.applied)', folder)
+        run = src[src.index("function run()"):src.index("function schedule()")]
+        self.assertIn("lastResult = { sent: runSent, received: result.pull.applied || 0, at: Date.now() }", run)
+        self.assertIn('report("done"', run)
+        self.assertIn("RESULT_MS = 6000", src)
+        state = src[src.index("function state("):src.index("function onChange(")]
+        self.assertIn("now - lastResult.at < RESULT_MS", state)
+
 
 SCRIPT = r"""
 process.env.TZ = "America/Chicago";
 global.Core = require(%(core)s);
+// store.js has no module guard (the page loads it as a script): run it in this context with a
+// localStorage of its own so its settings rules can be exercised.
+const ls = new Map();
+global.localStorage = { getItem: (k) => (ls.has(k) ? ls.get(k) : null), setItem: (k, v) => { ls.set(k, String(v)); }, removeItem: (k) => { ls.delete(k); } };
+const Store = require("vm").runInThisContext(require("fs").readFileSync(%(store)s, "utf8") + ";Store", { filename: "store.js" });
+global.Store = Store;
 const Sync = require(%(sync)s);
 const out = [];
 const canon = (x) => JSON.stringify(sortKeys(x));
@@ -357,6 +380,71 @@ t("an error older than the last sync is not shown", () => eq(Sync.statusText(S({
 t("1 stuck · tap", () => eq(Sync.statusText(S({ failed: 1, last_sync_at: synced })), "1 stuck · tap"));
 t("Not synced yet", () => eq(Sync.statusText(S({})), "Not synced yet"));
 t("signed out is never an error, offline wins over signed out", () => eq(Sync.statusText(S({ online: false, signed_in: false, waiting: 1 })), "Offline · 1 waiting"));
+// -- the phases and the outcome (§7.3): a tap on the pill visibly does something
+const P = (phase, done, total) => S({ syncing: true, progress: { phase, done, total, sent: 0, received: 0 } });
+t("Syncing… sending 2 of 5", () => eq(Sync.statusText(P("sending", 2, 5)), "Syncing… sending 2 of 5"));
+t("Syncing… checking 4 days", () => eq(Sync.statusText(P("listing", 1, 4)), "Syncing… checking 4 days"));
+t("Syncing… checking 1 day", () => eq(Sync.statusText(P("listing", 1, 1)), "Syncing… checking 1 day"));
+t("Syncing… reading 12 new", () => eq(Sync.statusText(P("reading", 3, 12)), "Syncing… reading 12 new"));
+t("syncing with no phase yet is plain", () => eq(Sync.statusText(S({ syncing: true, progress: null })), "Syncing…"));
+t("Synced · 5 sent · 12 new", () => eq(Sync.statusText(S({ last_sync_at: synced, last_result: { sent: 5, received: 12 } })), "Synced · 5 sent · 12 new"));
+t("Synced · 3 sent", () => eq(Sync.statusText(S({ last_sync_at: synced, last_result: { sent: 3, received: 0 } })), "Synced · 3 sent"));
+t("Synced · nothing new", () => eq(Sync.statusText(S({ last_sync_at: synced, last_result: { sent: 0, received: 0 } })), "Synced · nothing new"));
+t("the outcome yields to stuck items", () => eq(Sync.statusText(S({ failed: 1, last_result: { sent: 1, received: 0 } })), "1 stuck · tap"));
+t("the outcome tone is ok", () => eq(Sync.status(S({ last_sync_at: synced, last_result: { sent: 1, received: 0 } })).tone, "ok"));
+t("state carries progress and last_result fields", () => {
+  const st = Sync.state(NOW);
+  return "progress" in st && "last_result" in st && st.progress === null && st.last_result === null ? true : canon(st);
+});
+
+// -- the settings keys (§6.1) in store.js, loaded as the browser would load it
+const K = (k) => `bl.${k}`;
+t("defaults: quick_mode range, 50 / 100 / 10", () => {
+  ls.clear();
+  const s = Store.settings();
+  return eq([s.quick_mode, s.quick_from, s.quick_to, s.quick_step, s.step_ml, s.quick_custom], ["range", 50, 100, 10, null, []]);
+});
+t("exactly the §6.1 keys plus device and night_override", () => {
+  ls.clear();
+  return eq(Object.keys(Store.settings()).sort(), ["child_id", "device", "label", "night_from", "night_override", "night_to", "quick_custom",
+    "quick_from", "quick_mode", "quick_step", "quick_to", "step_ml", "units"]);
+});
+t("a phone that stored recent keeps it and gains the new keys", () => {
+  ls.clear();
+  ls.set(K("settings"), JSON.stringify({ label: "Dad", units: "ml", step_ml: null, quick_mode: "recent", quick_custom: [], night_from: "21:00", night_to: "07:00", child_id: null, night_override: null, device: "d-0001" }));
+  const s = Store.settings();
+  return eq([s.quick_mode, s.quick_from, s.quick_to, s.quick_step, s.device], ["recent", 50, 100, 10, "d-0001"]);
+});
+t("setSettings accepts the range and its bounds", () => {
+  ls.clear();
+  Store.setSettings({ quick_mode: "range", quick_from: 60, quick_to: 120, quick_step: 5 });
+  const s = Store.settings();
+  return eq([s.quick_mode, s.quick_from, s.quick_to, s.quick_step], ["range", 60, 120, 5]);
+});
+t("a bound may be null", () => { ls.clear(); Store.setSettings({ quick_to: null }); return eq(Store.settings().quick_to, null); });
+t("setSettings refuses a quick_mode outside the set", () => {
+  ls.clear();
+  try { Store.setSettings({ quick_mode: "bogus" }); return "accepted"; } catch (e) { return Store.settings().quick_mode === "range" ? true : "changed"; }
+});
+t("setSettings refuses a non-numeric bound", () => {
+  ls.clear();
+  try { Store.setSettings({ quick_from: "60" }); return "accepted"; } catch (e) { return Store.settings().quick_from === 50 ? true : "changed"; }
+});
+t("setSettings refuses a negative step", () => {
+  ls.clear();
+  try { Store.setSettings({ quick_step: -5 }); return "accepted"; } catch (e) { return true; }
+});
+t("unknown keys are ignored, not stored", () => {
+  ls.clear();
+  Store.setSettings({ quick_range: [1, 2] });
+  return eq("quick_range" in Store.settings(), false);
+});
+t("the mode is one of recent | range | custom", () => {
+  ls.clear();
+  for (const m of ["recent", "range", "custom"]) Store.setSettings({ quick_mode: m });
+  return eq(Store.settings().quick_mode, "custom");
+});
+
 t("the tone goes amber for an item queued over 24 h", () => eq([
   Sync.status(S({ stale: true, waiting: 1, last_sync_at: synced })).tone,
   Sync.status(S({ syncing: true })).tone,
@@ -375,6 +463,7 @@ class TestUnderNode(unittest.TestCase):
             self.skipTest("no Node binary found (set BABY_LOG_NODE or install node); "
                           "sync.js was not executed")
         script = SCRIPT % {"core": json.dumps(str(DOCS / "core.js")),
+                           "store": json.dumps(str(DOCS / "store.js")),
                            "sync": json.dumps(str(DOCS / "sync.js"))}
         rc, out, err = _node.run_js(script)
         self.assertEqual(rc, 0, f"node exited {rc}\n{err}\n{out}")

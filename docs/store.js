@@ -36,11 +36,17 @@ const Store = (() => {
   const DAY = 86400000;
   const SEEN_KEEP = 3;
 
-  // §6.1's keys plus the phone's own device id; night_override is §7.4's moon button.
+  // §6.1's keys plus the phone's own device id; night_override is §7.4's moon button. A phone
+  // that stored quick_mode "recent" before the range existed keeps it: only missing keys are
+  // filled from here.
   const SETTINGS = {
-    label: "", units: "ml", step_ml: null, quick_mode: "recent", quick_custom: [],
+    label: "", units: "ml", step_ml: null, quick_mode: "range", quick_custom: [],
+    quick_from: 50, quick_to: 100, quick_step: 10,
     night_from: "21:00", night_to: "07:00", child_id: null, night_override: null,
   };
+  const QUICK_MODES = ["recent", "range", "custom"];
+  // Settings keys that hold ml (a whole number, or null for "automatic" / "not set").
+  const ML_KEYS = ["step_ml", "quick_from", "quick_to", "quick_step"];
   const META = {
     last_sync_at: null, full_sync_at: null, signed_out: false, last_error: null,
     signed_in_as: null, backoff_until: null,
@@ -169,10 +175,22 @@ const Store = (() => {
     }
     return s;
   }
+  /** A shallow merge of the §6.1 keys; unknown keys are ignored. The quick-amount keys are
+      checked here because the feed editor writes them on every keystroke of the range control:
+      a bad value would otherwise sit in localStorage and blank the chips on every screen. */
   function setSettings(patch) {
     const cur = settings();
     for (const k of Object.keys(patch || {})) {
-      if (k in SETTINGS) cur[k] = patch[k];
+      if (!(k in SETTINGS)) continue;
+      const v = patch[k];
+      if (k === "quick_mode" && !QUICK_MODES.includes(v)) throw new Error(`quick_mode must be one of ${QUICK_MODES.join(", ")}`);
+      if (ML_KEYS.includes(k) && v !== null && (typeof v !== "number" || !Number.isFinite(v) || v < 0)) {
+        throw new Error(`${k} must be a number >= 0 or null`);
+      }
+      if (k === "quick_custom" && (!Array.isArray(v) || v.some((n) => typeof n !== "number" || !Number.isFinite(n) || n <= 0))) {
+        throw new Error("quick_custom must be a list of amounts > 0");
+      }
+      cur[k] = v;
     }
     return write(K.settings, cur);
   }

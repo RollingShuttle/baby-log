@@ -220,9 +220,26 @@ class TestConfig(AppCase):
 class TestSettings(AppCase):
     def test_defaults_are_exactly_the_spec_keys(self):
         s = self.c.get("/api/settings").get_json()["settings"]
-        self.assertEqual(s, {"label": "", "units": "ml", "step_ml": None, "quick_mode": "recent",
-                             "quick_custom": [], "night_from": "21:00", "night_to": "07:00",
-                             "child_id": None})
+        self.assertEqual(s, {"label": "", "units": "ml", "step_ml": None, "quick_mode": "range",
+                             "quick_custom": [], "quick_from": 50, "quick_to": 100, "quick_step": 10,
+                             "night_from": "21:00", "night_to": "07:00", "child_id": None})
+
+    def test_quick_range_keys_are_saved_and_shown_in_config(self):
+        # The range moves up the week his feeds do (SPEC 8.1): the editor saves from/to/step the
+        # moment they change, and the front end reads them back from /api/config.
+        r = self.c.post("/api/settings", json={"quick_from": 60, "quick_to": 120, "quick_step": 20})
+        self.assertEqual(r.status_code, 200)
+        s = r.get_json()["settings"]
+        self.assertEqual((s["quick_from"], s["quick_to"], s["quick_step"], s["quick_mode"]),
+                         (60, 120, 20, "range"))
+        cfg = self.c.get("/api/config").get_json()["settings"]
+        self.assertEqual((cfg["quick_from"], cfg["quick_to"], cfg["quick_step"]), (60, 120, 20))
+        for mode in ("recent", "range", "custom"):
+            r = self.c.post("/api/settings", json={"quick_mode": mode})
+            self.assertEqual((r.status_code, r.get_json()["settings"]["quick_mode"]), (200, mode))
+        # Null clears a bound; zero is allowed (a half-typed field must not be refused).
+        s = self.c.post("/api/settings", json={"quick_from": None, "quick_step": 0}).get_json()["settings"]
+        self.assertEqual((s["quick_from"], s["quick_to"], s["quick_step"]), (None, 120, 0))
 
     def test_post_is_a_shallow_merge(self):
         r = self.c.post("/api/settings", json={"units": "oz", "quick_custom": [30, 60]})
@@ -248,7 +265,8 @@ class TestSettings(AppCase):
     def test_values_are_checked(self):
         for bad in ({"units": "cups"}, {"step_ml": -1}, {"step_ml": "5"}, {"quick_mode": "x"},
                     {"quick_custom": [0]}, {"quick_custom": "30"}, {"night_from": "9pm"},
-                    {"night_to": "25:00"}, {"child_id": 7}, {"label": None}):
+                    {"night_to": "25:00"}, {"child_id": 7}, {"label": None},
+                    {"quick_from": -1}, {"quick_to": "100"}, {"quick_step": True}):
             r = self.c.post("/api/settings", json=bad)
             self.assertEqual(r.status_code, 400, bad)
 
@@ -341,7 +359,7 @@ class TestWriteEvent(ChildCase):
         self.assertEqual(ev["child_id"], self.kid["child_id"])
         self.assertEqual((ev["device"], ev["entered_from"], ev["edited_by"]), ("pc", "pc", None))
         self.assertEqual(ev["logged_by"], "Dad")
-        self.assertEqual(ev["data"]["bottles"], [{"kind": "formula", "ml": 22}])
+        self.assertEqual(ev["data"]["bottles"], [{"kind": "formula", "ml": 22, "formula": None}])
         self.assertEqual(ev["data"]["breast"]["approx"], False)   # defaults filled in
         self.assertTrue(ev["event_id"].startswith("E-"))
         self.assertEqual(len(list((self.journal_dir / "events").rglob("*.json"))), 1)

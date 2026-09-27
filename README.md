@@ -73,7 +73,8 @@ and one editor dialog for every type of entry, with the entry's revision history
 
 **Phone** — Now, Day, Trends, Settings, with Sleep · Pump · Weight beside the diaper buttons and
 health / note under More;
-one-tap diapers with `Undo · Edit`; the feed timer visible and controllable from every device;
+one-tap diapers with `Undo · Edit`; bottle feeds in two taps with the formula remembered and an
+adjustable quick-amount range; Catch up for paper slips; a sync pill that shows its progress;
 night mode; editor drafts that survive iOS killing the app; a status pill on every screen.
 
 To deploy the phone app: put the client ID in `docs/config.js`, register the Pages URL as the

@@ -45,8 +45,8 @@ HEAD_FONT = Font(bold=True, size=10)
 
 # The §9 columns, spelled once so the tests and the sheet cannot drift.
 FEED_COLUMNS = ["date", "time", "end", "logged_by", "breast_min", "left_min", "right_min",
-                "bottle_ml", "formula_ml", "breast_milk_ml", "made_ml", "leftover_ml", "note",
-                "event_id"]
+                "bottle_ml", "formula", "formula_ml", "breast_milk_ml", "made_ml", "leftover_ml",
+                "note", "event_id"]
 DIAPER_COLUMNS = ["date", "time", "logged_by", "wet", "dirty", "color", "texture", "size", "rash",
                   "blowout", "note", "event_id"]
 SLEEP_COLUMNS = ["date", "start", "end", "minutes", "where", "logged_by", "note", "event_id"]
@@ -406,6 +406,17 @@ def _common(ev):
     return [local_date(ev.get("time")), fmt_time(ev.get("time"))]
 
 
+def formula_names(ev):
+    """The distinct formula names of a feed's portions, in portion order — the Feeds column and
+    the day sheet both read this, so "Similac + Enfamil" is spelled the same everywhere."""
+    names = []
+    for b in (ev.get("data") or {}).get("bottles") or []:
+        name = b.get("formula")
+        if name and name not in names:
+            names.append(name)
+    return names
+
+
 def _feed_row(ev, now):
     d = ev["data"]
     br = d.get("breast") or {}
@@ -417,7 +428,8 @@ def _feed_row(ev, now):
         _end_cell(ev), ev.get("logged_by"),
         _minutes(breast_seconds(ev, now)) if breast_seconds(ev, now) else None,
         _minutes(br.get("left_s")), _minutes(br.get("right_s")),
-        bottle or None, by_kind.get("formula"), by_kind.get("breast_milk"),
+        bottle or None, " + ".join(formula_names(ev)) or None,
+        by_kind.get("formula"), by_kind.get("breast_milk"),
         d.get("made_ml"), d.get("leftover_ml"), ev.get("note") or None, ev["event_id"]]
 
 
@@ -588,7 +600,9 @@ def _breast_cell(ev, now):
 def _bottle_cell(ev, unit):
     parts = []
     for b in (ev.get("data") or {}).get("bottles") or []:
-        parts.append(f"{fmt_amount(b.get('ml') or 0, unit)} {_label(b['kind'])}")
+        # A named formula replaces the bare kind: "70 ml Similac Pro-Advance", else "70 ml formula".
+        what = b.get("formula") if b.get("kind") == "formula" and b.get("formula") else _label(b["kind"])
+        parts.append(f"{fmt_amount(b.get('ml') or 0, unit)} {what}")
     return " + ".join(parts)
 
 
@@ -603,19 +617,22 @@ def _made_cell(ev, unit):
 
 
 def _feed_table(feeds, unit, now):
-    head = ("<tr><th>Time</th><th>Breast</th><th>Bottle</th><th>Made / Leftover</th>"
-            "<th>By</th><th>Note</th></tr>")
+    # Yisen is bottle-fed since 27 Sep 2026, so an empty Breast column would only waste the
+    # paper's width; it appears when any feed of the day has breast time (the paper days do).
+    breast = any(_breast_cell(ev, now) for ev in feeds)
+    head = ("<tr><th>Time</th>" + ("<th>Breast</th>" if breast else "")
+            + "<th>Bottle</th><th>Made / Leftover</th><th>By</th><th>Note</th></tr>")
     rows = []
     for ev in feeds:
         rows.append(
             f"<tr><td class=\"time\">{_esc(fmt_time(ev['time']))}</td>"
-            f"<td>{_esc(_breast_cell(ev, now))}</td>"
-            f"<td>{_esc(_bottle_cell(ev, unit))}</td>"
+            + (f"<td>{_esc(_breast_cell(ev, now))}</td>" if breast else "")
+            + f"<td>{_esc(_bottle_cell(ev, unit))}</td>"
             f"<td>{_esc(_made_cell(ev, unit))}</td>"
             f"<td>{_esc(ev.get('logged_by'))}</td>"
             f"<td>{_esc(ev.get('note'))}</td></tr>")
     if not rows:
-        rows.append("<tr><td colspan=\"6\" class=\"empty\">No feeds</td></tr>")
+        rows.append("<tr><td colspan=\"5\" class=\"empty\">No feeds</td></tr>")
     return f"<table class=\"feeds\">{head}{''.join(rows)}</table>"
 
 

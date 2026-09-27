@@ -241,7 +241,8 @@ class TestStructure(RollupCase):
         self.build()
         wb = self.load()
         expect = {
-            "Feeds": "date time end logged_by breast_min left_min right_min bottle_ml formula_ml "
+            "Feeds": "date time end logged_by breast_min left_min right_min bottle_ml formula "
+                     "formula_ml "
                      "breast_milk_ml made_ml leftover_ml note event_id",
             "Diapers": "date time logged_by wet dirty color texture size rash blowout note event_id",
             "Sleep": "date start end minutes where logged_by note event_id",
@@ -273,7 +274,7 @@ class TestStructure(RollupCase):
         self.build()
         wb = self.load()
         self.assertEqual(wb["Feeds"].freeze_panes, "A2")
-        self.assertEqual(wb["Feeds"].auto_filter.ref, "A1:N2")
+        self.assertEqual(wb["Feeds"].auto_filter.ref, "A1:O2")
         wb.close()
 
 
@@ -299,9 +300,27 @@ class TestContent(RollupCase):
         self.assertEqual(row["logged_by"], "Dad")
         self.assertEqual((row["breast_min"], row["left_min"], row["right_min"]), (12.0, 5.0, 7.0))
         self.assertEqual((row["bottle_ml"], row["formula_ml"], row["breast_milk_ml"]), (32, 22, 10))
+        self.assertIsNone(row["formula"], "no portion named its formula")
         self.assertEqual((row["made_ml"], row["leftover_ml"]), (60, 28))
         self.assertEqual(row["note"], "slow")
         self.assertEqual(row["event_id"], self.feed["event_id"])
+
+    def test_formula_column_names_the_portions_formulas(self):
+        # Distinct names in portion order joined with " + "; breast milk has none and adds nothing.
+        self.write(time=T1, data={"bottles": [{"kind": "formula", "ml": 40, "formula": "Similac Pro-Advance"},
+                                              {"kind": "formula", "ml": 30, "formula": "Enfamil NeuroPro"},
+                                              {"kind": "formula", "ml": 10, "formula": "Similac Pro-Advance"},
+                                              {"kind": "breast_milk", "ml": 5}]})
+        self.write(time=T2, data={"bottles": [{"kind": "formula", "ml": 70, "formula": "Similac Pro-Advance"}]})
+        self.build()
+        wb = self.load()
+        rows = _rows(wb["Feeds"])
+        wb.close()
+        self.assertEqual(rows[0]["formula"], "Similac Pro-Advance + Enfamil NeuroPro")
+        self.assertEqual(rows[0]["bottle_ml"], 85)
+        self.assertEqual(rows[1]["formula"], "Similac Pro-Advance")
+        self.assertEqual(list(rows[0]), rollup.FEED_COLUMNS)
+        self.assertEqual(rollup.FEED_COLUMNS.index("formula"), rollup.FEED_COLUMNS.index("bottle_ml") + 1)
 
     def test_minutes_are_seconds_over_sixty_to_one_place(self):
         self.write(data={"breast": {"total_s": 100}})
@@ -559,12 +578,41 @@ class TestDaySheet(RollupCase):
         h = self.html()
         self.assertIn("<h2>Feeding</h2>", h)
         self.assertIn("<h2>Diapers</h2>", h)
-        for col in ("Time", "Breast", "Bottle", "Made / Leftover", "By", "Note", "Wet", "Dirty",
+        for col in ("Time", "Bottle", "Made / Leftover", "By", "Note", "Wet", "Dirty",
                     "Colour / texture"):
             self.assertIn(f"<th>{col}</th>", h)
         self.assertIn("No feeds", h)
         self.assertIn("No diapers", h)
         self.assertNotIn("<h2>Other</h2>", h)
+
+    def test_breast_column_only_on_a_day_with_breast_time(self):
+        # A paper day (breast minutes on the rows) keeps the column; a bottle-only day drops it,
+        # and the empty-day sheet has no use for it either.
+        self.assertNotIn("<th>Breast</th>", self.html())
+        self.write(time=T1, data={"bottles": [{"kind": "formula", "ml": 70, "formula": "Similac Pro-Advance"}]})
+        self.write(time=T2, data={"bottles": [{"kind": "formula", "ml": 80}]})
+        bottle_day = self.html()
+        self.assertNotIn("<th>Breast</th>", bottle_day)
+        self.assertIn("<th>Time</th><th>Bottle</th>", bottle_day)
+        self.assertIn("<td class=\"time\">17:50</td><td>70 ml Similac Pro-Advance</td>", bottle_day)
+        paper = self.write(time=T3, logged_by="paper", device="paper", entered_from="paper",
+                           data={"breast": {"total_s": 900, "approx": True},
+                                 "bottles": [{"kind": "formula", "ml": 15}]})
+        paper_day = self.html()
+        self.assertIn("<th>Time</th><th>Breast</th><th>Bottle</th>", paper_day)
+        self.assertIn("<td>~15 min</td><td>15 ml formula</td>", paper_day)
+        self.assertIn("<td class=\"time\">17:50</td><td></td><td>70 ml Similac Pro-Advance</td>", paper_day,
+                      "a bottle-only row keeps an empty Breast cell so the columns line up")
+        self.j.delete_event(paper["event_id"], device="test", edited_by="t")
+        self.assertNotIn("<th>Breast</th>", self.html())
+
+    def test_bottle_cell_names_the_formula(self):
+        self.write(time=T1, data={"bottles": [{"kind": "formula", "ml": 70, "formula": "Similac Pro-Advance"},
+                                              {"kind": "formula", "ml": 10},
+                                              {"kind": "breast_milk", "ml": 5, "formula": None}]})
+        h = self.html()
+        self.assertIn("70 ml Similac Pro-Advance + 10 ml formula + 5 ml breast milk", h)
+        self.assertIn("oz Similac Pro-Advance", self.html(settings={"units": "oz"}))
 
     def test_feed_and_diaper_rows(self):
         self.seed_events()

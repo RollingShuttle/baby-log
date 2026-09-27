@@ -201,6 +201,25 @@ button.linkish.danger { color: var(--danger); }
 .loggroup .logbtn:first-child { border-radius: 10px 0 0 10px; margin-left: 0; }
 .loggroup .logbtn:last-child { border-radius: 0 10px 10px 0; }
 .more-menu { display: inline-flex; gap: 6px; }
+.logbtn.catchup { margin-left: auto; border-style: dashed; }
+
+/* ---------------------------------------------------------------- catch up */
+.catchup { border-left: 3px solid var(--feed); }
+.cu-strip {
+  display: flex; flex-wrap: wrap; gap: 12px 22px; align-items: flex-end;
+  padding: 12px 14px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line);
+}
+.cu-strip .field.narrow input { width: 110px; font-size: 17px; font-weight: 600; }
+.cu-group { display: flex; flex-direction: column; gap: 6px; }
+.cu-group-h { color: var(--muted); font-size: 12px; }
+.cu-feed .chips { gap: 8px; }
+.cu-feed .chip { font-size: 15px; padding: 9px 16px; }
+.cu-feed .chip.feed { border-color: #F0D3B8; background: var(--feed-soft); color: var(--feed); font-weight: 600; }
+.cu-feed .chip.feed:hover { background: var(--feed); color: #fff; }
+.cu-other { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; }
+.cu-other input { width: 84px; }
+.cu-formula { margin-top: 8px; }
+#cu-list { margin-top: 6px; }
 
 /* ---------------------------------------------------------------- day sheet */
 .sheet-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -335,21 +354,20 @@ button.linkish.danger { color: var(--danger); }
 .history summary { cursor: pointer; }
 .history li { margin: 2px 0; }
 
-/* the feed editor */
-.sides { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.side {
-  padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2);
-  text-align: left; display: flex; flex-direction: column; gap: 2px;
-}
-.side:hover { border-color: var(--feed); }
-.side.on { background: var(--feed-soft); border-color: var(--feed); }
-.side-name { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.side.on .side-name { color: var(--feed); }
-.side-time { font-size: 24px; font-weight: 600; }
-.side-sub { font-size: 12px; color: var(--muted); }
-.side-mins { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
-.side-mins input { width: 100%; }
+/* the feed editor: bottle portions, each with its formula chips underneath */
+.breast-line { margin-bottom: 8px; padding: 6px 10px; border-radius: 8px; background: var(--surface-2); }
+.portion-box { padding: 6px 0 8px; border-bottom: 1px dashed var(--line); }
+.portion-box:last-child { border-bottom: 0; }
 .portion { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+.formula-chips { margin: 2px 0 0 4px; }
+.formula-other { width: 200px; font-size: 14px; padding: 5px 10px; }
+.quick-row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-top: 8px; }
+.range-ctl {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px;
+  border: 1px dashed var(--line); border-radius: 999px;
+}
+.range-field { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
+.range-field input { width: 62px; padding: 3px 6px; font-size: 13px; text-align: center; }
 .portion .amt { display: inline-flex; align-items: center; }
 .portion .amt input { width: 84px; text-align: center; border-radius: 0; }
 .portion .amt button { width: 34px; height: 36px; border: 1px solid var(--line); background: var(--surface-2); font-size: 16px; }

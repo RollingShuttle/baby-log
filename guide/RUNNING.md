@@ -62,12 +62,12 @@ label. The **Settings** tab carries a small number while anything is under Needs
 
 | Screen | What it is for |
 |---|---|
-| **Today** | The entry screen. At the top, the *Now* panel: **Last feed** and **Last diaper** tiles with "45 m ago", any feed or sleep that is running with a live clock and **Switch to right** / **Stop**, the usual gap ("Usually every 2 h 40 m · next around 14:20"), and today's totals against the pediatrician's targets when you have set them. Below it the day sheet in the hospital's layout — **Feeding** on the left, **Diapers** on the right, **Other** underneath for sleeps, pumps, weights, health and notes — with **‹ prev** / **next ›** to walk through the days. Then the log buttons: **Feed**, **Wet** / **Dirty** / **Both**, **Sleep**, **Pump**, **Weight**, **More ▾** (Health, Note). |
+| **Today** | The entry screen. At the top, the *Now* panel: **Last feed** and **Last diaper** tiles with "45 m ago", a sleep that is running with a live clock and **Stop**, the usual gap ("Usually every 2 h 40 m · next around 14:20"), and today's totals against the pediatrician's targets when you have set them. Below it the day sheet in the hospital's layout — **Feeding** on the left, **Diapers** on the right, **Other** underneath for sleeps, pumps, weights, health and notes — with **‹ prev** / **next ›** to walk through the days. Then the log buttons: **Feed**, **Wet** / **Dirty** / **Both**, **Sleep**, **Pump**, **Weight**, **More ▾** (Health, Note), and **Catch up** for a paper slip. |
 | **Trends** | **Last 14 days**: one row per day with feeds, bottle, breast minutes, wet, dirty, sleeps, pumps; a number under its target is marked. Clicking a row opens that day on Today. Below it the **24-hour rhythm** chart for the last 7 days: feeds as bars by start time (longer bar, longer breast feed), wet and dirty as dots, the night hours shaded. |
 | **Growth** | Every weight, length and head measurement, with the change from birth weight and since the last one. **Add weight** at the top right. Birth weight comes from Settings → Child. |
 | **Health** | Medicines and temperatures. Each medicine shows *last given 5 h ago*, which is the question you actually have at 2 a.m. Vitamin D is a medicine named `Vitamin D`. |
 | **Reports** | **Print day sheet** for a chosen day, **Save day sheet** (writes it into Yisen File), **Print daily totals** for a date range, and **Rebuild Baby Log.xlsx**. It also shows where the journal and the output folder are. |
-| **Settings** | This PC's label, units (ml or oz), the −/+ step, quick amounts, night hours; Yisen's record (name, born, time of birth, birth weight, and the targets the pediatrician gave you); **Needs check**; **Deleted**. |
+| **Settings** | This PC's label, units (ml or oz), the −/+ step, the quick amounts (a range, the last ten feeds, or your own list), night hours; Yisen's record (name, born, time of birth, birth weight, and the targets the pediatrician gave you); **Needs check**; **Deleted**. |
 
 ### Logging on the PC
 
@@ -77,27 +77,28 @@ label. The **Settings** tab carries a small number while anything is under Needs
   texture, rash and so on. Click the same button again inside two minutes and instead of a
   second diaper the first one opens with the line *Same as the 03:12 one? Save adds to it ·
   Log another adds a new one* — because it usually is the same diaper.
-- **Feed** opens the feed editor. Tap **left** or **right** to start that side's clock; tap the
-  other side to switch; **Stop now** or **Stop at…** to finish (Stop at… is prefilled with the
-  start plus the usual feed length). The clock keeps running if you close the window, and it
-  shows on both phones too — a feed started on Mom's phone can be stopped on the PC. Or skip
-  the clock and type what happened: minutes per side, or **~ total min** when you did not
-  watch, the bottle as **Formula** / **Breast milk** with the amount, **Same as last · 60 ml**
-  and the quick amounts beside it, **Another portion** for a second bottle, and **Made** /
-  **leftover** — fill in those two and the bottle amount fills itself in. While a feed is
-  running the **Feed** button reads **Feeding…** and opens that feed rather than a new one;
-  **Start another feed** is inside it, for the rare time you mean it.
+- **Feed** opens the feed editor: a bottle, nothing else (breast feeding was taken out on
+  27 Sep 2026; the paper rows that had breast minutes still show them as a grey line). Tap an
+  amount chip or type one, pick the formula, Save. The chips are **Same as last · 70 ml** and then
+  the range — **50 · 60 · 70 · 80 · 90 · 100** to begin with — and the small **range** control
+  right beside them (from / to / step) moves the whole row up the week his feeds grow; it is saved
+  the moment you change it, on that device. **Another portion** adds a second bottle; **Made** /
+  **leftover** — fill in those two and the amount fills itself in. If an amount is more than
+  twice his biggest recent feed, Save asks once — **Save anyway** — in case a zero slipped in.
+- **The formula is remembered.** Under each portion are chips for the formulas you have used,
+  newest first (**Similac** and **Enfamil** until you have logged one), with the last one already
+  chosen — so a feed is two taps, and switching to plan B is one more. **Other…** takes a new
+  name, which becomes the first chip from then on. The name goes into the entry and into the
+  `formula` column of `Baby Log.xlsx`.
 - **Sleep** starts a sleep clock at once (with the same Undo / Edit notice); the button then
-  reads **Sleeping…** and opens it so you can **Stop now**.
-- A clock nobody stopped is *not* stopped for you. After an hour (feed) or six hours (sleep) the
-  card says *forgot to stop it?* with **Set end time**, and the sheet keeps showing it as
-  running until you do.
+  reads **Sleeping…** and opens it so you can **Stop now**. A sleep nobody stopped is *not*
+  stopped for you: after six hours the card says *forgot to stop it?* with **Set end time**.
 - **Weight**, **Pump**, **More ▾ → Health / Note** open the plain editor for that type.
-- The quick amounts and the −/+ step follow him: they are worked out from the last ten bottle
-  feeds, so at 20 ml the step is 1 ml and the chips say 10 15 20 25, and months later the step
-  is 10 and the chips say 160 180 200 220. Settings lets you fix either instead. If an amount is
-  more than twice his biggest recent feed, Save asks once — **Save anyway** — in case a zero
-  slipped in.
+- **Catch up** (beside the log buttons) is for the paper slips written when no phone was to hand.
+  Pick the date, then work down the slip: type a time, tap an amount (a feed) or **Wet · Dirty ·
+  Both** (a diaper) — each tap saves that entry straight away and lists it underneath, and only
+  the time clears, ready for the next line. The date stays until you change it. Every entry
+  saved this way is an ordinary entry: tap it in the list to correct it.
 
 ---
 
@@ -113,11 +114,15 @@ The tabs are **Now · Day · Trends · Settings**. The log buttons on Now are **
   diaper buttons and **Feed** are right there.
 - **Diapers are one tap**, exactly as on the PC: a six-second `Wet · 03:12 · Undo · Edit` toast
   above the tab bar, and the same two-minute "same diaper?" check.
-- **The feed timer runs on both phones and the PC.** Start the left side on Dad's phone, hand
-  over, and Mom's phone shows the same feed running (it checks OneDrive every 45 seconds while
-  it is open, and at once when opened). Switch or stop it from whichever device is nearest. If
-  the other phone changed it in between, the screen says *Updated from Mom's phone* and shows the
-  new state before it lets you act — one of you can never silently undo the other.
+- **Feeds are the same two taps as on the PC**: an amount chip, the formula chip (the last one is
+  already chosen), Save; the **range** control beside the chips moves the amounts up as he grows.
+  **Catch up** is under **More** for entering a paper slip line by line.
+- **Sync shows its work.** Tap the pill at the top to sync right now: it reads *Syncing… sending
+  2 of 5*, then *Syncing… checking 4 days*, *Syncing… reading 12 new*, and for a few seconds
+  afterwards *Synced · 5 sent · 12 new* (or *Synced · nothing new*), so you can see it was pressed
+  and when it is done. The phone also syncs by itself every 45 seconds while it is open. If the
+  other phone changed an entry you have open, the screen says *Updated from Mom's phone* and shows
+  the new state before it lets you act — one of you can never silently undo the other.
 - **Night mode** turns on by itself between 21:00 and 07:00 (Settings changes the hours) and
   the moon button forces it on or off until the next boundary. It is dim red on black, and Delete
   is a plain outlined word, never an icon, so a half-asleep thumb cannot hit it by accident.

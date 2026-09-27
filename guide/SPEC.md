@@ -725,8 +725,8 @@ the last 30 backups in `data/backups/`; skips an unreadable journal file with a 
 than aborting.
 
 `Baby Log.xlsx` sheets, header row 1, one row per live event, oldest first: `Feeds`
-(`date time end logged_by breast_min left_min right_min bottle_ml formula_ml breast_milk_ml made_ml
-leftover_ml note event_id`), `Diapers` (`date time logged_by wet dirty color texture size rash
+(`date time end logged_by breast_min left_min right_min bottle_ml formula formula_ml breast_milk_ml made_ml
+leftover_ml note event_id` — `formula` is the portions' distinct formula names joined with ` + `), `Diapers` (`date time logged_by wet dirty color texture size rash
 blowout note event_id`), `Sleep` (`date start end minutes where logged_by note event_id`),
 `Pumping`, `Growth`, `Health`, `Notes`, and `Daily` (`date feeds bottle_ml breast_min wet dirty
 sleeps sleep_min pumps pump_ml`) — one row for every local date from the first event to today,
@@ -735,7 +735,8 @@ zeros when empty; `*_min` columns are `round(seconds / 60, 1)`.
 `rollup.day_sheet_html(child, events, date, settings) -> str` is the **one renderer**:
 `/print/day/<date>` returns it and `/api/daysheet/<date>` writes it to `Day sheets/<date>.html`.
 Content: heading `<name> — Feeding & Diapering — <Core.fmtDay> (day <n>)`; left table `Time ·
-Breast (min, L/R, ~ when approx) · Bottle (unit, kind) · Made / Leftover · By · Note`; right table
+Breast (min, L/R, ~ when approx; the column is omitted on a day with no breast time) · Bottle
+(unit, then the formula name or the kind) · Made / Leftover · By · Note`; right table
 `Time · Wet · Dirty · Colour / texture · By · Note`; an Other table when there are other types; a
 footer line from the totals (`8 feeds · 135 ml bottle · 57 min breast · 6 wet · 4 dirty`) with
 targets alongside when set; `<style>` is the inlined `static/print.css` with
