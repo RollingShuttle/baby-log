@@ -136,6 +136,17 @@ sheet imported for real (37 entries + Yisen; a second run skips 37), `Baby Log.e
 launched once, Desktop and Start-menu shortcuts made, and `Baby Log.xlsx` written into Yisen File
 by the startup rollup.
 
+**v3, 27 Sep 2026 — on branch `v3-bottle-only-feeds`, awaiting the owner's PR review/merge:**
+feeds are bottle only (breast fields kept for the paper rows, shown read-only; no side timers
+anywhere), every bottle portion carries `formula` (the fixture leads; both validators and
+`rollup` follow — Feeds sheet column `formula`), quick amounts default to a **range**
+(`quick_mode` range/recent/custom with `quick_from`/`quick_to`/`quick_step`, the control sits
+beside the chips and saves on change), the formula chips come from the most recent portions
+with the last preselected (`Core.formulaChoices`, starters Similac/Enfamil), **Catch up** logs a
+paper slip one tap per entry on both PC and phone, and the phone's pill is a sync button that
+reports its phases (`sync.js` emits `progress`). Pages deploys from `main`, so the phones see it
+only after the merge; `push.bat` assumes `main` — after merging, `git checkout main` here first.
+
 **Deployed 26 Sep 2026:** the repository is https://github.com/RollingShuttle/baby-log (public,
 branch `main`), the Entra registration `Baby Log` exists and its client ID is in `docs/config.js`
 (`test_sync.py` and `test_phone.py` now check it is a GUID), with

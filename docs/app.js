@@ -42,8 +42,9 @@ const app = {
   editor: null,       // see openEditor
   lastDiaper: null,   // {event_id, ms}: the last one-tap diaper from this phone (the 2-minute rule)
   night: false,
-  more: false,        // the More row (Health, Note) unfolded on Now
+  more: false,        // the More row (Health, Note, Catch up) unfolded on Now
   storage: true,      // false when IndexedDB would not open: nothing can be saved
+  catchup: null,      // see openCatchUp: {date, time, rows, msg, added, writing}
 };
 
 const screens = {
@@ -53,6 +54,7 @@ const screens = {
   trends: document.getElementById("screen-trends"),
   settings: document.getElementById("screen-settings"),
   editor: document.getElementById("screen-editor"),
+  catchup: document.getElementById("screen-catchup"),
 };
 
 // ---------------------------------------------------------------- small helpers
@@ -122,18 +124,34 @@ function stepMl() {
   const s = settings().step_ml;
   return s ? Number(s) : Core.stepMl(recentMls(), unit());
 }
+// The quick-amount chips by quick_mode (§8.1): the range (the default), the recent feeds, or
+// the typed list. A range with a bound missing falls back to the recent feeds rather than to
+// no chips at all.
 function quickAmounts() {
   const s = settings();
+  if (s.quick_mode === "range") {
+    const r = Core.quickRange(s.quick_from, s.quick_to, s.quick_step);
+    if (r.length) return r;
+  }
   return Core.quickAmounts(recentMls(), unit(), s.quick_mode === "custom" ? s.quick_custom : null);
 }
-// The median length of the last six finished feeds, for "Stop at…"; 20 min before there are any.
-function usualFeedMs(evs = events()) {
-  const d = evs.filter((ev) => ev.type === "feed" && ev.end).slice(-6)
-    .map((ev) => ms(ev.end) - ms(ev.time)).filter((x) => x > 0).sort((a, b) => a - b);
-  if (!d.length) return 20 * MIN;
-  const mid = Math.floor(d.length / 2);
-  return d.length % 2 ? d[mid] : (d[mid - 1] + d[mid]) / 2;
+// Formula names of the most recent portions, newest first — what the formula chips are built
+// from (§8.1). Nothing is stored for this, so both phones and the PC agree. Two feeds logged
+// in the same minute share a `time` to the second, so ties go to the later write, never to
+// the id (which is random in its last four characters).
+function recentFormulas(evs = events()) {
+  const feeds = evs.filter((ev) => ev.type === "feed").sort((a, b) =>
+    (ms(b.time) - ms(a.time)) || (String(b.created_at || "") < String(a.created_at || "") ? -1 : String(b.created_at || "") > String(a.created_at || "") ? 1 : 0));
+  const out = [];
+  for (const ev of feeds) {
+    for (const b of (ev.data && ev.data.bottles) || []) if (b.kind === "formula" && b.formula) out.push(b.formula);
+  }
+  return out;
 }
+const formulaChoices = () => Core.formulaChoices(recentFormulas());
+const lastFormula = () => formulaChoices()[0];
+// A fresh formula portion: the last-used name preselected, so plan A is no taps and plan B one.
+const newPortion = (mlv, kind = "formula") => ({ kind, ml: mlv, formula: kind === "formula" ? lastFormula() : null });
 // Everyone who has logged or edited anything, plus this phone — the Who chips.
 function knownLabels(evs = events()) {
   const seen = new Set();
@@ -193,6 +211,7 @@ function renderScreen(name) {
     case "trends": renderTrends(); break;
     case "settings": renderSettings(); break;
     case "editor": renderEditor(); break;
+    case "catchup": renderCatchUp(); break;
     default: break;
   }
 }
@@ -202,7 +221,7 @@ function renderTab() {
   updateBadge();
 }
 
-const SCREEN_TITLE = { day: "Day", trends: "Trends", settings: "Settings" };
+const SCREEN_TITLE = { day: "Day", trends: "Trends", settings: "Settings", catchup: "Catch up" };
 function renderHeader() {
   const name = currentScreen();
   const c = Store.child();
@@ -229,6 +248,8 @@ function renderPill() {
   pill.textContent = st.text;
   pill.className = `pill ${st.tone}`;
 }
+/** The pill is the sync button (§7.3): signed in, a tap runs a sync at once and the pill
+    reads its phases; signed out, it signs in; stuck or failed, it also opens the details. */
 async function pillTap() {
   if (!Graph.isSignedIn() && Graph.configured()) {
     // Never a redirect while an editor is open: it would tear the typed entry down (§7.1).
@@ -237,7 +258,11 @@ async function pillTap() {
     return;
   }
   if (app.editor) return;
-  setTab("settings");
+  if (!Graph.isSignedIn() || Sync.status().tone === "error") setTab("settings");
+  if (Graph.isSignedIn()) {
+    Sync.run();
+    renderPill();
+  }
 }
 
 function updateBadge() {
@@ -429,12 +454,12 @@ function runningCard(ev, now) {
       el("button", { class: "btn ghost", type: "button", onclick: () => openEditor({ event: ev, focusEnd: true }) }, "Set end time")) : null);
 }
 
-// The log buttons: disabled until a child exists (§3.3). Feed is the big one.
+// The log buttons: disabled until a child exists (§3.3). Feed is the big one, and always a new
+// bottle feed (§6.2) — a legacy running feed keeps its card above.
 function logBar(evs, enabled) {
   const off = !enabled;
   return el("div", { class: "logbar" },
-    el("button", { class: "btn feed big wide", type: "button", disabled: off, onclick: feedButton },
-      running(evs, "feed").length ? "Feeding…" : "Feed"),
+    el("button", { class: "btn feed big wide", type: "button", disabled: off, onclick: feedButton }, "Feed"),
     el("div", { class: "log-row" },
       el("button", { class: "btn wet", type: "button", disabled: off, onclick: () => quickDiaper(true, false) }, "Wet"),
       el("button", { class: "btn dirty", type: "button", disabled: off, onclick: () => quickDiaper(false, true) }, "Dirty"),
@@ -446,7 +471,8 @@ function logBar(evs, enabled) {
       el("button", { class: `btn${app.more ? " ghost" : ""}`, type: "button", disabled: off, onclick: () => { app.more = !app.more; renderNow(); } }, app.more ? "Less" : "More")),
     app.more ? el("div", { class: "log-row" },
       el("button", { class: "btn", type: "button", disabled: off, onclick: () => { app.more = false; openEditor({ type: "health" }); } }, "Health"),
-      el("button", { class: "btn", type: "button", disabled: off, onclick: () => { app.more = false; openEditor({ type: "note" }); } }, "Note")) : null);
+      el("button", { class: "btn", type: "button", disabled: off, onclick: () => { app.more = false; openEditor({ type: "note" }); } }, "Note"),
+      el("button", { class: "btn", type: "button", disabled: off, onclick: () => { app.more = false; openCatchUp(); } }, "Catch up")) : null);
 }
 
 // One row renderer per §3.2 type: what the second line says. Every row carries data-event-id
@@ -588,10 +614,9 @@ async function markChecked(ev) {
 }
 
 // ---------------------------------------------------------------- quick actions
+// Always a new bottle feed (§6.2): a bottle has no timer, so there is nothing to resume.
 function feedButton() {
-  const run = running(events(), "feed");
-  if (run.length) openEditor({ event: run[0] });
-  else openEditor({ type: "feed" });
+  openEditor({ type: "feed" });
 }
 
 async function sleepButton() {
@@ -748,6 +773,90 @@ async function restoreEntry(id) {
   } catch (e) { showToast(errText(e)); }
 }
 
+// ---------------------------------------------------------------- Catch up (§6.2, §7.4)
+/* For the paper slips written when no phone was to hand. One screen: a date (default today),
+   then a strip that logs one entry per tap and stays put for the next — a time, Feed with the
+   quick-amount chips (formula = the last used) or Wet · Dirty · Both. Every tap is already a
+   journal file; nothing waits for a "save all". Only the time clears; the date stays. */
+function openCatchUp() {
+  if (!app.catchup) app.catchup = { date: todayStr(), time: "", rows: [], msg: null, added: null, writing: false };
+  app.catchup.msg = null;
+  renderCatchUp();
+  show("catchup", { push: true });
+  focusCatchUpTime();
+}
+function focusCatchUpTime() {
+  const t = document.getElementById("cu-time");
+  if (t) t.focus();
+}
+function renderCatchUp() {
+  const host = screens.catchup;
+  const cu = app.catchup;
+  if (!cu) return;
+  const c = Store.child();
+  const evs = events();
+  const onDay = Core.onDay(evs, cu.date);
+  const already = { feed: onDay.filter((ev) => ev.type === "feed").length, diaper: onDay.filter((ev) => ev.type === "diaper").length };
+  const rows = cu.rows.map((id) => Store.event(id)).filter((ev) => ev && !ev.deleted);
+  const off = !c;
+  fill(host,
+    el("div", { class: "card feed cu-strip" },
+      el("div", { class: "h2" }, "Catch up", el("span", { class: "sub" }, "one tap per paper entry")),
+      el("div", { class: "cu-when" },
+        el("label", { class: "field" }, el("span", {}, "Date"),
+          el("input", { type: "date", id: "cu-date", value: cu.date, "aria-label": "Date",
+            onchange: (x) => { if (/^\d{4}-\d{2}-\d{2}$/.test(x.target.value)) { cu.date = x.target.value; cu.msg = null; renderCatchUp(); } } })),
+        el("label", { class: "field" }, el("span", {}, "Time"),
+          el("input", { type: "time", id: "cu-time", value: cu.time, "aria-label": "Time",
+            oninput: (x) => { cu.time = x.target.value; } }))),
+      el("div", { class: "muted small" }, `${Core.fmtDay(cu.date)} already has ${already.feed} ${already.feed === 1 ? "feed" : "feeds"} and ${already.diaper} ${already.diaper === 1 ? "diaper" : "diapers"}`),
+      el("div", { class: "h3" }, `Feed · ${lastFormula()}`),
+      el("div", { class: "chips scroll" },
+        ...quickAmounts().map((mlv) => el("button", { class: "chip feed", type: "button", disabled: off, onclick: () => catchUpFeed(mlv) }, amount(mlv)))),
+      el("div", { class: "h3" }, "Diaper"),
+      el("div", { class: "log-row" },
+        el("button", { class: "btn wet", type: "button", disabled: off, onclick: () => catchUpDiaper(true, false) }, "Wet"),
+        el("button", { class: "btn dirty", type: "button", disabled: off, onclick: () => catchUpDiaper(false, true) }, "Dirty"),
+        el("button", { class: "btn diaper", type: "button", disabled: off, onclick: () => catchUpDiaper(true, true) }, "Both")),
+      cu.msg ? el("div", { class: "ed-msg err", id: "cu-msg" }, cu.msg) : null,
+      el("div", { class: "cu-added", id: "cu-added" }, cu.added || "")),
+    el("div", { class: "card" },
+      el("div", { class: "h2" }, "Added", el("span", { class: "sub" }, "tap a row to change it")),
+      rows.length ? el("div", { class: "rows" }, ...rows.map(swipeRow)) : el("div", { class: "empty" }, "Nothing added yet.")),
+    el("div", { class: "actions" }, el("button", { class: "btn primary wide", type: "button", onclick: back }, "Done")));
+}
+/** One entry at the strip's date and time. A missing time is refused in page; the same
+    born..now+10 min rule as the editor. Returns the record, or null when nothing was written. */
+async function catchUpWrite(type, data) {
+  const cu = app.catchup;
+  if (!cu || cu.writing) return null;
+  const m = /^(\d{2}):(\d{2})/.exec(cu.time || "");
+  const say = (text) => { cu.msg = text; renderCatchUp(); focusCatchUpTime(); };
+  if (!m) { say("Type the time first — the date stays, only the time clears"); return null; }
+  const [y, mo, dd] = cu.date.split("-").map(Number);
+  const time = Core.isoLocal(new Date(y, mo - 1, dd, Number(m[1]), Number(m[2]), 0));
+  const end = type === "feed" ? time : null;      // a bottle typed in after the fact is over (§3.2)
+  const err = validateDraft({ type, time, end, data });
+  if (err) { say(err); return null; }
+  cu.writing = true;
+  try {
+    const rec = await Store.newEvent({ type, time, end, data, note: "" });
+    Sync.afterWrite();
+    cu.rows.unshift(rec.event_id);
+    cu.time = "";
+    cu.msg = null;
+    cu.added = `Added ${Core.describe(rec, unit())} · ${Core.fmtTime(time)}`;
+    renderCatchUp();
+    focusCatchUpTime();
+    const mine = cu.added;
+    setTimeout(() => { if (app.catchup && app.catchup.added === mine) { app.catchup.added = null; const n = document.getElementById("cu-added"); if (n) n.textContent = ""; } }, 4000);
+    return rec;
+  } catch (e) { say(errText(e)); return null; }
+  finally { cu.writing = false; }
+}
+const catchUpFeed = (mlv) => catchUpWrite("feed", { bottles: [newPortion(mlv)] });
+const catchUpDiaper = (wet, dirty) => catchUpWrite("diaper", { wet, dirty });
+
 // ---------------------------------------------------------------- Day
 function renderDay() {
   const host = screens.day;
@@ -777,7 +886,7 @@ function renderDay() {
       if (br.left_s != null || br.right_s != null) breast += ` (L ${Math.round((br.left_s || 0) / 60)} / R ${Math.round((br.right_s || 0) / 60)})`;
       parts.push(breast);
     }
-    for (const b of ev.data.bottles || []) parts.push(`${amount(b.ml)} ${b.kind === "formula" ? "formula" : "breast milk"}`);
+    for (const b of ev.data.bottles || []) parts.push(`${amount(b.ml)} ${b.kind === "formula" ? (b.formula || "formula") : "breast milk"}`);
     if (ev.data.made_ml != null || ev.data.leftover_ml != null) {
       parts.push(`made ${ev.data.made_ml != null ? amount(ev.data.made_ml) : "—"} / left ${ev.data.leftover_ml != null ? amount(ev.data.leftover_ml) : "—"}`);
     }
@@ -883,26 +992,39 @@ function settingsForm() {
   const s = settings();
   const f = {};
   const field = (key, label, input) => { f[key] = input; return el("label", { class: "field" }, el("span", {}, label), input); };
+  const mlOrNull = (inp) => (inp.value === "" || !Number.isFinite(Number(inp.value)) ? null : Math.max(0, Math.round(Number(inp.value))));
   const save = () => {
     const custom = f.quick_custom.value.split(/[,\s]+/).filter(Boolean).map(Number).filter((n) => Number.isFinite(n) && n > 0);
     const patch = {
       label: f.label.value.trim() || s.label, units: f.units.value,
-      step_ml: f.step_ml.value === "" ? null : Number(f.step_ml.value),
+      step_ml: mlOrNull(f.step_ml),
       quick_mode: f.quick_mode.value, quick_custom: custom,
+      quick_from: mlOrNull(f.quick_from), quick_to: mlOrNull(f.quick_to), quick_step: mlOrNull(f.quick_step),
       night_from: f.night_from.value || "21:00", night_to: f.night_to.value || "07:00",
     };
-    if (!Store.setSettings(patch)) { showToast("Could not save settings — storage is blocked"); return; }
+    let ok = false;
+    try { ok = Store.setSettings(patch); } catch (e) { showToast(errText(e)); return; }
+    if (!ok) { showToast("Could not save settings — storage is blocked"); return; }
     applyNight();
     renderHeader();
     showToast("Settings saved");
   };
+  const mlField = (key, label, value) => field(key, label, el("input", { type: "number", inputmode: "numeric", min: "0", step: "1", value: value == null ? "" : String(value) }));
+  const mode = s.quick_mode === "custom" ? "custom" : s.quick_mode === "recent" ? "recent" : "range";
   return el("div", { class: "card", id: "settings-form" },
     el("div", { class: "h2" }, "This phone"),
     field("label", "Who is holding this phone", el("input", { type: "text", value: s.label || "", placeholder: "Dad, Mom…", autocapitalize: "words" })),
     el("div", { class: "two" },
       field("units", "Units", el("select", {}, el("option", { value: "ml", selected: s.units !== "oz" }, "ml"), el("option", { value: "oz", selected: s.units === "oz" }, "oz"))),
-      field("step_ml", "−/+ step (ml, blank = auto)", el("input", { type: "number", inputmode: "numeric", min: "1", step: "1", value: s.step_ml == null ? "" : String(s.step_ml) }))),
-    field("quick_mode", "Quick amounts", el("select", {}, el("option", { value: "recent", selected: s.quick_mode !== "custom" }, "from recent feeds"), el("option", { value: "custom", selected: s.quick_mode === "custom" }, "custom list"))),
+      mlField("step_ml", "−/+ step (ml, blank = auto)", s.step_ml)),
+    field("quick_mode", "Quick amounts", el("select", {},
+      el("option", { value: "range", selected: mode === "range" }, "a range"),
+      el("option", { value: "recent", selected: mode === "recent" }, "from recent feeds"),
+      el("option", { value: "custom", selected: mode === "custom" }, "custom list"))),
+    el("div", { class: "three" },
+      mlField("quick_from", "Range from (ml)", s.quick_from),
+      mlField("quick_to", "to (ml)", s.quick_to),
+      mlField("quick_step", "step (ml)", s.quick_step)),
     field("quick_custom", "Custom amounts (ml, comma separated)", el("input", { type: "text", inputmode: "numeric", value: (s.quick_custom || []).join(", "), placeholder: "30, 60, 90, 120" })),
     el("div", { class: "two" },
       field("night_from", "Night from", el("input", { type: "time", value: s.night_from || "21:00" })),
@@ -983,7 +1105,6 @@ function renderSyncCard() {
     el("div", { class: "state" }, el("span", { class: `dot ${st.online ? "on" : "off"}` }), el("span", {}, st.online ? "Online" : "Offline")),
     el("div", { class: "state" }, el("span", { class: `dot ${signedIn ? "on" : ""}` }),
       el("span", {}, signedIn ? `Signed in as ${who || "…"}` : (who ? `Signed out · was ${who}` : "Not signed in"))),
-    el("div", { class: "muted small" }, Sync.statusText()),
     el("div", { class: "muted small" }, m.last_sync_at ? `Last sync ${clockOf(m.last_sync_at)}${m.full_sync_at ? ` · full catch-up ${Core.fmtDay(Core.isoLocal(new Date(Date.parse(m.full_sync_at))))}` : ""}` : "Never synced on this phone"),
     m.last_error && m.last_error.message ? el("div", { class: "muted small" }, `Last error ${clockOf(m.last_error.at)} · ${m.last_error.code || ""} ${m.last_error.message}`) : null,
     usage,
@@ -993,6 +1114,9 @@ function renderSyncCard() {
       // day folder after that folder was retired.
       signedIn ? el("button", { class: "btn", type: "button", onclick: () => act("sync", () => Sync.fullSync()) }, "Sync now") : null,
       signedIn ? el("button", { class: "btn ghost", type: "button", onclick: () => act("sign out", () => Graph.signOut()) }, "Sign out") : null),
+    // The same line as the pill, under Sync now: onSync updates it in place on every progress
+    // event, so the phases and the outcome show here too (§7.3).
+    el("div", { class: "muted small", id: "sync-line" }, Sync.statusText()),
     signedIn ? el("div", { class: "muted small" }, "Sync now checks every day folder of the last 120 days.") : null,
     conflicts.length ? el("div", {},
       el("div", { class: "h3" }, `Changed on two devices (${conflicts.length})`),
@@ -1066,8 +1190,8 @@ function openEditor(opts) {
   }
   if (app.editor) { stopDraft(); Store.clearDraft(); }   // replacing one editor with another
   app.editor = { draft, event: ev, msg: null, msgKind: "err", confirming: false, unusualOk: false,
-    sameAs: opts.sameAs || null, stopAt: false, focusEnd: !!opts.focusEnd, portionsTyped: false,
-    whoOther: false, restored: !!opts.fields, notice: null, syncing: false, saving: false };
+    sameAs: opts.sameAs || null, focusEnd: !!opts.focusEnd, portionsTyped: false,
+    whoOther: false, formulaOther: [], restored: !!opts.fields, notice: null, syncing: false, saving: false };
   const already = currentScreen() === "editor";
   renderEditor();
   if (already) renderHeader(); else show("editor", { push: true });
@@ -1161,8 +1285,6 @@ function renderEditor() {
   if (!e) return;
   const d = e.draft;
   const isNew = !e.event;
-  const isRunning = TIMED.includes(d.type) && d.end === null && !isNew && d.type !== "pump"
-    && !!(d.data && d.data.timer);
   const kids = [];
 
   if (e.restored) kids.push(notice("info", "Draft restored"));
@@ -1196,7 +1318,9 @@ function renderEditor() {
         el("button", { class: "chip", type: "button", onclick: () => shift(30) }, "−30 min"),
         whenLabel)),
   ];
-  if (TIMED.includes(d.type)) {
+  // End is hidden for feeds: a bottle has no useful end (§6.2). The record keeps whatever end
+  // it has; a new one gets end = start on Save.
+  if (TIMED.includes(d.type) && d.type !== "feed") {
     const endInput = el("input", { type: "datetime-local", value: dtValue(d.end), step: "60", id: "ed-end", "aria-label": "End",
       onchange: (x) => { d.end = x.target.value ? dtParse(x.target.value) : null; } });
     common.push(el("div", { class: "ed-row" },
@@ -1247,7 +1371,6 @@ function renderEditor() {
 
   kids.push(el("div", { class: "ed-foot" },
     el("button", { class: `btn wide${d.type === "feed" ? " feed" : " primary"}`, id: "ed-save", type: "button", disabled: e.saving, onclick: saveEditor }, isNew ? "Save" : "Save changes"),
-    isRunning && d.type === "feed" ? el("button", { class: "btn ghost wide", type: "button", onclick: () => openEditor({ type: "feed" }) }, "Start another feed") : null,
     el("button", { class: "btn ghost wide", type: "button", onclick: closeEditor }, "Cancel"),
     !isNew ? el("button", { class: "btn danger wide", id: "ed-delete", type: "button", disabled: e.saving, onclick: () => { e.confirming = true; renderEditor(); } }, "Delete") : null));
 
@@ -1293,113 +1416,94 @@ function amountControl(get, set, opts = {}) {
     el("button", { type: "button", "aria-label": "more", onclick: () => nudge(1) }, "+"));
 }
 
+/* The feed editor is bottle only (§6.2, since 27 Sep 2026): portions with a kind, an amount
+   and — for formula — the name chips, then made / leftover. No side timers and no typed
+   minutes; a record that still carries breast seconds (the paper rows) shows them as one
+   read-only line and keeps them untouched through Save. */
 function feedSection(d, e) {
-  const br = d.data.breast;
-  const timer = d.data.timer;
-  const isNew = !e.event;
-  const canRun = d.end === null;
-  const now = Date.now();
+  const br = d.data.breast || {};
   const evs = events();
   const out = [];
 
-  // -- the side timers: tap to start, tap the other to switch
-  const sideBtn = (side) => {
-    const key = `${side}_s`;
-    const on = timer && timer.side === side;
-    const base = br[key] || 0;
-    return el("button", { class: `side${on ? " on" : ""}`, type: "button", onclick: () => startSide(side) },
-      el("span", { class: "side-name" }, side),
-      el("span", on ? { class: "side-time", "data-side-from": timer.side_started, "data-base": String(base) } : { class: "side-time" },
-        on ? elapsedText(base * 1000 + now - ms(timer.side_started)) : (br[key] != null ? elapsedText(br[key] * 1000) : "—")),
-      el("span", { class: "side-sub" }, on ? `since ${Core.fmtTime(timer.side_started)}` : (canRun ? "tap to start" : "")));
-  };
-  out.push(el("div", { class: "h3" }, "Breast"));
-  out.push(el("div", { class: "sides" }, sideBtn("left"), sideBtn("right")));
-  if (br.last_side && !timer) {
-    out.push(el("div", { class: "muted small", style: "margin-top:6px" }, `Last side was ${br.last_side} — start with the ${br.last_side === "left" ? "right" : "left"}`));
+  // -- what an older record carries: shown, never edited, never nulled
+  if (br.total_s != null || br.left_s != null || br.right_s != null) {
+    const s = Core.breastSeconds({ type: "feed", data: d.data, end: d.end }, new Date());
+    let text = `Breast ${br.approx ? "~" : ""}${Math.round(s / 60)} min`;
+    if (br.left_s != null || br.right_s != null) text += ` (L ${Math.round((br.left_s || 0) / 60)} / R ${Math.round((br.right_s || 0) / 60)})`;
+    if (br.last_side) text += ` · last side ${br.last_side}`;
+    out.push(el("div", { class: "muted small breast-line" }, text, el("span", {}, " — as recorded; breast feeding is no longer entered")));
   }
-  if (timer && canRun) {
-    const stopAtInput = el("input", { type: "datetime-local", step: "60", "aria-label": "Stop at",
-      value: dtValue(Core.isoLocal(new Date(ms(d.time) + usualFeedMs(evs)))) });
-    out.push(el("div", { class: "actions" },
-      el("button", { class: "btn feed", type: "button", onclick: () => stopFeedAt(nowIso()) }, "Stop now"),
-      el("button", { class: "btn ghost", type: "button", onclick: () => { e.stopAt = !e.stopAt; renderEditor(); } }, "Stop at…")));
-    if (e.stopAt) {
-      out.push(el("div", { class: "actions" }, stopAtInput,
-        el("button", { class: "btn ghost", type: "button", onclick: () => {
-          const v = dtParse(stopAtInput.value);
-          if (v) stopFeedAt(v); else setMsg("Stop at needs a date and time");
-        } }, "Stop")));
-    }
-  }
+  if (d.data.timer) out.push(notice("warn", "This feed still has a timer running — Stop it from its card on Now."));
 
-  // -- or type minutes
-  const minutes = (key) => el("input", { type: "number", inputmode: "numeric", min: "0", step: "1",
-    value: br[key] == null ? "" : String(Math.round(br[key] / 60)),
-    oninput: (x) => {
-      br[key] = x.target.value === "" ? null : Math.round(Number(x.target.value) * 60);
-      if (key === "total_s") {
-        if (br.total_s != null) { br.left_s = null; br.right_s = null; br.approx = true; }
-      } else {
-        br.total_s = br.left_s == null && br.right_s == null ? null : (br.left_s || 0) + (br.right_s || 0);
-        br.approx = false;
-        if (br.left_s != null && br.right_s == null) br.last_side = "left";
-        if (br.right_s != null && br.left_s == null) br.last_side = "right";
-      }
-      if (approxBox) approxBox.value = br.total_s == null || !br.approx ? "" : String(Math.round(br.total_s / 60));
-    } });
-  const approxBox = minutes("total_s");
-  if (!br.approx) approxBox.value = "";
-  out.push(el("div", { class: "h3" }, "or type minutes"));
-  out.push(el("div", { class: "two" },
-    el("label", { class: "field" }, el("span", {}, "Left min"), minutes("left_s")),
-    el("label", { class: "field" }, el("span", {}, "Right min"), minutes("right_s"))));
-  out.push(el("div", { class: "two" },
-    el("label", { class: "field" }, el("span", {}, "~ total (sides unknown)"), approxBox),
-    el("label", { class: "field" }, el("span", {}, "Last side"),
-      el("select", { onchange: (x) => { br.last_side = x.target.value || null; } },
-        el("option", { value: "", selected: !br.last_side }, "—"),
-        el("option", { value: "left", selected: br.last_side === "left" }, "left"),
-        el("option", { value: "right", selected: br.last_side === "right" }, "right")))));
-
-  // -- bottle portions
+  // -- bottle portions, each with its formula chips
   out.push(el("div", { class: "h3" }, "Bottle"));
   const portions = el("div", {});
+  const choices = formulaChoices();
+  const formulaRow = (b, i) => {
+    if (b.kind !== "formula") return null;
+    const names = choices.slice();
+    if (b.formula && !names.includes(b.formula)) names.push(b.formula);   // an older name stays choosable
+    const other = e.formulaOther.includes(i);
+    const pick = (name) => { b.formula = name; e.formulaOther = e.formulaOther.filter((x) => x !== i); markDirty(); drawPortions(); };
+    return el("div", { class: "chips scroll formula" },
+      ...names.map((name) => el("button", { class: `chip feed${!other && b.formula === name ? " active" : ""}`, type: "button", onclick: () => pick(name) }, name)),
+      other
+        ? el("input", { type: "text", class: "formula-other", placeholder: "formula name", autocapitalize: "words", "aria-label": "Formula name",
+            value: b.formula && !choices.includes(b.formula) ? b.formula : "",
+            oninput: (x) => { b.formula = x.target.value.trim() || null; } })
+        : el("button", { class: "chip", type: "button", onclick: () => { b.formula = null; e.formulaOther.push(i); markDirty(); drawPortions(); focusOther(); } }, "Other…"));
+  };
+  const focusOther = () => { const inp = portions.querySelector("input.formula-other"); if (inp) inp.focus(); };
   const drawPortions = () => {
-    portions.replaceChildren(...d.data.bottles.map((b, i) => el("div", { class: "portion" },
-      el("button", { class: `toggle${b.kind === "formula" ? " on" : ""}`, type: "button", style: "flex:0 1 auto",
-        onclick: () => { b.kind = b.kind === "formula" ? "breast_milk" : "formula"; markDirty(); drawPortions(); } },
-        b.kind === "formula" ? "Formula" : "Breast milk"),
-      amountControl(() => b.ml, (v) => { b.ml = v == null ? 0 : v; e.portionsTyped = true; }, { label: "portion" }),
-      el("span", { class: "unit" }, unit()),
-      el("button", { class: "remove", type: "button", "aria-label": "Remove portion",
-        onclick: () => { d.data.bottles.splice(i, 1); e.portionsTyped = true; markDirty(); drawPortions(); } }, "×"))));
+    portions.replaceChildren(...d.data.bottles.map((b, i) => el("div", { class: "portion-wrap" },
+      el("div", { class: "portion" },
+        el("button", { class: `toggle${b.kind === "formula" ? " on" : ""}`, type: "button", style: "flex:0 1 auto",
+          onclick: () => {
+            // Switching kind hides the chips: breast milk has no formula name.
+            b.kind = b.kind === "formula" ? "breast_milk" : "formula";
+            b.formula = b.kind === "formula" ? lastFormula() : null;
+            e.formulaOther = e.formulaOther.filter((x) => x !== i);
+            markDirty(); drawPortions();
+          } },
+          b.kind === "formula" ? "Formula" : "Breast milk"),
+        amountControl(() => b.ml, (v) => { b.ml = v == null ? 0 : v; e.portionsTyped = true; }, { label: "portion" }),
+        el("span", { class: "unit" }, unit()),
+        el("button", { class: "remove", type: "button", "aria-label": "Remove portion",
+          onclick: () => { d.data.bottles.splice(i, 1); e.formulaOther = []; e.portionsTyped = true; markDirty(); drawPortions(); } }, "×")),
+      formulaRow(b, i))));
   };
   drawPortions();
   out.push(portions);
+
+  // -- the quick amounts: Same as last, then the chips by quick_mode (§8.1)
   const lastBottle = evs.filter((ev) => ev.type === "feed" && Core.bottleMl(ev) > 0 && ev.event_id !== d.event_id).pop();
   const setLast = (mlv) => {
-    if (!d.data.bottles.length) d.data.bottles.push({ kind: "formula", ml: mlv });
+    if (!d.data.bottles.length) d.data.bottles.push(newPortion(mlv));
     else d.data.bottles[d.data.bottles.length - 1].ml = mlv;
     e.portionsTyped = true;
     markDirty();
     drawPortions();
   };
-  out.push(el("div", { class: "chips scroll", style: "margin-top:6px" },
+  const chips = el("div", { class: "chips scroll", id: "ed-quick", style: "margin-top:6px" });
+  const drawChips = () => fill(chips,
     lastBottle ? el("button", { class: "chip feed", type: "button", onclick: () => setLast(Core.bottleMl(lastBottle)) },
       `Same as last · ${amount(Core.bottleMl(lastBottle))}`) : null,
     ...quickAmounts().map((mlv) => el("button", { class: "chip", type: "button", onclick: () => setLast(mlv) }, amount(mlv))),
     el("button", { class: "chip", type: "button", onclick: () => {
-      d.data.bottles.push({ kind: d.data.bottles.length ? d.data.bottles[d.data.bottles.length - 1].kind : "formula", ml: 0 });
+      const last = d.data.bottles.length ? d.data.bottles[d.data.bottles.length - 1].kind : "formula";
+      d.data.bottles.push(newPortion(0, last));
       e.portionsTyped = true; markDirty(); drawPortions();
-    } }, "Another portion")));
+    } }, "Another portion"));
+  drawChips();
+  out.push(chips);
+  if (settings().quick_mode === "range") out.push(rangeControl(drawChips));
 
   // -- made / leftover: with both set and no portion typed, one formula portion fills itself in
   const autoPortion = () => {
     if (d.data.made_ml == null || d.data.leftover_ml == null || e.portionsTyped) return;
     const mlv = d.data.made_ml - d.data.leftover_ml;
     if (mlv <= 0) return;
-    if (!d.data.bottles.length) d.data.bottles.push({ kind: "formula", ml: mlv });
+    if (!d.data.bottles.length) d.data.bottles.push(newPortion(mlv));
     else if (d.data.bottles.length === 1) d.data.bottles[0].ml = mlv;
     drawPortions();
   };
@@ -1409,26 +1513,26 @@ function feedSection(d, e) {
     el("span", { class: "muted small" }, "leftover"),
     amountControl(() => d.data.leftover_ml, (v) => { d.data.leftover_ml = v; autoPortion(); }, { label: "leftover" }),
     el("span", { class: "unit" }, unit())));
-  if (isNew && !timer) out.push(el("div", { class: "muted small", style: "margin-top:8px" }, "Tap a side to start the timer, or type what happened and Save."));
   return out;
 }
 
-async function startSide(side) {
-  const e = app.editor, d = e.draft;
-  if (d.end !== null) { setMsg("Clear End to run a timer"); return; }
-  if (d.data.timer && d.data.timer.side === side) return;
-  const err = validateDraft(d);
-  if (err) { setMsg(err); return; }
-  const data = foldTimer(clone(d.data), Date.now());
-  data.timer = { side, side_started: nowIso() };
-  await writeFromEditor({ data, end: null });
-}
-
-async function stopFeedAt(endIso) {
-  const e = app.editor, d = e.draft;
-  if (ms(endIso) < ms(d.time)) { setMsg("End can't be before Start"); return; }
-  const data = foldTimer(clone(d.data), ms(endIso));
-  await writeFromEditor({ data, end: endIso });
+/** The range beside the chips (§8.1): from / to / step in the display unit, stored as ml the
+    moment they change, and the chips redrawn at once — so the range moves up the week his
+    feeds do without a trip to Settings. */
+function rangeControl(redraw) {
+  const s = settings();
+  const u = unit();
+  const box = (key, label) => {
+    const input = el("input", { type: "number", inputmode: u === "oz" ? "decimal" : "numeric", min: "0", step: u === "oz" ? "0.25" : "1",
+      "aria-label": `Range ${label}`, value: s[key] == null ? "" : String(Core.toUnit(s[key], u)),
+      oninput: (x) => {
+        const v = x.target.value === "" ? null : Core.fromUnit(x.target.value, u);
+        try { Store.setSettings({ [key]: v }); } catch (err) { showToast(errText(err)); return; }
+        redraw();
+      } });
+    return el("label", { class: "field" }, el("span", {}, label), input);
+  };
+  return el("div", { class: "range" }, box("quick_from", "from"), box("quick_to", "to"), box("quick_step", "step"), el("span", { class: "unit" }, u));
 }
 
 // A portion left at 0 — "Another portion" tapped and not yet typed, or an amount cleared — is
@@ -1456,7 +1560,7 @@ async function writeFromEditor(patch) {
     if (app.editor !== e) return;
     e.event = rec;
     e.draft = draftFrom(rec);
-    e.stopAt = false; e.msg = null; e.restored = false; e.notice = null;
+    e.msg = null; e.restored = false; e.notice = null;
     stopDraft(); Store.clearDraft();
     e.saving = false;
     renderEditor();
@@ -1653,6 +1757,9 @@ async function deleteEntry() {
     open, not only inside an editor. */
 function onSync(kind, detail) {
   renderPill();
+  // Settings → Sync carries the pill's line under Sync now; it moves with every phase (§7.3).
+  const line = document.getElementById("sync-line");
+  if (line) line.textContent = Sync.statusText();
   if (kind !== "applied") return;
   const ids = (detail && detail.ids) || [];
   const conflicts = (detail && detail.conflicts) || [];
@@ -1719,10 +1826,6 @@ function tick() {
   for (const n of document.querySelectorAll("[data-elapsed]")) {
     n.textContent = n.dataset.style === "clock" ? elapsedText(now - ms(n.dataset.elapsed))
       : Core.sinceText(now - ms(n.dataset.elapsed));
-  }
-  for (const n of document.querySelectorAll("[data-side-from]")) {
-    const base = Number(n.dataset.base || 0) * 1000;
-    n.textContent = elapsedText(base + now - ms(n.dataset.sideFrom));
   }
 }
 // Once a minute: the night boundary, the pill's "N min ago", and the Now hints.

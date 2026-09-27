@@ -1,4 +1,4 @@
-# Baby Log — Build Spec (v2, 2026-09-24)
+# Baby Log — Build Spec (v3, 2026-09-27)
 
 A feeding, diaper, sleep and health log for one child (more later), shared by two iPhones and one
 PC through the owner's personal OneDrive. It replaces the hospital's paper *Feeding & Diapering*
@@ -181,7 +181,7 @@ preserved by readers.
 
 | type | data |
 |---|---|
-| `feed` | `{"breast": {"left_s": int\|null, "right_s": int\|null, "total_s": int\|null, "last_side": "left"\|"right"\|null, "approx": bool}, "bottles": [{"kind": "formula"\|"breast_milk", "ml": number}], "made_ml": number\|null, "leftover_ml": number\|null, "timer": {"side": "left"\|"right", "side_started": iso} \| null}` |
+| `feed` | `{"breast": {"left_s": int\|null, "right_s": int\|null, "total_s": int\|null, "last_side": "left"\|"right"\|null, "approx": bool}, "bottles": [{"kind": "formula"\|"breast_milk", "ml": number, "formula": string\|null}], "made_ml": number\|null, "leftover_ml": number\|null, "timer": {"side": "left"\|"right", "side_started": iso} \| null}` |
 | `diaper` | `{"wet": bool, "dirty": bool, "color": "black"\|"dark_green"\|"green"\|"yellow"\|"brown"\|"other"\|null, "texture": "sticky"\|"seedy"\|"soft"\|"solid"\|"watery"\|null, "size": "small"\|"medium"\|"large"\|null, "rash": bool, "blowout": bool}` |
 | `sleep` | `{"where": string\|null, "timer": {"running": true} \| null}` |
 | `pump` | `{"left_ml": number\|null, "right_ml": number\|null, "minutes": number\|null}` |
@@ -190,7 +190,12 @@ preserved by readers.
 | `note` | `{"milestone": bool}` |
 
 Feed rules: `total_s` is the sum of the sides when they are known, or the typed "~15 min" (900,
-`approx: true`) when they are not. `left_*` always means the left breast; leftover milk is
+`approx: true`) when they are not. **Breast feeding is no longer entered** (decided 27 Sep 2026:
+Yisen is on formula) — the `breast` and `timer` fields stay in the record for the paper rows and
+history, both validators still accept them, but no editor offers a side timer or typed minutes;
+an entry that carries breast seconds shows them as a read-only line. `bottles[].formula` is the
+formula's name as the parents call it (`Similac Pro-Advance`, `Enfamil NeuroPro`), a non-empty
+string or null; null for breast milk. `left_*` always means the left breast; leftover milk is
 `leftover_ml`. Bottle ml (derived, never stored) = sum of `bottles[].ml`. Amounts are whole ml.
 
 **Timers.** A running event is exactly `end: null` **with `timer` non-null** — both, always:
@@ -331,6 +336,10 @@ Core.fmtAmount(ml, unit)       "22 ml" / "0.75 oz"    Core.toUnit(ml, unit)   Co
 Core.stepMl(recentMls, unit)   ml: 1 while median < 40, 5 < 100, else 10; oz: 0.25 oz (7 ml) while
                                median < 1.5 oz else 0.5 oz (15 ml); [] -> 1 ml / 0.25 oz
 Core.chipStepMl(recentMls, unit)  ml: 5 < 40, 10 < 100, 20 < 200, else 30; oz: 0.25 / 0.5 / 1
+Core.quickRange(fromMl, toMl, stepMl)  every step from `from` to `to` inclusive (swapped if reversed),
+                               capped at 12 values, [] when the step is 0 or a bound is missing
+Core.formulaChoices(recentFormulas)  distinct names most recent first, at most 4; ["Similac", "Enfamil"]
+                               when nothing has been recorded yet
 Core.quickAmounts(recentMls, unit, custom)  exactly 4 ml values: median rounded to the chip step and
                                −1, +1, +2 chip steps (e.g. 10 15 20 25; later 160 180 200 220), all > 0;
                                `custom` (non-empty array) returned verbatim instead
@@ -372,9 +381,10 @@ config.yaml. `test_setup_machine.py` asserts the generated `config.yaml` has the
 
 **Settings** (`data/settings.json` on the PC; `bl.settings` on a phone) have exactly these keys on
 every device: `{label: str, units: "ml"|"oz", step_ml: number|null (null = automatic via
-Core.stepMl), quick_mode: "recent"|"custom", quick_custom: [ml…], night_from: "HH:MM",
+Core.stepMl), quick_mode: "recent"|"range"|"custom", quick_custom: [ml…], quick_from: ml|null,
+quick_to: ml|null, quick_step: ml|null, night_from: "HH:MM",
 night_to: "HH:MM", child_id: str|null}`; the phone adds `device`. Defaults: `label ""`, `ml`,
-`null`, `recent`, `[]`, `21:00`, `07:00`, `null`.
+`null`, `range`, `[]`, `50`, `100`, `10`, `21:00`, `07:00`, `null`.
 
 JSON API. Every response is `{"ok": true, ...}` or `{"ok": false, "error": "…"}`. Errors:
 `ValueError` → 400, `KeyError` → 404, `FileExistsError` and "Excel has the workbook open" → 409,
@@ -434,17 +444,26 @@ goodbye handler sets `document.title = "Baby Log (closed)"` as whiskey's does.
   resulting `Wed 23 Sep 02:45` shown beside them), **End** date-time for feed/sleep/pump (blank
   while running), **Who** chips (labels seen in the journal plus this device's), **Change type…**
   (keeps time, end, note, who and child; resets `data` to the new type's defaults), the child
-  chooser when two children exist, note. Feed: Left/Right side timers (tap to start, tap the other
-  to switch, **Stop now** and **Stop at…** prefilled with start + usual feed length), "or type
-  minutes", bottle portions (kind toggle, amount −/+ by `step_ml`, quick amounts, **Another
-  portion**), made / leftover (when both are set and no portion was typed, one formula portion of
-  made − leftover is filled in, editable; save refuses made < leftover). Existing entries have a
+  chooser when two children exist, note. Feed (bottle only, since 27 Sep 2026): portions, each
+  with a kind toggle (Formula / Breast milk, formula preselected), the amount (−/+ by `step_ml`,
+  the quick-amount chips of §8.1, typed), and for formula the **formula chips** — the names used
+  most recently (`Core.formulaChoices`), the last one preselected so switching to plan B is one tap,
+  plus **Other…** to type a new name; **Another portion**; made / leftover (when both are set and no
+  portion was typed, one formula portion of made − leftover is filled in, editable; save refuses
+  made < leftover). No side timers, no typed minutes; a paper row's breast minutes show as one
+  read-only line. **End** is hidden for feeds (a bottle has no useful end). Existing entries have a
   **Delete** button at the foot. Save validates: `time` not before the child's `born` and not after
   now + 10 min, `end` not before `time`; refusals are in-page messages.
-- **Feed** while a feed is already running (any device) opens the running feed, not a new one;
-  **Start another feed** is a secondary button inside it. Two running feeds show both cards with a
-  **Merge into one** action (keeps the earlier `time`, sums sides, tombstones the later one with
-  reason `merged into <id>`).
+- **Feed** always opens a new bottle feed. (Running-feed cards, Merge and the stale-timer warning
+  only ever appear for a record that still carries a `timer` — none will after 27 Sep 2026, but a
+  reader must not crash on one.)
+- **Catch up** (a button beside the log bar on the PC; under **More** on the phone): for the paper
+  slips written when no phone was to hand. One screen: a date (default today), then a strip that
+  logs one entry per tap and stays put for the next — a time field, **Feed** with the quick-amount
+  chips (formula = the last used), or **Wet · Dirty · Both**; each tap saves an ordinary entry at
+  that date and time and appends it to a list under the strip (each row opens its editor, swipeable
+  on the phone), then clears only the time. The date stays until changed. Nothing is held back for a
+  "save all": every tap is already a journal file.
 - One-click diapers show a 6-second toast `Wet + dirty · 03:12 · Undo · Edit`. A one-click diaper
   within 2 minutes of the previous diaper logged from this device does not write; it opens that
   entry's editor with the line "Same as the 03:12 one? Save adds to it · Log another adds a new
@@ -576,6 +595,12 @@ result is checked.
   "Updated on Dad's phone — look again" if the pull changed it.
 - A pull is mandatory before any revise/tombstone when `last_sync_at` is older than 5 minutes (the
   editor shows a `Syncing…` line and proceeds when it finishes or fails).
+- **Sync is a button, and it shows its work.** Tapping the pill while signed in runs `Sync.run()`
+  at once; while it runs the pill reads the phase and the count — `Syncing… sending 2 of 5`,
+  `Syncing… checking 4 days`, `Syncing… reading 12 new` — and for six seconds afterwards the
+  outcome — `Synced · 5 sent · 12 new` (or `Synced · nothing new`). `sync.js` emits
+  `("progress", {phase, done, total})` through `Sync.onChange` for this; Settings → Sync shows the
+  same line under a **Sync now** button (which also forces the catch-up, §7.3).
 - The **status pill** sits on every screen: `Synced 1 min ago` · `Syncing…` · `Offline · 2
   waiting` · `Signed out · 3 waiting · tap to sign in` · `Signed out · showing data from 14:02` ·
   `Sync failed · 19:03 · tap for details` · `1 stuck · tap`. An item queued for more than 24 h
@@ -600,9 +625,9 @@ health and note live under **More**. Rules:
 - The editor has the same controls as the PC's (§6.2): Start with `−5 · −15 · −30 min` chips, End,
   Who chips, Change type…, note, Delete at the foot with an in-page confirm sheet (`Delete feed
   02:10?` with two 48 px buttons `Keep` / `Delete`; in night mode the destructive one is outlined
-  and reads `Delete`, never an icon), and the same validation. Feed: side timers with Stop now /
-  Stop at…, typed minutes, portions, quick amounts, made / leftover. Feed while running opens the
-  running feed. One-tap diapers, the 2-minute same-diaper check, the `Undo · Edit` toast and the
+  and reads `Delete`, never an icon), and the same validation. Feed: bottle portions with the
+  quick-amount chips and the formula chips, made / leftover; no side timers (§6.2). **Catch up**
+  under More, as on the PC. One-tap diapers, the 2-minute same-diaper check, the `Undo · Edit` toast and the
   `Deleted · Undo` toast as on the PC. Toasts sit above the tab bar inside the bottom safe area
   with a 44 px Undo target.
 - **Drafts.** Every open editor writes `bl.draft` = `{screen, event_id|null, fields, saved_at}` on
@@ -657,12 +682,21 @@ those words.
 Stored whole ml; displayed in the device's unit; `Core.fromUnit` rounds to the nearest ml, and an
 editor keeps the stored ml for any amount control the user did not touch (a note edit in oz mode
 must not turn 22 ml into 22.18). `step_ml` (−/+) defaults to `Core.stepMl`; quick amounts are
-`Same as last · N` plus `Core.quickAmounts`; no maximum anywhere; `Core.unusual` makes Save ask
-"That's more than twice his biggest recent feed. Save anyway?" once.
+`Same as last · N` plus, by `quick_mode`: **range** (the default since 27 Sep 2026) —
+`Core.quickRange(quick_from, quick_to, quick_step)`, e.g. 50 · 60 · 70 · 80 · 90 · 100, with a
+small **range** control right beside the chips in the feed editor (from / to / step, saved to
+settings the moment they change, so the range moves up the week his feeds do) as well as in
+Settings; **recent** — `Core.quickAmounts`; **custom** — the typed list. No maximum anywhere;
+`Core.unusual` makes Save ask "That's more than twice his biggest recent feed. Save anyway?" once.
+
+**Formula memory.** `Core.formulaChoices` takes the formula names of the most recent portions
+(newest first, from the events this device holds) and the feed editor preselects the first; a name
+typed under **Other…** becomes the first choice on the next feed by virtue of being the newest.
+Nothing is stored in settings for this, so both phones and the PC agree without configuration.
 
 ### 8.2 Since-last and next feed
 
-`last_feed` is the most recent feed by `time` (a running one counts and shows as "feeding now").
+`last_feed` is the most recent feed by `time`.
 `usual_gap` is `Core.usualGapMs`; `next_feed_at = last_feed.time + usual_gap`. Hints, never alarms.
 
 ### 8.3 Editing and deleting — the rule the owner asked for
@@ -691,8 +725,8 @@ the last 30 backups in `data/backups/`; skips an unreadable journal file with a 
 than aborting.
 
 `Baby Log.xlsx` sheets, header row 1, one row per live event, oldest first: `Feeds`
-(`date time end logged_by breast_min left_min right_min bottle_ml formula_ml breast_milk_ml made_ml
-leftover_ml note event_id`), `Diapers` (`date time logged_by wet dirty color texture size rash
+(`date time end logged_by breast_min left_min right_min bottle_ml formula formula_ml breast_milk_ml made_ml
+leftover_ml note event_id` — `formula` is the portions' distinct formula names joined with ` + `), `Diapers` (`date time logged_by wet dirty color texture size rash
 blowout note event_id`), `Sleep` (`date start end minutes where logged_by note event_id`),
 `Pumping`, `Growth`, `Health`, `Notes`, and `Daily` (`date feeds bottle_ml breast_min wet dirty
 sleeps sleep_min pumps pump_ml`) — one row for every local date from the first event to today,
@@ -701,7 +735,8 @@ zeros when empty; `*_min` columns are `round(seconds / 60, 1)`.
 `rollup.day_sheet_html(child, events, date, settings) -> str` is the **one renderer**:
 `/print/day/<date>` returns it and `/api/daysheet/<date>` writes it to `Day sheets/<date>.html`.
 Content: heading `<name> — Feeding & Diapering — <Core.fmtDay> (day <n>)`; left table `Time ·
-Breast (min, L/R, ~ when approx) · Bottle (unit, kind) · Made / Leftover · By · Note`; right table
+Breast (min, L/R, ~ when approx; the column is omitted on a day with no breast time) · Bottle
+(unit, then the formula name or the kind) · Made / Leftover · By · Note`; right table
 `Time · Wet · Dirty · Colour / texture · By · Note`; an Other table when there are other types; a
 footer line from the totals (`8 feeds · 135 ml bottle · 57 min breast · 6 wet · 4 dirty`) with
 targets alongside when set; `<style>` is the inlined `static/print.css` with

@@ -64,8 +64,9 @@ class TestSource(unittest.TestCase):
                  "parseIso", "localDate", "defaults", "validate", "resolve", "live", "onDay",
                  "isRunning", "staleTimer", "lastOf", "sinceText", "usualGapMs", "nextFeedAt",
                  "totals", "bottleMl", "breastSeconds", "describe", "fmtAmount", "toUnit",
-                 "fromUnit", "stepMl", "chipStepMl", "quickAmounts", "unusual", "ageText",
-                 "isNight", "fmtTime", "fmtDay", "fmtDateTime", "dayNumber"]
+                 "fromUnit", "stepMl", "chipStepMl", "quickAmounts", "quickRange",
+                 "formulaChoices", "formulaOf", "unusual", "ageText", "isNight", "fmtTime",
+                 "fmtDay", "fmtDateTime", "dayNumber"]
         src = code()
         block = src[src.rindex("return {"):]
         for name in names:
@@ -162,6 +163,8 @@ for (const c of X.describe) t("describe " + c.text, () => eq(Core.describe(c.ev,
 for (const c of X.stepMl) t("stepMl " + canon(c.recent).slice(0, 20), () => eq(Core.stepMl(c.recent, c.unit), c.ml));
 for (const c of X.chipStepMl) t("chipStepMl " + canon(c.recent).slice(0, 20), () => eq(Core.chipStepMl(c.recent, c.unit), c.ml));
 for (const c of X.quickAmounts) t("quickAmounts " + canon(c.values), () => eq(Core.quickAmounts(c.recent, c.unit, c.custom), c.values));
+for (const c of X.quickRange) t("quickRange " + c.from + "-" + c.to + "/" + c.step, () => eq(Core.quickRange(c.from, c.to, c.step), c.values));
+for (const c of X.formulaChoices) t("formulaChoices " + canon(c.values), () => eq(Core.formulaChoices(c.recentFormulas), c.values));
 for (const c of X.unusual) t("unusual " + c.ml, () => eq(Core.unusual(c.ml, c.recent), c.result));
 for (const c of X.ageText) t("ageText " + c.text, () => eq(Core.ageText(c.born, c.now), c.text));
 for (const c of X.sinceText) t("sinceText " + c.text, () => eq(Core.sinceText(c.ms), c.text));
@@ -314,6 +317,45 @@ t("quickAmounts all > 0 with tiny medians", () => {
 });
 t("quickAmounts custom wins only when non-empty", () => eq([Core.quickAmounts([30, 21], "ml", []), Core.quickAmounts([30, 21], "ml", [50])], [[20, 25, 30, 35], [50]]));
 t("unusual with two recent is false", () => eq(Core.unusual(1000, [1, 2]), false));
+
+// -- the range chips and the formula memory (§8.1) ----------------------------------------------
+t("quickRange is [] for a missing bound or step", () => eq([
+  Core.quickRange(null, 100, 10), Core.quickRange(50, undefined, 10), Core.quickRange(50, 100),
+  Core.quickRange(50, 100, null), Core.quickRange(NaN, 100, 10), Core.quickRange(50, "x", 10),
+  Core.quickRange(50, 100, Infinity), Core.quickRange("", 100, 10), Core.quickRange(50, 100, ""),
+], [[], [], [], [], [], [], [], [], []]));
+t("quickRange with one value and a negative step", () => eq([Core.quickRange(70, 70, 10), Core.quickRange(50, 70, -10)], [[70], [50, 60, 70]]));
+t("quickRange stops at 12 even with a reversed range", () => {
+  const q = Core.quickRange(400, 60, 5);
+  return q.length === 12 && q[0] === 60 && q[11] === 115 ? true : canon(q);
+});
+t("quickRange takes numeric strings from a settings form", () => eq(Core.quickRange("50", "80", "10"), [50, 60, 70, 80]));
+t("quickRange does not include a value past `to`", () => eq(Core.quickRange(50, 75, 10), [50, 60, 70]));
+t("formulaChoices skips null and empty names", () => eq(Core.formulaChoices([null, "", "Enfamil NeuroPro", undefined, "Enfamil NeuroPro"]), ["Enfamil NeuroPro"]));
+t("formulaChoices starters when only nulls were recorded", () => eq([Core.formulaChoices([null, null]), Core.formulaChoices(null), Core.formulaChoices(undefined)],
+  [["Similac", "Enfamil"], ["Similac", "Enfamil"], ["Similac", "Enfamil"]]));
+t("formulaChoices does not mutate its input", () => { const r = ["B", "A", "B"]; Core.formulaChoices(r); return eq(r, ["B", "A", "B"]); });
+t("formulaOf is the first portion's name", () => eq([
+  Core.formulaOf(feed("E-x", NOW, NOW, {}, [{ kind: "formula", ml: 70, formula: "Similac Pro-Advance" }, { kind: "formula", ml: 10, formula: "Enfamil NeuroPro" }])),
+  Core.formulaOf(feed("E-x", NOW, NOW, {}, [{ kind: "breast_milk", ml: 40 }, { kind: "formula", ml: 10, formula: "Enfamil NeuroPro" }])),
+  Core.formulaOf(feed("E-x", NOW, NOW, {}, [{ kind: "formula", ml: 22 }])),
+  Core.formulaOf(feed("E-x", NOW, NOW)),
+  Core.formulaOf(ev({ type: "diaper", data: Core.validate("diaper", { wet: true }) })),
+  Core.formulaOf(null),
+  Core.formulaOf({ type: "feed", data: { bottles: [{ kind: "formula", ml: 5, formula: "" }] } }),   // an unvalidated record from an older file
+], ["Similac Pro-Advance", null, null, null, null, null, null]));
+t("validate keeps a formula name and fills null", () => eq(
+  Core.validate("feed", { bottles: [{ kind: "formula", ml: 70, formula: "Enfamil NeuroPro" }, { kind: "breast_milk", ml: 30 }, { kind: "formula", ml: 10, formula: null }] }).bottles,
+  [{ kind: "formula", ml: 70, formula: "Enfamil NeuroPro" }, { kind: "breast_milk", ml: 30, formula: null }, { kind: "formula", ml: 10, formula: null }]));
+t("validate refuses a non-text formula", () => {
+  for (const bad of [5, true, [], {}, ""]) {
+    const r = throws(() => Core.validate("feed", { bottles: [{ kind: "formula", ml: 70, formula: bad }] }));
+    if (r !== true) return canon(bad) + ": " + r;
+  }
+  return true;
+});
+t("describe does not name the formula", () => eq(
+  Core.describe(feed("E-x", NOW, NOW, {}, [{ kind: "formula", ml: 70, formula: "Similac Pro-Advance" }]), "ml"), "70 ml formula"));
 
 t("isNight boundaries", () => {
   const h = { night_from: "21:00", night_to: "07:00" };

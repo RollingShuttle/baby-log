@@ -282,11 +282,14 @@ class TestEditingSurfaces(unittest.TestCase):
         self.assertIn('"Delete"', block)
         self.assertIn("Delete ${TYPE_LABEL[d.type].toLowerCase()} ${Core.fmtTime(d.time)}?", block)
 
-    def test_feed_while_running_opens_the_running_feed(self):
+    def test_feed_always_opens_a_new_bottle_feed(self):
+        """§6.2 since 27 Sep 2026: no timer to resume, so Feed never reopens a running one."""
         src = code("app.js")
         block = src[src.index("function feedButton("):src.index("async function sleepButton(")]
-        self.assertLess(block.index("openEditor({ event: run[0] })"), block.index('openEditor({ type: "feed" })'))
-        self.assertIn("Start another feed", src)
+        self.assertIn('openEditor({ type: "feed" })', block)
+        self.assertNotIn("run[0]", block)
+        self.assertNotIn("Start another feed", src)
+        self.assertNotIn("Feeding…", src[src.index("function logBar("):src.index("const ROW_SUB")])
 
     def test_the_validation_messages_match_the_pc(self):
         src = code("app.js")
@@ -305,6 +308,95 @@ class TestEditingSurfaces(unittest.TestCase):
             body = src[src.index(fn):src.index(end)]
             self.assertIn("cleanFeed(", body, f"{fn} does not clean the portions")
             self.assertLess(body.index("cleanFeed("), body.index("Core.validate("))
+
+
+class TestBottleOnly(unittest.TestCase):
+    """SPEC v3 (27 Sep 2026): breast feeding is no longer entered, amounts come from a range
+    the parent moves up as he grows, the formula name is remembered, paper slips have their own
+    screen, and the pill is the sync button."""
+
+    def test_no_side_timer_markup_remains(self):
+        src = code("app.js")
+        for gone in ("Stop at", "startSide(", "stopFeedAt(", "or type minutes", "Tap a side to start",
+                     "data-side-from", "usualFeedMs"):
+            self.assertNotIn(gone, src, f"{gone} is still in app.js")
+        self.assertIn("swipe", src, "the swipe rows must survive the rewrite")
+        self.assertIn("function swipeRow(", src)
+        css = code("style.css")
+        self.assertNotIn(".side {", css)
+
+    def test_end_is_hidden_for_feeds_and_breast_seconds_are_read_only(self):
+        src = code("app.js")
+        editor = src[src.index("function renderEditor("):src.index("function changeType(")]
+        self.assertIn('TIMED.includes(d.type) && d.type !== "feed"', editor)
+        feed = src[src.index("function feedSection("):src.index("function rangeControl(")]
+        self.assertIn("breast-line", feed)
+        self.assertIn("Core.breastSeconds(", feed)
+        for control in ("br.left_s = ", "br.right_s = ", "br.total_s = ", "data.timer = "):
+            self.assertNotIn(control, feed, f"the feed editor still writes {control.strip()}")
+        save = src[src.index("async function saveEditor("):src.index("async function deleteEntry(")]
+        self.assertNotIn("data.breast = ", save)
+        self.assertNotIn("breast: null", save)
+
+    def test_formula_chips_come_from_core_and_the_last_one_is_preselected(self):
+        src = code("app.js")
+        self.assertIn("Core.formulaChoices(recentFormulas())", src)
+        self.assertIn("const lastFormula = () => formulaChoices()[0]", src)
+        self.assertIn('formula: kind === "formula" ? lastFormula() : null', src)
+        feed = src[src.index("function feedSection("):src.index("function rangeControl(")]
+        self.assertIn('"Other…"', feed)
+        self.assertIn('class: "formula-other"', feed)
+        self.assertIn('if (b.kind !== "formula") return null;', feed, "switching kind must hide the chips")
+
+    def test_quick_amounts_follow_quick_mode_and_the_range_saves_as_it_changes(self):
+        src = code("app.js")
+        quick = src[src.index("function quickAmounts("):src.index("function recentFormulas(")]
+        self.assertIn('s.quick_mode === "range"', quick)
+        self.assertIn("Core.quickRange(s.quick_from, s.quick_to, s.quick_step)", quick)
+        rng = src[src.index("function rangeControl("):src.index("function diaperSection(")]
+        self.assertIn("Store.setSettings({ [key]: v })", rng)
+        self.assertIn("redraw()", rng)
+        self.assertIn('inputmode: u === "oz" ? "decimal" : "numeric"', rng)
+        form = src[src.index("function settingsForm("):src.index("function renderChildCard(")]
+        for key in ("quick_from", "quick_to", "quick_step"):
+            self.assertIn(f'"{key}"', form, f"Settings has no {key} field")
+        self.assertIn('"a range"', form)
+        store = code("store.js")
+        defaults = store[store.index("const SETTINGS = {"):store.index("const QUICK_MODES")]
+        self.assertIn('quick_mode: "range"', defaults)
+        self.assertIn("quick_from: 50, quick_to: 100, quick_step: 10", defaults)
+
+    def test_the_catch_up_screen_exists_and_writes_ordinary_entries(self):
+        self.assertIn('id="screen-catchup"', text("index.html"))
+        src = code("app.js")
+        self.assertIn('catchup: document.getElementById("screen-catchup")', src)
+        self.assertIn('case "catchup": renderCatchUp(); break;', src)
+        more = src[src.index("function logBar("):src.index("const ROW_SUB")]
+        self.assertIn('"Catch up"', more)
+        self.assertIn("openCatchUp()", more)
+        render = src[src.index("function renderCatchUp("):src.index("async function catchUpWrite(")]
+        self.assertIn("rows.map(swipeRow)", render, "the added rows must be swipeable and carry data-event-id")
+        self.assertIn('type: "date"', render)
+        self.assertIn('type: "time"', render)
+        self.assertIn('"Done"', render)
+        write = src[src.index("async function catchUpWrite("):src.index("const catchUpFeed")]
+        self.assertIn("Store.newEvent({ type, time, end, data", write)
+        self.assertIn("Sync.afterWrite()", write)
+        self.assertIn("Type the time first", write)
+        self.assertIn('cu.time = "";', write)
+        self.assertIn("validateDraft(", write)
+        self.assertIn('const catchUpFeed = (mlv) => catchUpWrite("feed", { bottles: [newPortion(mlv)] });', src)
+
+    def test_the_pill_is_the_sync_button(self):
+        src = code("app.js")
+        self.assertIn('document.getElementById("pill").addEventListener("click", pillTap)', src)
+        tap = src[src.index("async function pillTap("):src.index("function updateBadge(")]
+        self.assertIn("Sync.run()", tap)
+        sync = src[src.index("function onSync("):src.index("function tick(")]
+        self.assertIn('document.getElementById("sync-line")', sync)
+        self.assertIn("Sync.statusText()", sync)
+        card = src[src.index("function renderSyncCard("):src.index("function renderNeedsCard(")]
+        self.assertLess(card.index('"Sync now"'), card.index('id: "sync-line"'), "the line goes under Sync now")
 
 
 class TestDoubleTaps(unittest.TestCase):
@@ -508,7 +600,7 @@ const mk = (tag, id, cls) => { const n = new Node(tag); if (id) n.setAttribute("
 const bar = mk("header", "bar", "bar");
 bar.append(mk("button", "back", "back"), mk("h1", "title"), mk("div", "subtitle"), mk("button", "moon", "moon"), mk("button", "pill", "pill"));
 const main = mk("main", "main");
-for (const s of ["label", "now", "day", "trends", "settings", "editor"]) { const n = mk("section", `screen-${s}`, "screen"); n.hidden = s !== "now"; main.append(n); }
+for (const s of ["label", "now", "day", "trends", "settings", "editor", "catchup"]) { const n = mk("section", `screen-${s}`, "screen"); n.hidden = s !== "now"; main.append(n); }
 const tabs = mk("nav", "tabs", "tabs");
 for (const t of ["now", "day", "trends", "settings"]) { const b = mk("button", null, `tab${t === "now" ? " active" : ""}`); b.setAttribute("data-tab", t); tabs.append(b); if (t === "settings") b.append(mk("span", "tab-badge", "badge")); }
 const toast = mk("div", "toast", "toast"); toast.hidden = true;
@@ -557,15 +649,19 @@ sandbox.window = sandbox; sandbox.globalThis = sandbox;
 sandbox.addEventListener = (t, fn) => {};
 sandbox.scrollTo = () => {};
 vm.createContext(sandbox);
-// Seeded: the label prompt would otherwise wait for a tap that never comes.
-localStorage.setItem("bl.settings", JSON.stringify({ label: "Dad", units: "ml", step_ml: null, quick_mode: "recent", quick_custom: [], night_from: "21:00", night_to: "07:00", child_id: null, night_override: null, device: "d-0001" }));
+// Seeded: the label prompt would otherwise wait for a tap that never comes. Everything else is
+// left to the defaults, so the range chips are what a fresh phone shows.
+localStorage.setItem("bl.settings", JSON.stringify({ label: "Dad", device: "d-0001" }));
 for (const f of ["config.js", "core.js", "graph.js", "store.js", "sync.js", "app.js"]) {
   vm.runInContext(fs.readFileSync(path.join(DOCS, f), "utf8"), sandbox, { filename: f });
 }
 const G = (expr) => vm.runInContext(expr, sandbox);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const screen = (name) => document.getElementById(`screen-${name}`);
-const visible = () => ["label", "now", "day", "trends", "settings", "editor"].find((s) => !screen(s).hidden);
+const visible = () => ["label", "now", "day", "trends", "settings", "editor", "catchup"].find((s) => !screen(s).hidden);
+const fire = (node, kind) => { for (const fn of node.listeners[kind] || []) fn({ target: node }); };
+const chipTexts = (host) => host.querySelectorAll(".chip").map((b) => b.textContent);
+const rangeInputs = () => { const r = screen("editor").querySelector(".range"); return r ? r.querySelectorAll("input") : []; };
 const ids = (host) => host.querySelectorAll("[data-event-id]").map((n) => n.dataset.eventId);
 
 (async () => {
@@ -595,25 +691,56 @@ const ids = (host) => host.querySelectorAll("[data-event-id]").map((n) => n.data
     await G("saveEditor()");
     check("save wrote a revision", visible() === "now" && G("Store.events()").length === 1 && G("Store.events()")[0].revision === 2 && G("Store.events()")[0].data.dirty);
 
-    // A feed with the side timer, from the editor and from the running card.
+    // A bottle feed: no timer, no End, the range chips, the formula chips.
     G('openEditor({ type: "feed" })');
     check("feed editor pushed with a chevron", visible() === "editor" && !document.getElementById("back").hidden && document.getElementById("title").textContent === "Log a feed");
     check("editor has the shift chips", ["−5", "−15", "−30 min"].every((t) => screen("editor").textContent.includes(t)));
-    await G('startSide("left")');
+    const edText = screen("editor").textContent;
+    check("no side timers, no End for a feed", !edText.includes("Stop at") && !edText.includes("Breast") && !edText.includes("type minutes") && !document.getElementById("ed-end"), edText.slice(0, 200));
+    const quick = document.getElementById("ed-quick");
+    check("range chips read 50…100 by default", ["50 ml", "60 ml", "70 ml", "80 ml", "90 ml", "100 ml"].every((t) => chipTexts(quick).includes(t)) && !chipTexts(quick).some((t) => t.startsWith("Same as last")), chipTexts(quick).join("|"));
+    check("the range control sits beside the chips", rangeInputs().length === 3);
+    quick.querySelectorAll(".chip").find((b) => b.textContent === "60 ml").click();
+    check("a chip makes a formula portion with the first choice preselected", G("app.editor.draft.data.bottles.length") === 1 && G("app.editor.draft.data.bottles[0].ml") === 60 && G("app.editor.draft.data.bottles[0].formula") === "Similac", JSON.stringify(G("app.editor.draft.data.bottles")));
+    check("the starter chips are Similac and Enfamil", chipTexts(screen("editor").querySelector(".chips.formula")).join(",") === "Similac,Enfamil,Other…", chipTexts(screen("editor").querySelector(".chips.formula")).join(","));
+    screen("editor").querySelector(".chips.formula").querySelectorAll(".chip").find((b) => b.textContent === "Enfamil").click();
+    check("plan B is one tap", G("app.editor.draft.data.bottles[0].formula") === "Enfamil");
+    await G("saveEditor()");
     const feed = G("Store.events()").find((e) => e.type === "feed");
-    check("left side started a running feed", feed && feed.end === null && feed.data.timer && feed.data.timer.side === "left", JSON.stringify(feed && feed.data));
-    check("editor now holds the event", G("app.editor.event && app.editor.event.event_id") === feed.event_id);
-    check("Stop now / Stop at… offered", screen("editor").textContent.includes("Stop now") && screen("editor").textContent.includes("Stop at…"));
-    await G('startSide("right")');
-    const feed2 = G("Store.event")(feed.event_id);
-    check("switching folded the left side", feed2.data.timer.side === "right" && feed2.data.breast.left_s !== null && feed2.revision === 2);
-    G("closeEditor()");
-    G("renderNow()");
-    check("running card on Now", ids(screen("now")).includes(feed.event_id) && screen("now").textContent.includes("Feeding since") && screen("now").textContent.includes("Switch to left"));
-    check("Feed button says Feeding…", screen("now").querySelector(".btn.feed.big").textContent === "Feeding…");
-    await G("stopNowFor(Store.event(" + JSON.stringify(feed.event_id) + "))");
-    const feed3 = G("Store.event")(feed.event_id);
-    check("stop wrote end and cleared the timer", feed3.end !== null && feed3.data.timer === null && feed3.data.breast.total_s !== null);
+    check("feed saved with the formula and an end", feed && feed.data.bottles[0].formula === "Enfamil" && feed.data.bottles[0].ml === 60 && feed.end === feed.time && feed.data.timer === null, JSON.stringify(feed && feed.data));
+    check("no breast seconds were invented", feed.data.breast.total_s === null && feed.data.breast.left_s === null);
+    // The next feed preselects what was used last; Other… adds a name that becomes the next default.
+    G('openEditor({ type: "feed" })');
+    check("Same as last chip", chipTexts(document.getElementById("ed-quick"))[0] === "Same as last · 60 ml", chipTexts(document.getElementById("ed-quick")).join("|"));
+    document.getElementById("ed-quick").querySelectorAll(".chip").find((b) => b.textContent === "70 ml").click();
+    check("the last formula is preselected on the next feed", G("app.editor.draft.data.bottles[0].formula") === "Enfamil" && chipTexts(screen("editor").querySelector(".chips.formula"))[0] === "Enfamil");
+    screen("editor").querySelector(".chips.formula").querySelectorAll(".chip").find((b) => b.textContent === "Other…").click();
+    const otherInput = screen("editor").querySelector("input.formula-other");
+    check("Other… becomes a text field", !!otherInput && G("app.editor.draft.data.bottles[0].formula") === null);
+    otherInput.value = "Kendamil"; fire(otherInput, "input");
+    check("a typed name lands on the portion", G("app.editor.draft.data.bottles[0].formula") === "Kendamil");
+    await G("saveEditor()");
+    G('openEditor({ type: "feed" })');
+    document.getElementById("ed-quick").querySelectorAll(".chip").find((b) => b.textContent === "80 ml").click();
+    check("the typed name is now the first choice", G("app.editor.draft.data.bottles[0].formula") === "Kendamil" && chipTexts(screen("editor").querySelector(".chips.formula")).slice(0, 2).join(",") === "Kendamil,Enfamil", chipTexts(screen("editor").querySelector(".chips.formula")).join(","));
+    screen("editor").querySelector(".toggle").click();
+    check("breast milk has no formula and no chips", G("app.editor.draft.data.bottles[0].kind") === "breast_milk" && G("app.editor.draft.data.bottles[0].formula") === null && !screen("editor").querySelector(".chips.formula"));
+    screen("editor").querySelector(".toggle").click();
+    check("back to formula, the name comes back", G("app.editor.draft.data.bottles[0].formula") === "Kendamil");
+    // The range moves up the week his feeds do: typed beside the chips, saved at once.
+    const rangeFrom = rangeInputs()[0];
+    rangeFrom.value = "60"; fire(rangeFrom, "input");
+    check("range from saved on input", G("Store.settings().quick_from") === 60 && G("Store.settings().quick_to") === 100);
+    check("chips redrawn at once", chipTexts(document.getElementById("ed-quick")).includes("60 ml") && !chipTexts(document.getElementById("ed-quick")).includes("50 ml"), chipTexts(document.getElementById("ed-quick")).join("|"));
+    const rangeStep = rangeInputs()[2];
+    rangeStep.value = "20"; fire(rangeStep, "input");
+    const mlChips = () => chipTexts(document.getElementById("ed-quick")).filter((t) => /^[0-9]+ ml$/.test(t));
+    check("range step saved", G("Store.settings().quick_step") === 20 && mlChips().join(",") === "60 ml,80 ml,100 ml", mlChips().join(","));
+    await G("saveEditor()");
+    check("three bottle feeds saved", G("Store.events()").filter((e) => e.type === "feed").length === 3);
+    G('Store.setSettings({ quick_mode: "recent" }); openEditor({ type: "feed" });');
+    check("recent mode shows four chips around the median and no range control", mlChips().length === 4 && rangeInputs().length === 0, mlChips().join(","));
+    G('closeEditor(); Store.setSettings({ quick_mode: "range", quick_from: 50, quick_step: 10 });');
 
     // Every type's editor, and Change type… across all of them.
     for (const t of ["feed", "diaper", "sleep", "pump", "growth", "health", "note"]) {
@@ -633,7 +760,7 @@ const ids = (host) => host.querySelectorAll("[data-event-id]").map((n) => n.data
     G('openEditor({ type: "note" }); app.editor.draft.note = "首次微笑";');
     await G("saveEditor()");
     await G("sleepButton()");
-    const types = G("Store.events()").map((e) => e.type).sort().join(",");
+    const types = Array.from(new Set(G("Store.events()").map((e) => e.type))).sort().join(",");
     check("one of every type saved", types === "diaper,feed,growth,health,note,pump,sleep", types);
 
     // Validation refuses in page.
@@ -736,6 +863,10 @@ const ids = (host) => host.querySelectorAll("[data-event-id]").map((n) => n.data
     check("their running feed applied", await G("Store").applyRemote(theirs, "E-20260924-010000-beef-r1-0000.json"));
     G("renderNow()");
     check("their feed shows as running here", screen("now").textContent.includes("Feeding since") && screen("now").textContent.includes("Mom"));
+    check("Feed still says Feed", screen("now").querySelector(".btn.feed.big").textContent === "Feed");
+    G("feedButton()");
+    check("Feed opens a new feed, not the running one", visible() === "editor" && G("app.editor.event") === null, visible());
+    G("closeEditor()");
     await G("stopNowFor(Store.event(" + JSON.stringify(theirs.event_id) + "))");
     const stopped = G("Store.event")(theirs.event_id);
     check("stopped their feed after the guard", stopped.end !== null && stopped.revision === 2 && stopped.data.breast.left_s >= 590 && stopped.edited_by === "Dad", JSON.stringify(stopped.data.breast));
@@ -755,13 +886,52 @@ const ids = (host) => host.querySelectorAll("[data-event-id]").map((n) => n.data
     check("and enabled again", !saveBtn.disabled && !delBtn.disabled);
     G("closeEditor()");
 
-    // An empty portion row ("Another portion" not yet typed) does not refuse a side tap or a Stop.
-    G('openEditor({ type: "feed" }); app.editor.draft.data.bottles.push({ kind: "formula", ml: 0 });');
-    await G('startSide("left")');
-    check("side tap with an empty portion starts the timer", G("app.editor.event && app.editor.event.data.timer && app.editor.event.data.timer.side") === "left" && G("app.editor.event.data.bottles.length") === 0 && !G("app.editor.msg"), G("app.editor.msg"));
-    await G("stopFeedAt(nowIso())");
-    check("stop with no portions", G("app.editor.event.end") !== null && !G("app.editor.msg"), G("app.editor.msg"));
-    G("closeEditor()");
+    // An empty portion row ("Another portion" not yet typed) is dropped on Save, not refused.
+    const feedsBefore = G("Store.events()").filter((e) => e.type === "feed").length;
+    G('openEditor({ type: "feed" }); app.editor.draft.data.bottles.push({ kind: "formula", ml: 0, formula: "Kendamil" });');
+    await G("saveEditor()");
+    // The newest write, not the latest `time`: every feed in this run starts "now", to the second.
+    const emptyFeed = G("Store.events()").filter((e) => e.type === "feed").sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0];
+    check("save with an empty portion writes a feed with no bottles", visible() === "now" && G("Store.events()").filter((e) => e.type === "feed").length === feedsBefore + 1 && emptyFeed.data.bottles.length === 0, JSON.stringify(emptyFeed && emptyFeed.data));
+
+    // A stored feed with breast seconds (a paper row) opens with one read-only line and saves without losing them.
+    const paper = { event_id: "E-paper-20260922-1400-feed", revision: 1, deleted: false, reason: null, child_id: child.child_id, type: "feed",
+      time: G("Core.isoLocal")(new Date(Date.now() - 3 * 3600000)), end: null,
+      data: { breast: { left_s: null, right_s: null, total_s: 900, last_side: null, approx: true }, bottles: [{ kind: "formula", ml: 20, formula: null }], made_ml: null, leftover_ml: null, timer: null },
+      note: "Check: 14:00 or 14:30?", logged_by: "paper", edited_by: null, device: "paper", entered_from: "paper", created_at: "2026-09-24T01:00:00.000000+00:00" };
+    check("paper feed applied", await G("Store").applyRemote(paper, "E-paper-20260922-1400-feed-r1-0000.json"));
+    G(`openEditor({ event: Store.event(${JSON.stringify(paper.event_id)}) })`);
+    const paperText = screen("editor").textContent;
+    check("breast seconds show as one read-only line", paperText.includes("Breast ~15 min") && !paperText.includes("Stop") && !screen("editor").querySelector("#ed-end") && screen("editor").querySelectorAll(".breast-line").length === 1, paperText.slice(0, 300));
+    check("its portion has no formula chip active but the chips are offered", screen("editor").querySelector(".chips.formula").querySelectorAll(".chip.active").length === 0 && !!screen("editor").querySelector(".chips.formula"));
+    G('app.editor.draft.note = "looked again: 14:00";');
+    await G("saveEditor()");
+    const paper2 = G("Store.event")(paper.event_id);
+    check("saved without losing the breast seconds", paper2.revision === 2 && paper2.data.breast.total_s === 900 && paper2.data.breast.approx === true && paper2.data.timer === null && paper2.data.bottles[0].ml === 20 && paper2.note === "looked again: 14:00", JSON.stringify(paper2.data));
+    check("its end is start plus the breast minutes", paper2.end !== null && Date.parse(paper2.end) - Date.parse(paper2.time) === 900000, `${paper2.time} → ${paper2.end}`);
+
+    // Catch up: one screen, one tap per paper slip, at the strip's date and time.
+    G("openCatchUp()");
+    check("catch-up screen pushed", visible() === "catchup" && !document.getElementById("back").hidden && document.getElementById("title").textContent === "Catch up", visible());
+    check("catch-up strip has the date, the time, the feed chips and the diaper buttons", document.getElementById("cu-date").value === G("todayStr()") && document.getElementById("cu-time").value === "" && screen("catchup").textContent.includes("Feed · Kendamil") && ["Wet", "Dirty", "Both", "Done"].every((t) => screen("catchup").textContent.includes(t)), screen("catchup").textContent.slice(0, 300));
+    const cuBefore = G("Store.events()").length;
+    await G("catchUpFeed(60)");
+    check("a missing time is refused in page", G("Store.events()").length === cuBefore && screen("catchup").textContent.includes("Type the time first"), screen("catchup").textContent.slice(0, 300));
+    const yesterday = G("shiftDay(todayStr(), -1)");
+    const cuDate = yesterday >= "2026-09-21" ? yesterday : G("todayStr()");
+    G(`app.catchup.date = ${JSON.stringify(cuDate)}; app.catchup.time = "09:10";`);
+    const cuFeed = await G("catchUpFeed(60)");
+    check("a feed tap writes at the given date and time with the last formula", cuFeed && cuFeed.type === "feed" && cuFeed.time.startsWith(`${cuDate}T09:10:00`) && cuFeed.end === cuFeed.time && cuFeed.data.bottles[0].ml === 60 && cuFeed.data.bottles[0].formula === "Kendamil" && G("Store.events()").length === cuBefore + 1, JSON.stringify(cuFeed));
+    check("only the time clears, the date stays, and the row is listed", G("app.catchup.time") === "" && G("app.catchup.date") === cuDate && ids(screen("catchup")).includes(cuFeed.event_id) && !!screen("catchup").querySelector(".swipe-act.del") && screen("catchup").textContent.includes("Added 60 ml"), screen("catchup").textContent.slice(0, 400));
+    G('app.catchup.time = "09:40";');
+    const cuDiaper = await G("catchUpDiaper(true, true)");
+    check("a diaper tap writes wet + dirty at its time", cuDiaper && cuDiaper.type === "diaper" && cuDiaper.data.wet && cuDiaper.data.dirty && cuDiaper.time.startsWith(`${cuDate}T09:40:00`) && new Set(ids(screen("catchup"))).size === 2, JSON.stringify(cuDiaper));
+    check("catch-up entries are queued for upload", G("Store.queue()").some((q) => q.body.event_id === cuDiaper.event_id));
+    G('app.catchup.time = "23:59"; app.catchup.date = "2020-01-01";');
+    await G("catchUpDiaper(true, false)");
+    check("the editor's own rules apply", G("Store.events()").length === cuBefore + 2 && screen("catchup").textContent.includes("before Yisen was born"), screen("catchup").textContent.slice(0, 300));
+    screen("catchup").querySelectorAll(".btn").find((b) => b.textContent === "Done").click();
+    check("Done goes back", visible() === "now");
 
     // An echo of the record on screen (same substance, new object, new file name) leaves the typed note alone.
     const pump2 = G("Store.event")(pump.event_id);

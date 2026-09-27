@@ -233,7 +233,20 @@ class TestValidateData(unittest.TestCase):
 
     def test_arrays_are_replaced_not_merged(self):
         got = store.validate_data("feed", {"bottles": [{"kind": "breast_milk", "ml": 5}]})
-        self.assertEqual(got["bottles"], [{"kind": "breast_milk", "ml": 5}])
+        self.assertEqual(got["bottles"], [{"kind": "breast_milk", "ml": 5, "formula": None}])
+
+    def test_a_portion_always_comes_back_with_a_formula_key(self):
+        # Older records and the paper import carry only kind and ml; the stored shape is one.
+        got = store.validate_data("feed", {"bottles": [{"kind": "formula", "ml": 70},
+                                                       {"kind": "formula", "ml": 10,
+                                                        "formula": "Enfamil NeuroPro"}]})
+        self.assertEqual(got["bottles"], [{"kind": "formula", "ml": 70, "formula": None},
+                                          {"kind": "formula", "ml": 10, "formula": "Enfamil NeuroPro"}])
+        for bad in (5, "", [], {"name": "x"}):
+            with self.assertRaises(ValueError, msg=repr(bad)):
+                store.validate_data("feed", {"bottles": [{"kind": "formula", "ml": 70, "formula": bad}]})
+        with self.assertRaises(ValueError):
+            store.validate_data("feed", {"bottles": [{"kind": "formula", "ml": 70, "brand": "x"}]})
 
     def test_bools_are_not_numbers(self):
         with self.assertRaises(ValueError):

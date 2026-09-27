@@ -162,10 +162,14 @@ const Core = (() => {
       return v.map((b, i) => {
         const p = `${path}[${i}]`;
         if (!isObj(b)) throw new Error(`${p} must be an object`);
-        for (const k of Object.keys(b)) if (k !== "kind" && k !== "ml") throw new Error(`unknown key ${p}.${k}`);
+        for (const k of Object.keys(b)) if (k !== "kind" && k !== "ml" && k !== "formula") throw new Error(`unknown key ${p}.${k}`);
         if (!ENUMS.bottle_kind.includes(b.kind)) throw new Error(`${p}.kind must be formula or breast_milk`);
         if (typeof b.ml !== "number" || !Number.isFinite(b.ml) || b.ml <= 0) throw new Error(`${p}.ml must be a number > 0`);
-        return { kind: b.kind, ml: b.ml };
+        // The formula's name as the parents call it; null (the default, and always for breast
+        // milk) rather than "" so an untyped name never becomes a chip of its own.
+        const formula = b.formula === undefined ? null : b.formula;
+        if (formula !== null && (typeof formula !== "string" || formula === "")) throw new Error(`${p}.formula must be text or null`);
+        return { kind: b.kind, ml: b.ml, formula };
       });
     }
     if (kind === "feed_timer") {
@@ -385,6 +389,38 @@ const Core = (() => {
     const r = recentMls || [];
     return r.length >= 3 && ml > 2 * Math.max.apply(null, r);
   }
+  // The range chips (§8.1): every step from `from` to `to` inclusive, the bounds swapped when
+  // typed backwards. Capped at 12 so a stray "to 400" cannot fill the screen with chips, and []
+  // rather than an endless loop when the step is 0 or a bound is missing.
+  function quickRange(fromMl, toMl, stepMl) {
+    // A blank settings field is "" and Number("") is 0 — treat it as missing, not as zero ml.
+    const missing = (x) => x == null || x === "" || !Number.isFinite(Number(x));
+    if (missing(fromMl) || missing(toMl) || missing(stepMl)) return [];
+    const a = Number(fromMl), b = Number(toMl), step = Math.abs(Number(stepMl));
+    if (step <= 0) return [];
+    const lo = Math.min(a, b), hi = Math.max(a, b);
+    const out = [];
+    for (let v = lo; v <= hi && out.length < 12; v += step) out.push(v);
+    return out;
+  }
+  // The formula chips: the distinct names of the most recent portions, newest first, at most
+  // four; the two starters when nothing has been recorded yet (§8.1). Nothing is stored for
+  // this, so every device agrees without configuration.
+  function formulaChoices(recentFormulas) {
+    const out = [];
+    for (const name of recentFormulas || []) {
+      if (typeof name !== "string" || name === "" || out.includes(name)) continue;
+      out.push(name);
+      if (out.length === 4) break;
+    }
+    return out.length ? out : ["Similac", "Enfamil"];
+  }
+  // The first portion's formula name, or null: what "Same as last" preselects.
+  function formulaOf(ev) {
+    const bottles = (ev && ev.data && ev.data.bottles) || [];
+    const first = bottles[0];
+    return first && typeof first.formula === "string" && first.formula !== "" ? first.formula : null;
+  }
 
   // -- ages and dates ------------------------------------------------------------------------
 
@@ -502,8 +538,8 @@ const Core = (() => {
     stamp, rand4, newId, fileName, parseName, nowIso, isoLocal, parseIso, localDate,
     defaults, validate, resolve, live, onDay, isRunning, staleTimer, lastOf, sinceText,
     usualGapMs, nextFeedAt, totals, bottleMl, breastSeconds, describe, fmtAmount, toUnit,
-    fromUnit, stepMl, chipStepMl, quickAmounts, unusual, ageText, isNight, fmtTime, fmtDay,
-    fmtDateTime, dayNumber,
+    fromUnit, stepMl, chipStepMl, quickAmounts, quickRange, formulaChoices, formulaOf, unusual,
+    ageText, isNight, fmtTime, fmtDay, fmtDateTime, dayNumber,
   };
 })();
 

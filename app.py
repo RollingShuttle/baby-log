@@ -49,7 +49,8 @@ CORE_JS = _resource_dir() / "docs" / "core.js"
 
 # The one settings shape every device has (§6.1). The phone adds `device`; the PC does not.
 SETTINGS_DEFAULTS = {
-    "label": "", "units": "ml", "step_ml": None, "quick_mode": "recent", "quick_custom": [],
+    "label": "", "units": "ml", "step_ml": None, "quick_mode": "range", "quick_custom": [],
+    "quick_from": 50, "quick_to": 100, "quick_step": 10,
     "night_from": "21:00", "night_to": "07:00", "child_id": None,
 }
 
@@ -105,11 +106,16 @@ def validate_settings(patch):
             raise ValueError("units must be ml or oz")
         if k == "step_ml" and v is not None and (not _is_number(v) or v <= 0):
             raise ValueError("step_ml must be null or a number > 0")
-        if k == "quick_mode" and v not in ("recent", "custom"):
-            raise ValueError("quick_mode must be recent or custom")
+        if k == "quick_mode" and v not in ("recent", "range", "custom"):
+            raise ValueError("quick_mode must be recent, range or custom")
         if k == "quick_custom" and (not isinstance(v, list)
                                     or any(not _is_number(x) or x <= 0 for x in v)):
             raise ValueError("quick_custom must be a list of numbers > 0")
+        # The range bounds may be null (the chips then fall back to nothing, Core.quickRange
+        # returns []) and zero is allowed so a half-typed field never gets refused mid-edit.
+        if k in ("quick_from", "quick_to", "quick_step") and v is not None and (
+                not _is_number(v) or v < 0):
+            raise ValueError(f"{k} must be null or a number >= 0")
         if k in ("night_from", "night_to"):
             if not isinstance(v, str) or not store_mod.HHMM_RE.match(v):
                 raise ValueError(f"{k} must be HH:MM")

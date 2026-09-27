@@ -2,7 +2,7 @@
    with no connection at all (SPEC.md §7.5). Journal files are never cached — they are read through
    Graph and held in IndexedDB. Uploads are never cached — they go through the queue.
    Bump VERSION on every change to docs/, or the old shell is served until the visit after next. */
-const VERSION = "v6";
+const VERSION = "v7";
 const SHELL = "shell-" + VERSION;
 const SHELL_FILES = [
   "./", "./index.html", "./style.css", "./config.js",

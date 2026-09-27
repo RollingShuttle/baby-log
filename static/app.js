@@ -24,6 +24,7 @@ const state = {
   editor: null,       // the open dialog, see openEditor
   lastDiaper: null,   // {event_id, ms}: the last one-click diaper from this PC (the 2-minute rule)
   reports: { paths: [] },
+  catchup: { date: null, added: [], records: {} },   // the Catch up screen: its day and what it wrote this session
 };
 
 // ---------------------------------------------------------------- small helpers
@@ -146,18 +147,31 @@ function stepMl() {
   const s = state.settings && state.settings.step_ml;
   return s ? Number(s) : Core.stepMl(recentMls(), unit());
 }
+// The quick-amount chips by quick_mode (§8.1): a range the owner moves up as the feeds grow (the
+// default), the chips grown from recent feeds, or a typed list.
 function quickAmounts() {
   const s = state.settings || {};
-  return Core.quickAmounts(recentMls(), unit(), s.quick_mode === "custom" ? s.quick_custom : null);
+  const mode = s.quick_mode || "range";
+  if (mode === "range") return Core.quickRange(s.quick_from, s.quick_to, s.quick_step);
+  return Core.quickAmounts(recentMls(), unit(), mode === "custom" ? s.quick_custom : null);
 }
-// The median length of the last six finished feeds, for "Stop at…"; 20 min before there are any.
-function usualFeedMs() {
-  const d = state.events.filter((ev) => ev.type === "feed" && ev.end).slice(-6)
-    .map((ev) => ms(ev.end) - ms(ev.time)).filter((x) => x > 0).sort((a, b) => a - b);
-  if (!d.length) return 20 * MIN;
-  const mid = Math.floor(d.length / 2);
-  return d.length % 2 ? d[mid] : (d[mid - 1] + d[mid]) / 2;
+// Formula names of the most recent formula portions, newest first, for Core.formulaChoices. Every
+// name ever typed is on file in the feeds themselves, so nothing about this lives in settings and
+// the phones and the PC agree without configuration (§8.1).
+function recentFormulas() {
+  const names = [];
+  for (let i = state.events.length - 1; i >= 0 && names.length < 40; i--) {
+    const ev = state.events[i];
+    if (ev.type !== "feed" || !ev.data || !Array.isArray(ev.data.bottles)) continue;
+    for (let j = ev.data.bottles.length - 1; j >= 0; j--) {
+      const b = ev.data.bottles[j];
+      if (b && b.kind === "formula" && typeof b.formula === "string" && b.formula.trim()) names.push(b.formula.trim());
+    }
+  }
+  return names;
 }
+const formulaChoices = () => Core.formulaChoices(recentFormulas());
+const lastFormula = () => formulaChoices()[0] || null;
 // Everyone who has logged or edited anything, plus this PC — the Who chips.
 function knownLabels() {
   const seen = new Set();
@@ -232,6 +246,7 @@ async function boot() {
   });
   loadLastDiaper();
   state.date = todayStr();
+  state.catchup.date = todayStr();
   try {
     await loadConfig();
   } catch (e) {
@@ -311,7 +326,7 @@ function renderTopbar() {
 function showView(v) {
   state.view = v;
   for (const b of document.querySelectorAll(".navbtn")) b.classList.toggle("active", b.dataset.view === v);
-  for (const name of ["today", "trends", "growth", "health", "reports", "settings"]) {
+  for (const name of ["today", "catchup", "trends", "growth", "health", "reports", "settings"]) {
     document.getElementById(`view-${name}`).hidden = name !== v;
   }
   hideStatus();
@@ -322,6 +337,7 @@ function showView(v) {
 function renderView() {
   switch (state.view) {
     case "today": renderToday(); break;
+    case "catchup": renderCatchup(); break;
     case "trends": renderTrends(); break;
     case "growth": renderGrowth(); break;
     case "health": renderHealth(); break;
@@ -340,10 +356,6 @@ function tick() {
   for (const n of document.querySelectorAll("[data-elapsed]")) {
     n.textContent = n.dataset.style === "clock" ? elapsedText(now - ms(n.dataset.elapsed))
       : Core.sinceText(now - ms(n.dataset.elapsed));
-  }
-  for (const n of document.querySelectorAll("[data-side-from]")) {
-    const base = Number(n.dataset.base || 0) * 1000;
-    n.textContent = elapsedText(base + now - ms(n.dataset.sideFrom));
   }
 }
 
@@ -472,9 +484,10 @@ function runningCard(ev, now) {
 function renderLogbar() {
   const bar = document.getElementById("logbar");
   const moreOpen = bar.dataset.more === "1";
+  // Feed always opens a new bottle feed (§6.2); a legacy running timer keeps its card on the Now
+  // panel, which is where it is stopped.
   bar.replaceChildren(
-    el("button", { class: "logbtn feed", type: "button", onclick: feedButton },
-      running("feed").length ? "Feeding…" : "Feed"),
+    el("button", { class: "logbtn feed", type: "button", onclick: () => openEditor({ type: "feed" }) }, "Feed"),
     el("span", { class: "loggroup" },
       el("button", { class: "logbtn diaper wet", type: "button", onclick: () => quickDiaper(true, false) }, "Wet"),
       el("button", { class: "logbtn diaper dirty", type: "button", onclick: () => quickDiaper(false, true) }, "Dirty"),
@@ -486,7 +499,9 @@ function renderLogbar() {
     moreOpen ? el("span", { class: "more-menu" },
       el("button", { class: "logbtn", type: "button", onclick: () => { bar.dataset.more = ""; openEditor({ type: "health" }); } }, "Health"),
       el("button", { class: "logbtn", type: "button", onclick: () => { bar.dataset.more = ""; openEditor({ type: "note" }); } }, "Note"))
-      : el("button", { class: "logbtn", type: "button", onclick: () => { bar.dataset.more = "1"; renderLogbar(); } }, "More ▾"));
+      : el("button", { class: "logbtn", type: "button", onclick: () => { bar.dataset.more = "1"; renderLogbar(); } }, "More ▾"),
+    el("button", { class: "logbtn catchup", type: "button", title: "Type in the paper slips: one tap per entry, at the time you write",
+      onclick: () => showView("catchup") }, "Catch up"));
 }
 
 // The paper sheet: feeding on the left, diapers on the right, everything else below (§6.2).
@@ -515,11 +530,13 @@ function renderDaySheet() {
       breast = `${br.approx ? "~" : ""}${Math.round(s / 60)} min`;
       if (br.left_s != null || br.right_s != null) breast += ` (L ${Math.round((br.left_s || 0) / 60)} / R ${Math.round((br.right_s || 0) / 60)})`;
     }
-    const bottles = (ev.data.bottles || []).map((b) => `${amount(b.ml)} ${b.kind === "formula" ? "formula" : "breast milk"}`).join(" + ");
+    const bottles = (ev.data.bottles || []).map((b) => `${amount(b.ml)} ${b.kind === "formula" ? (b.formula || "formula") : "breast milk"}`).join(" + ");
     const made = ev.data.made_ml != null || ev.data.leftover_ml != null
       ? `${ev.data.made_ml != null ? amount(ev.data.made_ml) : "—"} / ${ev.data.leftover_ml != null ? amount(ev.data.leftover_ml) : "—"}` : "";
+    // A bottle feed's end is its start (the editor has no End for feeds), so only a real span shows.
+    const span = ev.end && ms(ev.end) - ms(ev.time) >= MIN ? `–${Core.fmtTime(ev.end)}` : "";
     return el("tr", { class: run ? "running-row" : "" },
-      cell(ev, "t-time", Core.fmtTime(ev.time), run ? " ▸" : (ev.end ? `–${Core.fmtTime(ev.end)}` : "")),
+      cell(ev, "t-time", Core.fmtTime(ev.time), run ? " ▸" : span),
       cell(ev, "", breast), cell(ev, "", bottles), cell(ev, "", made), byCell(ev), noteCell(ev));
   };
   const glyph = (on, cls, color) => el("span", { class: `glyph ${on ? cls : "off"}`, style: on && color ? `color:${color}` : null }, on ? "☑" : "☐");
@@ -570,12 +587,6 @@ function renderDaySheet() {
    diaper rule cannot catch it (the first diaper is not on file), `running()` still says no sleep,
    and a second Switch or Stop writes a redundant revision. Set before the POST, cleared in finally. */
 let writing = false;
-
-function feedButton() {
-  const run = running("feed");
-  if (run.length) openEditor({ event: run[0] });
-  else openEditor({ type: "feed" });
-}
 
 async function sleepButton() {
   const run = running("sleep");
@@ -772,13 +783,19 @@ function openEditor(opts) {
     draft = { event_id: null, child_id: state.child ? state.child.child_id : null, type: opts.type,
       time: opts.time || nowIso(), end: null, data: Object.assign(Core.defaults(opts.type), opts.data || {}),
       note: "", logged_by: myLabel() };
+    // A new feed opens on one empty formula portion, so the formula chips are in view before the
+    // first tap; an empty portion is dropped on Save.
+    if (draft.type === "feed" && !draft.data.bottles.length) draft.data.bottles.push({ kind: "formula", ml: 0, formula: lastFormula() });
   }
   // A stored portion counts as typed: §8.1 keeps it unless the user touches it, so made / leftover
   // may only fill in a portion this editor created itself.
   const bottles = draft.data.bottles || [];
+  // Records written before formula names existed have no `formula` key on their portions;
+  // the editor treats that as null (both validators fill the default on Save anyway).
+  for (const b of bottles) if (b && b.formula === undefined) b.formula = null;
   state.editor = { draft, event: ev, history: null, msg: null, msgKind: "err", confirm: false,
-    unusualOk: false, sameAs: opts.sameAs || null, stopAt: false, focusEnd: !!opts.focusEnd,
-    portionsTyped: bottles.length > 0, whoOther: false, saving: false };
+    unusualOk: false, sameAs: opts.sameAs || null, focusEnd: !!opts.focusEnd,
+    portionsTyped: bottles.some((b) => b && b.ml > 0), whoOther: false, formulaOther: {}, saving: false };
   if (ev) {
     api(`/api/event/${ev.event_id}`).then((r) => {
       if (state.editor && state.editor.event === ev) { state.editor.history = r.history || []; renderHistory(); }
@@ -793,7 +810,7 @@ function closeEditor() {
 }
 
 // The buttons that write go grey while a write is in flight, so a second click has nothing to
-// hit; toggled in place because a full re-render would drop a half-typed Stop at… time.
+// hit; toggled in place because a full re-render would drop a half-typed field.
 function setBusy(e, on) {
   e.saving = on;
   if (state.editor !== e) return;
@@ -879,7 +896,10 @@ function renderEditor() {
       el("button", { class: "chip", type: "button", onclick: () => shift(30) }, "−30 min")),
     whenLabel));
 
-  if (TIMED.includes(d.type)) {
+  // End is hidden for feeds — a bottle has no useful end (§6.2). The one exception is a feed that
+  // still carries a running timer from before 27 Sep 2026: the stale-timer card's "Set end time"
+  // lands here and needs the control to stop it.
+  if (TIMED.includes(d.type) && (d.type !== "feed" || isRunning)) {
     const endInput = el("input", { type: "datetime-local", value: dtValue(d.end), step: "60", id: "ed-end",
       onchange: (x) => { d.end = x.target.value ? dtParse(x.target.value) : null; } });
     kids.push(el("div", { class: "ed-row" },
@@ -926,7 +946,6 @@ function renderEditor() {
 
   kids.push(el("div", { class: "ed-foot" },
     !isNew ? el("button", { class: "ghost danger", type: "button", "data-busy": "1", disabled: e.saving, onclick: () => { e.confirm = true; renderEditor(); } }, "Delete") : null,
-    isRunning && d.type === "feed" ? el("button", { class: "ghost", type: "button", onclick: () => openEditor({ type: "feed" }) }, "Start another feed") : null,
     el("span", { class: "spacer" }),
     el("button", { class: "ghost", type: "button", onclick: closeEditor }, "Cancel"),
     el("button", { class: `primary${d.type === "feed" ? " feed" : ""}`, type: "button", "data-busy": "1", disabled: e.saving, onclick: saveEditor }, "Save")));
@@ -975,103 +994,108 @@ function amountControl(get, set, opts = {}) {
   return box;
 }
 
+// The range control beside the quick chips (§8.1): from / to / step in ml, saved to settings the
+// moment a field changes so the range moves up the week his feeds do. `onSaved` redraws the chips.
+function rangeControl(onSaved) {
+  const cur = (key) => { const v = (state.settings || {})[key]; return v == null ? "" : String(v); };
+  const num = (key, label) => {
+    const input = el("input", { type: "number", inputmode: "numeric", min: "1", step: "1", "aria-label": `range ${label}`, value: cur(key) });
+    input.addEventListener("change", async () => {
+      const v = input.value === "" ? null : Number(input.value);
+      if (v !== null && !(Number.isFinite(v) && v >= 1)) { input.value = cur(key); return; }
+      try {
+        const r = await postJSON("/api/settings", { [key]: v });
+        state.settings = r.settings || Object.assign({}, state.settings, { [key]: v });
+        syncSettingsRange();
+        onSaved();
+      } catch (x) { showStatus("err", x.message); }
+    });
+    return el("label", { class: "range-field" }, el("span", {}, label), input);
+  };
+  return el("span", { class: "range-ctl", title: "The quick amounts: every step from the first to the last, in ml" },
+    el("span", { class: "muted small" }, "range"), num("quick_from", "from"), num("quick_to", "to"), num("quick_step", "by"),
+    el("span", { class: "muted small" }, "ml"));
+}
+
+// The quick-amount chips: Same as last, then the amounts of §8.1, in the display unit.
+function quickChips(onPick, excludeId) {
+  const lastBottle = state.events.filter((ev) => ev.type === "feed" && Core.bottleMl(ev) > 0 && ev.event_id !== excludeId).pop();
+  return [
+    lastBottle ? el("button", { class: "chip feed", type: "button", onclick: () => onPick(Core.bottleMl(lastBottle)) },
+      `Same as last · ${amount(Core.bottleMl(lastBottle))}`) : null,
+    ...quickAmounts().map((mlv) => el("button", { class: "chip", type: "button", onclick: () => onPick(mlv) }, amount(mlv))),
+  ];
+}
+
 function feedSection(d, e) {
-  const br = d.data.breast;
-  const timer = d.data.timer;
-  const isNew = !d.event_id;
-  const canRun = d.end === null;
-  const now = Date.now();
+  const br = d.data.breast || {};
   const out = [];
 
-  // -- the side timers
-  const sideBtn = (side) => {
-    const key = `${side}_s`;
-    const on = timer && timer.side === side;
-    const base = br[key] || 0;
-    return el("button", { class: `side${on ? " on" : ""}`, type: "button", "data-busy": "1", disabled: e.saving,
-      title: canRun ? (on ? "Running on this side" : "Start this side") : "Clear End to run a timer",
-      onclick: () => startSide(side) },
-      el("span", { class: "side-name" }, side),
-      el("span", on ? { class: "side-time", "data-side-from": timer.side_started, "data-base": String(base) } : { class: "side-time" },
-        on ? elapsedText(base * 1000 + now - ms(timer.side_started)) : (br[key] != null ? elapsedText(br[key] * 1000) : "—")),
-      el("span", { class: "side-sub" }, on ? `since ${Core.fmtTime(timer.side_started)}` : (canRun ? "tap to start" : "")));
-  };
-  out.push(el("div", { class: "h3" }, "Breast"));
-  out.push(el("div", { class: "sides" }, sideBtn("left"), sideBtn("right")));
-  if (br.last_side && !timer) {
-    out.push(el("div", { class: "muted small", style: "margin-top:6px" }, `Last side was ${br.last_side} — start with the ${br.last_side === "left" ? "right" : "left"}`));
-  }
-  if (timer && canRun) {
-    const stopAtInput = el("input", { type: "datetime-local", step: "60",
-      value: dtValue(Core.isoLocal(new Date(ms(d.time) + usualFeedMs()))) });
-    out.push(el("div", { class: "row" },
-      el("button", { class: "primary feed", type: "button", "data-busy": "1", disabled: e.saving, onclick: () => stopFeedAt(nowIso()) }, "Stop now"),
-      el("button", { class: "ghost", type: "button", onclick: () => { e.stopAt = !e.stopAt; renderEditor(); } }, "Stop at…"),
-      e.stopAt ? stopAtInput : null,
-      e.stopAt ? el("button", { class: "ghost", type: "button", "data-busy": "1", disabled: e.saving, onclick: () => {
-        const v = dtParse(stopAtInput.value);
-        if (v) stopFeedAt(v); else setMsg("Stop at needs a date and time");
-      } }, "Stop") : null));
+  // -- breast minutes from the paper sheet (or the timer era): read-only, never edited or cleared
+  const breastS = br.total_s != null ? br.total_s : (br.left_s != null || br.right_s != null ? (br.left_s || 0) + (br.right_s || 0) : null);
+  if (breastS != null && breastS > 0) {
+    const sides = br.left_s != null || br.right_s != null ? ` (L ${Math.round((br.left_s || 0) / 60)} / R ${Math.round((br.right_s || 0) / 60)})` : "";
+    const from = e.event && e.event.entered_from === "paper" ? ", from the paper sheet" : "";
+    out.push(el("div", { class: "breast-line muted small" }, `${br.approx ? "~" : ""}${Math.round(breastS / 60)} min breast${sides}${from}`));
   }
 
-  // -- or type minutes
-  const minutes = (key) => el("input", { type: "number", inputmode: "numeric", min: "0", step: "1",
-    value: br[key] == null ? "" : String(Math.round(br[key] / 60)),
-    oninput: (x) => {
-      br[key] = x.target.value === "" ? null : Math.round(Number(x.target.value) * 60);
-      if (key === "total_s") {
-        if (br.total_s != null) { br.left_s = null; br.right_s = null; br.approx = true; }
-      } else {
-        br.total_s = br.left_s == null && br.right_s == null ? null : (br.left_s || 0) + (br.right_s || 0);
-        br.approx = false;
-        if (br.left_s != null && br.right_s == null) br.last_side = "left";
-        if (br.right_s != null && br.left_s == null) br.last_side = "right";
-      }
-      if (approxBox) approxBox.value = br.total_s == null || !br.approx ? "" : String(Math.round(br.total_s / 60));
-    } });
-  const approxBox = minutes("total_s");
-  if (!br.approx) approxBox.value = "";
-  out.push(el("div", { class: "muted small", style: "margin-top:10px" }, "or type minutes"));
-  out.push(el("div", { class: "side-mins" },
-    el("label", { class: "field" }, el("span", {}, "Left min"), minutes("left_s")),
-    el("label", { class: "field" }, el("span", {}, "Right min"), minutes("right_s")),
-    el("label", { class: "field" }, el("span", {}, "~ total min (sides unknown)"), approxBox),
-    el("label", { class: "field" }, el("span", {}, "Last side"),
-      el("select", { onchange: (x) => { br.last_side = x.target.value || null; } },
-        el("option", { value: "", selected: !br.last_side }, "—"),
-        el("option", { value: "left", selected: br.last_side === "left" }, "left"),
-        el("option", { value: "right", selected: br.last_side === "right" }, "right")))));
-
-  // -- bottle portions
+  // -- bottle portions, each with its kind, its amount and (for formula) the formula chips
   out.push(el("div", { class: "h3" }, "Bottle"));
   const portions = el("div", {});
+  const choices = formulaChoices();
+  const formulaRow = (b, i) => {
+    const names = choices.slice();
+    if (b.formula && !names.includes(b.formula)) names.unshift(b.formula);
+    const other = !!e.formulaOther[i];
+    return el("div", { class: "chips formula-chips" },
+      ...names.map((name) => el("button", { class: `chip feed${!other && b.formula === name ? " active" : ""}`, type: "button",
+        onclick: () => { b.formula = name; delete e.formulaOther[i]; drawPortions(); } }, name)),
+      other ? el("input", { type: "text", class: "formula-other", placeholder: "formula name", value: names.includes(b.formula) ? "" : (b.formula || ""),
+        oninput: (x) => { b.formula = x.target.value.trim() || null; } })
+        : el("button", { class: "chip", type: "button", onclick: () => { e.formulaOther[i] = true; drawPortions(); focusOther(i); } }, "Other…"));
+  };
+  const focusOther = (i) => {
+    const box = portions.querySelectorAll(".portion-box")[i];
+    const input = box && box.querySelector(".formula-other");
+    if (input) input.focus();
+  };
   const drawPortions = () => {
     portions.replaceChildren(...d.data.bottles.map((b, i) => {
       const ctl = amountControl(() => b.ml, (v) => { b.ml = v == null ? 0 : v; e.portionsTyped = true; });
-      return el("div", { class: "portion" },
-        el("button", { class: `toggle${b.kind === "formula" ? " on" : ""}`, type: "button",
-          onclick: () => { b.kind = b.kind === "formula" ? "breast_milk" : "formula"; drawPortions(); } },
-          b.kind === "formula" ? "Formula" : "Breast milk"),
-        ctl, el("span", { class: "unit" }, unit()),
-        el("button", { class: "remove", type: "button", "aria-label": "Remove portion",
-          onclick: () => { d.data.bottles.splice(i, 1); e.portionsTyped = true; drawPortions(); } }, "×"));
+      return el("div", { class: "portion-box" },
+        el("div", { class: "portion" },
+          el("button", { class: `toggle${b.kind === "formula" ? " on" : ""}`, type: "button",
+            onclick: () => {
+              // Breast milk has no formula name; back on formula the newest name is preselected.
+              b.kind = b.kind === "formula" ? "breast_milk" : "formula";
+              b.formula = b.kind === "formula" ? (b.formula || choices[0] || null) : null;
+              delete e.formulaOther[i];
+              drawPortions();
+            } },
+            b.kind === "formula" ? "Formula" : "Breast milk"),
+          ctl, el("span", { class: "unit" }, unit()),
+          el("button", { class: "remove", type: "button", "aria-label": "Remove portion",
+            onclick: () => { d.data.bottles.splice(i, 1); delete e.formulaOther[i]; e.portionsTyped = true; drawPortions(); } }, "×")),
+        b.kind === "formula" ? formulaRow(b, i) : null);
     }));
   };
   drawPortions();
   out.push(portions);
-  const lastBottle = state.events.filter((ev) => ev.type === "feed" && Core.bottleMl(ev) > 0 && ev.event_id !== d.event_id).pop();
+  const newPortion = (mlv) => ({ kind: "formula", ml: mlv, formula: choices[0] || null });
   const setLast = (mlv) => {
-    if (!d.data.bottles.length) d.data.bottles.push({ kind: "formula", ml: mlv });
+    if (!d.data.bottles.length) d.data.bottles.push(newPortion(mlv));
     else d.data.bottles[d.data.bottles.length - 1].ml = mlv;
     e.portionsTyped = true;
     drawPortions();
   };
-  out.push(el("div", { class: "chips", style: "margin-top:6px" },
-    lastBottle ? el("button", { class: "chip feed", type: "button", onclick: () => setLast(Core.bottleMl(lastBottle)) },
-      `Same as last · ${amount(Core.bottleMl(lastBottle))}`) : null,
-    ...quickAmounts().map((mlv) => el("button", { class: "chip", type: "button", onclick: () => setLast(mlv) }, amount(mlv))),
+  const chips = el("span", { class: "chips" });
+  const drawChips = () => chips.replaceChildren(...quickChips(setLast, d.event_id).filter(Boolean));
+  drawChips();
+  const rangeMode = ((state.settings || {}).quick_mode || "range") === "range";
+  out.push(el("div", { class: "quick-row" }, chips, rangeMode ? rangeControl(drawChips) : null,
     el("button", { class: "chip", type: "button", onclick: () => {
-      d.data.bottles.push({ kind: d.data.bottles.length ? d.data.bottles[d.data.bottles.length - 1].kind : "formula", ml: 0 });
+      const last = d.data.bottles[d.data.bottles.length - 1];
+      d.data.bottles.push(last ? { kind: last.kind, ml: 0, formula: last.kind === "formula" ? last.formula : null } : newPortion(0));
       e.portionsTyped = true; drawPortions();
     } }, "Another portion")));
 
@@ -1080,7 +1104,7 @@ function feedSection(d, e) {
     if (d.data.made_ml == null || d.data.leftover_ml == null || e.portionsTyped) return;
     const ml = d.data.made_ml - d.data.leftover_ml;
     if (ml <= 0) return;
-    if (!d.data.bottles.length) d.data.bottles.push({ kind: "formula", ml });
+    if (!d.data.bottles.length) d.data.bottles.push(newPortion(ml));
     else if (d.data.bottles.length === 1) d.data.bottles[0].ml = ml;
     drawPortions();
   };
@@ -1090,26 +1114,7 @@ function feedSection(d, e) {
     el("span", { class: "muted small" }, "leftover"),
     amountControl(() => d.data.leftover_ml, (v) => { d.data.leftover_ml = v; autoPortion(); }),
     el("span", { class: "unit" }, unit())));
-  if (isNew && !timer) out.push(el("div", { class: "muted small", style: "margin-top:8px" }, "Tap a side to start the timer, or type what happened and Save."));
   return out;
-}
-
-async function startSide(side) {
-  const e = state.editor, d = e.draft;
-  if (d.end !== null) { setMsg("Clear End to run a timer"); return; }
-  if (d.data.timer && d.data.timer.side === side) return;
-  const err = validateDraft(d);
-  if (err) { setMsg(err); return; }
-  const data = foldTimer(clone(d.data), Date.now());
-  data.timer = { side, side_started: nowIso() };
-  await writeFromEditor({ data, end: null });
-}
-
-async function stopFeedAt(endIso) {
-  const e = state.editor, d = e.draft;
-  if (ms(endIso) < ms(d.time)) { setMsg("End can't be before Start"); return; }
-  const data = foldTimer(clone(d.data), ms(endIso));
-  await writeFromEditor({ data, end: endIso });
 }
 
 // A timer action writes at once and the editor re-reads the saved record — a Switch is a
@@ -1131,7 +1136,6 @@ async function writeFromEditor(patch) {
     const r = await postJSON("/api/event", body);
     e.event = r.event;
     e.draft = draftFrom(r.event);
-    e.stopAt = false;
     e.msg = null;
     renderEditor();
     api(`/api/event/${r.event.event_id}`).then((h) => {
@@ -1295,6 +1299,7 @@ async function deleteEntry() {
   try {
     await deleteJSON(`/api/event/${d.event_id}`, {});
     closeEditor();
+    state.catchup.added = state.catchup.added.filter((id) => id !== d.event_id);
     showToast("Deleted · ", [{ label: "Undo", fn: () => restoreEntry(d.event_id) }]);
     await afterWrite();
   } catch (x) { setMsg(x.message); }
@@ -1304,8 +1309,126 @@ async function deleteEntry() {
 async function restoreEntry(id) {
   try {
     await postJSON(`/api/event/${id}/restore`, {});
+    if (state.catchup.records[id] && !state.catchup.added.includes(id)) state.catchup.added.unshift(id);
     await afterWrite();
   } catch (x) { showStatus("err", x.message); }
+}
+
+// ---------------------------------------------------------------- Catch up
+/* The paper slips written when no phone was to hand (§6.2): one date, then a strip that logs one
+   entry per tap and stays put for the next. Every tap is already a journal file — nothing waits
+   for a "save all". Built once and kept, so the 30 s poll never wipes the date or a half-typed
+   time; only the chips and the list under the strip are redrawn. */
+function renderCatchup() {
+  const view = document.getElementById("view-catchup");
+  const cu = state.catchup;
+  if (!view.dataset.built) {
+    view.dataset.built = "1";
+    const dateInput = el("input", { type: "date", id: "cu-date", value: cu.date, max: todayStr(),
+      onchange: (x) => { if (/^\d{4}-\d{2}-\d{2}$/.test(x.target.value)) cu.date = x.target.value; renderCatchup(); } });
+    const timeInput = el("input", { type: "time", id: "cu-time", step: "60", "aria-label": "Time",
+      onkeydown: (x) => { if (x.key === "Enter") { x.preventDefault(); document.getElementById("cu-feed-first")?.focus(); } } });
+    const otherAmount = el("input", { type: "number", inputmode: unit() === "oz" ? "decimal" : "numeric", min: "0", step: unit() === "oz" ? "0.25" : "1",
+      id: "cu-other", placeholder: unit(), "aria-label": `Other amount (${unit()})`,
+      onkeydown: (x) => { if (x.key === "Enter") { x.preventDefault(); addOther(); } } });
+    const addOther = () => {
+      const v = otherAmount.value === "" ? null : Core.fromUnit(otherAmount.value, unit());
+      if (!v || v <= 0) { catchupMsg("Type an amount first", "err"); return; }
+      catchupFeed(v).then((ok) => { if (ok) otherAmount.value = ""; });
+    };
+    view.replaceChildren(
+      el("section", { class: "card catchup" },
+        el("div", { class: "h2" }, "Catch up",
+          el("span", { class: "sub" }, "type in the paper slips — one tap per entry, each saved at once"),
+          el("button", { class: "primary", type: "button", style: "margin-left:auto", onclick: () => showView("today") }, "Done")),
+        el("div", { class: "cu-strip" },
+          el("label", { class: "field" }, el("span", {}, "Day"), dateInput),
+          el("label", { class: "field narrow" }, el("span", {}, "Time"), timeInput),
+          el("div", { class: "cu-group cu-feed" },
+            el("span", { class: "cu-group-h" }, "Feed"),
+            el("span", { class: "chips", id: "cu-feed-chips" }),
+            el("span", { class: "cu-other" }, otherAmount,
+              el("button", { class: "chip", type: "button", onclick: addOther }, "Add"))),
+          el("div", { class: "cu-group cu-diaper" },
+            el("span", { class: "cu-group-h" }, "Diaper"),
+            el("span", { class: "loggroup" },
+              el("button", { class: "logbtn diaper wet", type: "button", onclick: () => catchupDiaper(true, false) }, "Wet"),
+              el("button", { class: "logbtn diaper dirty", type: "button", onclick: () => catchupDiaper(false, true) }, "Dirty"),
+              el("button", { class: "logbtn diaper", type: "button", onclick: () => catchupDiaper(true, true) }, "Both")))),
+        el("div", { class: "ed-msg", id: "cu-msg", hidden: true }),
+        el("div", { class: "cu-formula muted small", id: "cu-formula" }),
+        el("div", { id: "cu-list" })));
+  }
+  // The chips follow the settings (the range control in the feed editor moves them), the formula
+  // line follows the newest name on file, and the list follows the journal.
+  const chips = document.getElementById("cu-feed-chips");
+  chips.replaceChildren(...quickAmounts().map((mlv, i) => el("button", { class: "chip feed", type: "button", id: i === 0 ? "cu-feed-first" : null,
+    onclick: () => catchupFeed(mlv) }, amount(mlv))));
+  if (!chips.children.length) chips.append(el("span", { class: "muted small" }, "No quick amounts — set the range in Settings, or type one:"));
+  const lf = lastFormula();
+  document.getElementById("cu-formula").textContent = lf ? `Feeds are saved as ${lf} — change it on any feed's editor.` : "";
+  const list = document.getElementById("cu-list");
+  const rows = cu.added.map((id) => byId(id) || cu.records[id]).filter(Boolean);
+  list.replaceChildren(el("div", { class: "h3" }, `Added this session (${rows.length})`),
+    ...rows.map((ev) => el("div", { class: "list-row openable", onclick: () => openEditor({ event: ev }) },
+      el("span", { class: "num" }, Core.fmtDateTime(ev.time)),
+      el("span", {}, `${TYPE_LABEL[ev.type] || ev.type} · ${Core.describe(ev, unit())}`),
+      el("span", { class: "muted small grow" }, ev.note || ""),
+      el("span", { class: "muted small" }, "edit"))));
+  list.hidden = !rows.length;
+}
+
+function catchupMsg(text, kind) {
+  const box = document.getElementById("cu-msg");
+  if (!box) return;
+  box.hidden = !text;
+  box.className = `ed-msg ${kind || "ok"}`;
+  box.textContent = text || "";
+}
+
+// The strip's date + time as a §3.2 string, or null (with the refusal shown) when the time is
+// missing or the moment is impossible.
+function catchupTime() {
+  const cu = state.catchup;
+  const t = (document.getElementById("cu-time") || {}).value || "";
+  const m = /^(\d{2}):(\d{2})/.exec(t);
+  if (!m) { catchupMsg("Type the time first (HH:MM)", "err"); return null; }
+  const [y, mo, d] = cu.date.split("-").map(Number);
+  const iso = Core.isoLocal(new Date(y, mo - 1, d, Number(m[1]), Number(m[2]), 0));
+  const err = validateDraft({ time: iso, end: null, type: "diaper", data: {} });
+  if (err) { catchupMsg(err, "err"); return null; }
+  return iso;
+}
+
+// One tap, one journal file; then only the time clears and takes the focus for the next slip.
+async function catchupWrite(bodyAt, said) {
+  if (writing) return false;
+  const time = catchupTime();
+  if (!time) return false;
+  writing = true;
+  try {
+    const r = await postJSON("/api/event", Object.assign({ time, note: "", logged_by: myLabel() }, bodyAt(time)));
+    const cu = state.catchup;
+    cu.added.unshift(r.event.event_id);
+    cu.records[r.event.event_id] = r.event;
+    catchupMsg(`Added ${said} · ${Core.fmtTime(time)}`, "ok");
+    const timeInput = document.getElementById("cu-time");
+    if (timeInput) { timeInput.value = ""; timeInput.focus(); }
+    await afterWrite();
+    return true;
+  } catch (e) { catchupMsg(e.message, "err"); return false; }
+  finally { writing = false; }
+}
+
+function catchupFeed(mlv) {
+  const name = lastFormula();
+  // A bottle feed typed in after the fact is over the moment it is written, so its end is its
+  // start — the same rule the editor's Save applies (Core.isRunning must not read it as going).
+  return catchupWrite((time) => ({ type: "feed", end: time, data: { bottles: [{ kind: "formula", ml: mlv, formula: name }] } }), `feed ${amount(mlv)}`);
+}
+
+function catchupDiaper(wet, dirty) {
+  return catchupWrite(() => ({ type: "diaper", end: null, data: { wet, dirty } }), wet && dirty ? "wet + dirty" : (wet ? "wet" : "dirty"));
 }
 
 // ---------------------------------------------------------------- Trends
@@ -1532,15 +1655,24 @@ function renderSettings() {
         field("label", "Label (who logs from here)", el("input", { type: "text", value: s.label || "", placeholder: "Dad, Mom…" })),
         field("units", "Units", el("select", {}, el("option", { value: "ml", selected: s.units !== "oz" }, "ml"), el("option", { value: "oz", selected: s.units === "oz" }, "oz"))),
         field("step_ml", "−/+ step (ml, blank = automatic)", el("input", { type: "number", min: "1", step: "1", value: s.step_ml == null ? "" : String(s.step_ml) })),
-        field("quick_mode", "Quick amounts", el("select", {}, el("option", { value: "recent", selected: s.quick_mode !== "custom" }, "from recent feeds"), el("option", { value: "custom", selected: s.quick_mode === "custom" }, "custom list"))),
+        field("quick_mode", "Quick amounts", el("select", { onchange: () => showQuickFields() },
+          el("option", { value: "range", selected: (s.quick_mode || "range") === "range" }, "a range"),
+          el("option", { value: "recent", selected: s.quick_mode === "recent" }, "from recent feeds"),
+          el("option", { value: "custom", selected: s.quick_mode === "custom" }, "custom list"))),
+        field("quick_from", "Range from (ml)", el("input", { type: "number", id: "set-quick-from", inputmode: "numeric", min: "1", step: "1", value: s.quick_from == null ? "" : String(s.quick_from) })),
+        field("quick_to", "to (ml)", el("input", { type: "number", id: "set-quick-to", inputmode: "numeric", min: "1", step: "1", value: s.quick_to == null ? "" : String(s.quick_to) })),
+        field("quick_step", "by (ml)", el("input", { type: "number", id: "set-quick-step", inputmode: "numeric", min: "1", step: "1", value: s.quick_step == null ? "" : String(s.quick_step) })),
         field("quick_custom", "Custom amounts (ml, comma separated)", el("input", { type: "text", value: (s.quick_custom || []).join(", "), placeholder: "30, 60, 90, 120" })),
         field("night_from", "Night from", el("input", { type: "time", value: s.night_from || "21:00" })),
         field("night_to", "Night to", el("input", { type: "time", value: s.night_to || "07:00" }))),
       el("div", { class: "row" },
         el("button", { class: "primary", type: "button", onclick: async (x) => {
           const custom = f.quick_custom.value.split(/[,\s]+/).filter(Boolean).map(Number).filter((n) => Number.isFinite(n) && n > 0);
-          const body = { label: f.label.value.trim(), units: f.units.value, step_ml: f.step_ml.value === "" ? null : Number(f.step_ml.value),
-            quick_mode: f.quick_mode.value, quick_custom: custom, night_from: f.night_from.value || "21:00", night_to: f.night_to.value || "07:00" };
+          const nOrNull = (inp) => (inp.value === "" ? null : Number(inp.value));
+          const body = { label: f.label.value.trim(), units: f.units.value, step_ml: nOrNull(f.step_ml),
+            quick_mode: f.quick_mode.value, quick_custom: custom,
+            quick_from: nOrNull(f.quick_from), quick_to: nOrNull(f.quick_to), quick_step: nOrNull(f.quick_step),
+            night_from: f.night_from.value || "21:00", night_to: f.night_to.value || "07:00" };
           x.target.disabled = true;
           try {
             await postJSON("/api/settings", body);
@@ -1551,6 +1683,13 @@ function renderSettings() {
           x.target.disabled = false;
         } }, "Save settings"),
         el("span", { class: "muted small" }, `Automatic step right now: ${amount(Core.stepMl(recentMls(), unit()))}`)));
+    // Only the chosen mode's fields show: the range's three, or the custom list.
+    const showQuickFields = () => {
+      const mode = f.quick_mode.value;
+      for (const k of ["quick_from", "quick_to", "quick_step"]) f[k].parentElement.hidden = mode !== "range";
+      f.quick_custom.parentElement.hidden = mode !== "custom";
+    };
+    showQuickFields();
     view.replaceChildren(settingsCard,
       el("section", { class: "card", id: "settings-child" }),
       el("section", { class: "card", id: "settings-needs" }),
@@ -1577,6 +1716,16 @@ function renderSettings() {
       el("span", { class: "num" }, Core.fmtDateTime(ev.time)), el("span", {}, `${TYPE_LABEL[ev.type] || ev.type} · ${Core.describe(ev, unit())}`),
       el("span", { class: "muted small grow" }, `${ev.reason ? `${ev.reason} · ` : ""}by ${ev.edited_by || ev.logged_by || "?"}`),
       el("button", { class: "ghost", type: "button", onclick: () => restoreEntry(ev.event_id) }, "Restore")))) : el("div", { class: "empty" }, "Nothing deleted."));
+}
+
+// The feed editor's range control saved a bound: the Settings form, built once and kept, must
+// show the same numbers or its next Save would put the old ones back.
+function syncSettingsRange() {
+  const s = state.settings || {};
+  for (const [id, key] of [["set-quick-from", "quick_from"], ["set-quick-to", "quick_to"], ["set-quick-step", "quick_step"]]) {
+    const input = document.getElementById(id);
+    if (input) input.value = s[key] == null ? "" : String(s[key]);
+  }
 }
 
 // The child form: creates on first run, revises from Settings (§3.3).
