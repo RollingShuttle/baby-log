@@ -128,6 +128,43 @@ producing `Baby Log.xlsx` from the same files throughout. The only per-phone set
 the journal (units, the quick-amount range, night hours, the label) are re-entered once in the
 native app's Settings — a minute's work.
 
+### 1.7b The three pillars (owner, 2 Nov 2026) — 三大功能
+
+The owner's own summary of what the finished app must be, in his words: **记录吃饭拉屎洗澡 ·
+归类小孩照片视频 · 出门 checklist 防止忘带东西**. Everything above is the first pillar; the other
+two are new and belong to the native app.
+
+**Pillar 1 — the daily record (记录吃饭、拉屎、洗澡).** Feeds, diapers, sleep, health, growth as
+above, plus **bath (洗澡)** as its own entry type: time, who, note (water temperature and
+"hair washed" optional). Baths are shown on the Day sheet's Other section and counted in Daily.
+*Data-model note:* `bath` is a new `type`, so it goes into `tests/fixtures/data_cases.json`
+first, then into `store.py` (so the PC's rollup gains a `Baths` sheet) and the Swift validator;
+the frozen web app already tolerates an unknown type in its lists (verify once, change nothing).
+
+**Pillar 2 — the photo and video library (归类小孩照片视频).** The parents' phones fill with
+photos and videos of Yisen; the app should organise them by **his age** (day 42 · week 6 ·
+month 2), by **milestone** (first smile, first bath, first outing…), and by **favourite**, with a
+month-by-month "best of". What it is not: a second camera roll — the pictures stay in the
+phone's Photos library (PhotoKit, read access) and the app indexes them. Two design questions
+to settle at build time: (a) **sharing between the two phones and the PC** — the two iPhones
+have separate Apple IDs and separate libraries, so a shared view means copying the chosen
+photos into OneDrive (`Yisen File\Photos\YYYY-MM\`, which the PC already shows) or using an
+iCloud Shared Album; the recommendation is OneDrive for the selected/favourited ones only
+(originals stay in Photos; the journal keeps a small `photo` record per selected item with the
+asset id, the age, the tags and the OneDrive path); (b) **video** — index and tag like photos;
+copy to OneDrive only on request (size).
+
+**Pillar 3 — the outing checklist (出门 checklist, 防止忘带东西).** Lists of what to pack
+before leaving with the baby, so nothing is forgotten: **templates** the parents edit (short
+trip · long day · doctor visit · overnight), items with quantities that scale with the outing's
+length (diapers, wipes, formula powder and bottles, water, a change of clothes, blanket,
+pacifier, carrier, documents…), a **Start an outing** flow that shows the list with big
+check-offs and resets for the next time, and a **reminder when leaving home** — a native-only
+feature: a location-based local notification (`UNLocationNotificationTrigger`, geofence on
+home) or a time-based one ("leaving at 10:00 — 3 items unchecked"). The lists and the current
+outing's state are shared between the two phones through the journal (`checklist` records),
+so either parent can pack and the other sees what is done.
+
 ### 1.8 Constraints
 
 - A **private app for two people** — never a public product; no App Store listing wanted unless
@@ -304,8 +341,20 @@ registration, a bundle ID chosen (e.g. `com.rollingshuttle.babylog`).
     a reminder (or a `push.bat`-style script on the Mac) to re-upload every 90 days.
 13. Guides: a RUNNING section for the iOS app; CLAUDE.md notes for the Swift package.
 
+**Stage 4 — the photo and video library (pillar 2, about two weeks).**
+14. PhotoKit access (limited-library friendly), an index of the phone's photos and videos from
+    the child's birth date onward, grouped by age; milestone and favourite tags stored as
+    `photo` journal records; a month view with a "best of".
+15. Share: copy favourites to `OneDrive/文档/Yisen File/Photos/YYYY-MM/` (originals untouched),
+    so the other phone and the PC see them; videos on request only.
+
+**Stage 5 — the outing checklist (pillar 3, about a week).**
+16. Templates and items with quantity rules; Start an outing; big check-offs; reset.
+17. Shared state through `checklist` journal records; a leaving-home reminder (location or
+    time based, the parents choose).
+
 **Later, if ever**: the iCloud "doorbell" push for instant cross-phone updates; an Apple Watch
-app for wrist logging; photos and milestones.
+app for wrist logging; a grandparents' read-only view.
 
 ## Part 4 — What the owner decides or does before the first build session
 
