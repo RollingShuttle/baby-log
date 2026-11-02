@@ -108,6 +108,26 @@ Ranked by value for two tired parents (details and limits in Part 2.4):
 5. **Siri / Shortcuts**: "Log a wet diaper", "Log a 70 ml feed".
 6. Later: Apple Watch glance and one-tap logging; a read-only view for grandparents.
 
+### 1.7a Decided 2 Nov 2026: the web app is frozen; new features go into the native app
+
+The owner starts daily use with the current web app on 3 Nov 2026 and wants **no further changes
+to it** — every improvement from here on is built into the native app. The first of those,
+recorded here so it is not lost:
+
+- **One-tap feeds on the Now screen**: the amount chips (the owner's range, e.g. 60 · 70 · 80 ·
+  90) sit right under the Feed button; tapping one logs a feed of that amount with the last
+  formula at once, with the Undo · Edit toast — no editor. Diapers are already one tap.
+- Siri / Lock Screen / Control Center / Action-button logging (2.3 item 5).
+
+**Data continuity — nothing to import.** The native app reads and writes the very same journal
+(`OneDrive/Apps/Baby Log`, the same file names, the same records). On its first sign-in it pulls
+everything that exists — the paper import, every entry logged in the web app before and after
+the switch, the labels Dad/Mom, the child record with its targets. The web app and the native
+app can run side by side on the same phone for as long as the owner likes, and the PC keeps
+producing `Baby Log.xlsx` from the same files throughout. The only per-phone settings not in
+the journal (units, the quick-amount range, night hours, the label) are re-entered once in the
+native app's Settings — a minute's work.
+
 ### 1.8 Constraints
 
 - A **private app for two people** — never a public product; no App Store listing wanted unless
