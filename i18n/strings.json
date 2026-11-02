@@ -1,0 +1,2758 @@
+{
+  "_about": "Every user-facing text of Baby Log in English and Simplified Chinese, keyed for the native iOS app (the frozen web app in docs/ and static/ does not read this file). English is quoted exactly as the web app shows it today; the planned native features (bath, photos, outing checklist, reminders, Siri) are translated up front. Placeholders are {name} and are identical in both languages; a key ending in .one / .other is one string with CLDR plural variants (Chinese does not inflect, so both forms match). Dates, times, numbers and units are formatted by the system locale, never by these strings — weekday and month names, clock times, decimal separators and the °C sign are not here.",
+  "_glossary": {
+    "Add": "添加",
+    "Another portion": "再加一瓶",
+    "Baby Log": "宝宝日志 (app name; keep English where it is the product name)",
+    "Bath": "洗澡",
+    "Blowout": "漏便",
+    "Both": "都有",
+    "Breast milk": "母乳",
+    "Cancel": "取消",
+    "Catch up": "补记",
+    "Change type…": "更改类型…",
+    "Changed on two devices": "两台设备都改过",
+    "Check:": "核对：",
+    "Dad": "爸爸",
+    "Day": "当天",
+    "Delete": "删除",
+    "Deleted": "已删除",
+    "Diaper": "尿布",
+    "Dirty": "便便",
+    "Done": "完成",
+    "Edit": "编辑",
+    "End": "结束",
+    "Favourite": "收藏",
+    "Feed": "喂奶",
+    "Formula": "配方奶",
+    "Growth": "成长",
+    "Health": "健康",
+    "Keep": "保留",
+    "Last diaper": "上次换尿布",
+    "Last feed": "上次喂奶",
+    "Looks right": "没问题",
+    "Made": "冲了",
+    "Milestone": "里程碑",
+    "Mom": "妈妈",
+    "More": "更多",
+    "Needs check": "待核对",
+    "New version ready": "新版本已就绪",
+    "Night mode": "夜间模式",
+    "Note": "备注",
+    "Nothing logged yet": "还没有记录",
+    "Now": "现在",
+    "Offline": "离线",
+    "Other…": "其他…",
+    "Outing checklist": "出门清单",
+    "Photos": "照片",
+    "Pump": "吸奶",
+    "Rash": "尿布疹",
+    "Recent": "最近",
+    "Reload": "重新加载",
+    "Restore": "恢复",
+    "Same as last": "同上次",
+    "Save": "保存",
+    "Settings": "设置",
+    "Sign in": "登录",
+    "Sign out": "退出登录",
+    "Signed out · tap to sign in": "未登录 · 点此登录",
+    "Siri": "Siri",
+    "Sleep": "睡觉",
+    "Start": "开始",
+    "Sync failed": "同步失败",
+    "Sync now": "立即同步",
+    "Synced just now": "刚刚同步",
+    "Synced · {a} sent · {b} new": "已同步 · 发送 {a} 条 · 新 {b} 条",
+    "Syncing…": "同步中…",
+    "Trends": "趋势",
+    "Undo": "撤销",
+    "Units": "单位",
+    "Usually every": "通常每",
+    "Weight": "体重",
+    "Wet": "尿湿",
+    "Who": "谁",
+    "Who is holding this phone?": "这部手机是谁在用？",
+    "ago": "前",
+    "black": "黑色",
+    "brown": "棕色",
+    "checking {n} days": "正在检查 {n} 天",
+    "clear": "清除",
+    "dark green": "深绿",
+    "days old": "{n}天大",
+    "feeds (count)": "次喂奶",
+    "from": "从",
+    "green": "绿色",
+    "large": "大量",
+    "leftover": "剩余",
+    "medium": "中等",
+    "ml": "毫升",
+    "months": "个月",
+    "next around": "下次约",
+    "nothing new": "没有新内容",
+    "now": "现在",
+    "other": "其他",
+    "oz": "盎司",
+    "range": "范围",
+    "reading {n} new": "正在读取 {n} 条新记录",
+    "seedy": "颗粒状",
+    "sending {a} of {b}": "正在发送 {a}/{b}",
+    "small": "少量",
+    "soft": "软",
+    "solid": "成形",
+    "step": "步长",
+    "sticky": "黏稠",
+    "tap an entry to change it": "点一条记录可修改",
+    "tap for details": "点击查看详情",
+    "to": "到",
+    "watery": "水样",
+    "weeks": "周",
+    "yellow": "黄色",
+    "{n} waiting": "{n} 条待上传"
+  },
+  "_locales": [
+    "en",
+    "zh-Hans"
+  ],
+  "strings": {
+    "a11y.back": {
+      "en": "Back",
+      "where": "the header's back chevron",
+      "zh-Hans": "返回"
+    },
+    "a11y.sections": {
+      "en": "Sections",
+      "where": "the tab bar's accessibility label",
+      "zh-Hans": "栏目"
+    },
+    "a11y.views": {
+      "en": "Views",
+      "where": "the PC nav's accessibility label",
+      "zh-Hans": "视图"
+    },
+    "age.days.one": {
+      "en": "{n} day",
+      "where": "the day part of age.weeksDays",
+      "zh-Hans": "{n}天"
+    },
+    "age.days.other": {
+      "en": "{n} days",
+      "where": "the day part of age.weeksDays",
+      "zh-Hans": "{n}天"
+    },
+    "age.daysOld.one": {
+      "en": "{n} day old",
+      "where": "header subtitle under two weeks",
+      "zh-Hans": "{n}天大"
+    },
+    "age.daysOld.other": {
+      "en": "{n} days old",
+      "where": "header subtitle under two weeks, e.g. 2 days old",
+      "zh-Hans": "{n}天大"
+    },
+    "age.months.one": {
+      "en": "{n} month",
+      "where": "header subtitle from eight weeks",
+      "zh-Hans": "{n}个月"
+    },
+    "age.months.other": {
+      "en": "{n} months",
+      "where": "header subtitle from eight weeks",
+      "zh-Hans": "{n}个月"
+    },
+    "age.monthsWeeks": {
+      "en": "{m} months {w} weeks",
+      "where": "header subtitle from eight weeks, e.g. 2 months 2 weeks; singulars follow age.months.one / age.weeks.one",
+      "zh-Hans": "{m}个月{w}周"
+    },
+    "age.weeks.one": {
+      "en": "{n} week",
+      "where": "header subtitle, whole weeks",
+      "zh-Hans": "{n}周"
+    },
+    "age.weeks.other": {
+      "en": "{n} weeks",
+      "where": "header subtitle, whole weeks",
+      "zh-Hans": "{n}周"
+    },
+    "age.weeksDays": {
+      "en": "{w} weeks {d} days",
+      "where": "header subtitle under eight weeks, e.g. 6 weeks 1 day; English singulars (1 week, 1 day) follow age.weeks.one / age.days.one",
+      "zh-Hans": "{w}周{d}天"
+    },
+    "amount.cm": {
+      "en": "{n} cm",
+      "where": "a length or head size in Core.describe and the Growth screen",
+      "zh-Hans": "{n} 厘米"
+    },
+    "amount.field": {
+      "en": "amount",
+      "where": "an amount field's default accessibility label",
+      "zh-Hans": "奶量"
+    },
+    "amount.gramsFromBirth": {
+      "en": "{delta} g from birth",
+      "where": "Growth screen and the growth editor; {delta} carries its sign, e.g. +120",
+      "zh-Hans": "比出生时 {delta} 克"
+    },
+    "amount.gramsSinceLast": {
+      "en": "{delta} g since last",
+      "where": "Growth screen; {delta} carries its sign",
+      "zh-Hans": "比上次 {delta} 克"
+    },
+    "amount.kg": {
+      "en": "{n} kg",
+      "where": "a weight in Core.describe and the Growth screen",
+      "zh-Hans": "{n} 千克"
+    },
+    "amount.less": {
+      "en": "less",
+      "where": "the − button of an amount control (accessibility label)",
+      "zh-Hans": "减"
+    },
+    "amount.ml": {
+      "en": "{n} ml",
+      "where": "Core.fmtAmount in ml, e.g. 60 ml",
+      "zh-Hans": "{n} 毫升"
+    },
+    "amount.more": {
+      "en": "more",
+      "where": "the + button of an amount control (accessibility label)",
+      "zh-Hans": "加"
+    },
+    "amount.oz": {
+      "en": "{n} oz",
+      "where": "Core.fmtAmount in oz, e.g. 2.25 oz",
+      "zh-Hans": "{n} 盎司"
+    },
+    "app.name": {
+      "en": "Baby Log",
+      "where": "the app's name where it is shown as a title (the header before the first sync); the bundle name, the App Store listing and the Siri phrases keep Baby Log",
+      "zh-Hans": "宝宝日志"
+    },
+    "app.phoneVersion": {
+      "en": "Phone app {version}",
+      "where": "Settings → Sync: the running shell's version, e.g. Phone app v8",
+      "zh-Hans": "手机应用 {version}"
+    },
+    "bath.describe": {
+      "en": "Bath {duration}",
+      "where": "planned: Core.describe of a bath with a length",
+      "zh-Hans": "洗澡 {duration}"
+    },
+    "bath.hairWashed": {
+      "en": "Hair washed",
+      "where": "planned: bath editor toggle",
+      "zh-Hans": "洗了头"
+    },
+    "bath.lastBath": {
+      "en": "Last bath {since} ago",
+      "where": "planned: Now hint",
+      "zh-Hans": "上次洗澡 {since}前"
+    },
+    "bath.logABath": {
+      "en": "Log a bath",
+      "where": "planned: the bath editor's title",
+      "zh-Hans": "记一次洗澡"
+    },
+    "bath.waterTemp": {
+      "en": "Water temperature (°C)",
+      "where": "planned: bath editor field",
+      "zh-Hans": "水温（°C）"
+    },
+    "catchup.add": {
+      "en": "Add",
+      "where": "PC Catch up: adds a typed amount; the PC Health screen's add button",
+      "zh-Hans": "添加"
+    },
+    "catchup.added": {
+      "en": "Added {description} · {time}",
+      "where": "Catch up: confirmation under the strip; {description} is a Core.describe text",
+      "zh-Hans": "已添加 {description} · {time}"
+    },
+    "catchup.addedHeading": {
+      "en": "Added",
+      "where": "Catch up: heading of the rows written this visit",
+      "zh-Hans": "已添加"
+    },
+    "catchup.addedSub": {
+      "en": "tap a row to change it",
+      "where": "Catch up: sub heading of Added",
+      "zh-Hans": "点一行可修改"
+    },
+    "catchup.addedThisSession": {
+      "en": "Added this session ({n})",
+      "where": "PC Catch up: heading of the rows written",
+      "zh-Hans": "本次添加（{n}）"
+    },
+    "catchup.alreadyHas": {
+      "en": "{day} already has {feeds} and {diapers}",
+      "where": "Catch up: the line under the date; {feeds} and {diapers} are count.* texts",
+      "zh-Hans": "{day} 已有{feeds}和{diapers}"
+    },
+    "catchup.date": {
+      "en": "Date",
+      "where": "Catch up: the date field",
+      "zh-Hans": "日期"
+    },
+    "catchup.day": {
+      "en": "Day",
+      "where": "PC Catch up and Reports: the date field; the Trends table's first column",
+      "zh-Hans": "日期"
+    },
+    "catchup.done": {
+      "en": "Done",
+      "where": "Catch up: the button that goes back",
+      "zh-Hans": "完成"
+    },
+    "catchup.editLink": {
+      "en": "edit",
+      "where": "PC Catch up: the link at the end of an added row",
+      "zh-Hans": "编辑"
+    },
+    "catchup.feedWithFormula": {
+      "en": "Feed · {formula}",
+      "where": "Catch up: the feed chips' heading with the formula they will be saved as",
+      "zh-Hans": "喂奶 · {formula}"
+    },
+    "catchup.feedsSavedAs": {
+      "en": "Feeds are saved as {formula} — change it on any feed's editor.",
+      "where": "PC Catch up: the formula line",
+      "zh-Hans": "喂奶会记为 {formula}——可在任意一条喂奶的编辑页里更改。"
+    },
+    "catchup.noQuickAmounts": {
+      "en": "No quick amounts — set the range in Settings, or type one:",
+      "where": "PC Catch up when the range is unset",
+      "zh-Hans": "没有快捷奶量——请到设置里设定范围，或在此输入："
+    },
+    "catchup.nothingAddedYet": {
+      "en": "Nothing added yet.",
+      "where": "Catch up: empty Added list",
+      "zh-Hans": "还没有添加。"
+    },
+    "catchup.otherAmount": {
+      "en": "Other amount ({unit})",
+      "where": "PC Catch up: the typed-amount field's accessibility label",
+      "zh-Hans": "其他奶量（{unit}）"
+    },
+    "catchup.pcSub": {
+      "en": "type in the paper slips — one tap per entry, each saved at once",
+      "where": "PC Catch up: sub heading",
+      "zh-Hans": "把纸条上的记录输进来——每条一下，立即保存"
+    },
+    "catchup.saidDirty": {
+      "en": "dirty",
+      "where": "PC Catch up: what the Added line says; the Trends legend",
+      "zh-Hans": "便便"
+    },
+    "catchup.saidFeed": {
+      "en": "feed {amount}",
+      "where": "PC Catch up: what the Added line says for a feed",
+      "zh-Hans": "喂奶 {amount}"
+    },
+    "catchup.saidWet": {
+      "en": "wet",
+      "where": "PC Catch up: what the Added line says; the Trends legend",
+      "zh-Hans": "尿湿"
+    },
+    "catchup.saidWetDirty": {
+      "en": "wet + dirty",
+      "where": "PC Catch up: what the Added line says",
+      "zh-Hans": "尿湿 + 便便"
+    },
+    "catchup.sub": {
+      "en": "one tap per paper entry",
+      "where": "Catch up: sub heading",
+      "zh-Hans": "纸条上每条记录点一下"
+    },
+    "catchup.time": {
+      "en": "Time",
+      "where": "Catch up: the time field; the Day sheet's first column on the PC",
+      "zh-Hans": "时间"
+    },
+    "catchup.typeAmountFirst": {
+      "en": "Type an amount first",
+      "where": "PC Catch up: Add tapped with no amount",
+      "zh-Hans": "请先输入奶量"
+    },
+    "catchup.typeTimeFirst": {
+      "en": "Type the time first — the date stays, only the time clears",
+      "where": "Catch up: refusal when a chip is tapped without a time",
+      "zh-Hans": "请先输入时间——日期会保留，只有时间会清空"
+    },
+    "catchup.typeTimeFirstPc": {
+      "en": "Type the time first (HH:MM)",
+      "where": "PC Catch up: the same refusal",
+      "zh-Hans": "请先输入时间（时:分）"
+    },
+    "child.addChild": {
+      "en": "Add child",
+      "where": "PC first run: the child form's button",
+      "zh-Hans": "添加孩子"
+    },
+    "child.birthDateNeeded": {
+      "en": "A birth date is needed",
+      "where": "PC child form refusal",
+      "zh-Hans": "需要填写出生日期"
+    },
+    "child.birthWeight": {
+      "en": "Birth weight (g)",
+      "where": "Child form field",
+      "zh-Hans": "出生体重（克）"
+    },
+    "child.born": {
+      "en": "Born",
+      "where": "Child form field",
+      "zh-Hans": "出生日期"
+    },
+    "child.boy": {
+      "en": "boy",
+      "where": "PC child form: Sex option",
+      "zh-Hans": "男孩"
+    },
+    "child.dirtyPerDay": {
+      "en": "Dirty / day",
+      "where": "Child form field",
+      "zh-Hans": "每天便便次数"
+    },
+    "child.feedsPerDay": {
+      "en": "Feeds / day",
+      "where": "Child form field",
+      "zh-Hans": "每天喂奶次数"
+    },
+    "child.girl": {
+      "en": "girl",
+      "where": "PC child form: Sex option",
+      "zh-Hans": "女孩"
+    },
+    "child.nameNeeded": {
+      "en": "A name is needed",
+      "where": "PC child form refusal",
+      "zh-Hans": "需要填写姓名"
+    },
+    "child.nothingUntilChild": {
+      "en": "Nothing can be logged until the child exists. The phones pick this up on their first sync.",
+      "where": "PC first run",
+      "zh-Hans": "孩子的资料建好之后才能开始记录。手机会在第一次同步时收到。"
+    },
+    "child.saveChild": {
+      "en": "Save child",
+      "where": "Child form button",
+      "zh-Hans": "保存孩子资料"
+    },
+    "child.sex": {
+      "en": "Sex",
+      "where": "PC child form field",
+      "zh-Hans": "性别"
+    },
+    "child.showing": {
+      "en": "Showing",
+      "where": "Settings → Child: the chooser when there are two children",
+      "zh-Hans": "当前显示"
+    },
+    "child.targets": {
+      "en": "Targets (what the pediatrician said)",
+      "where": "Child form heading",
+      "zh-Hans": "目标（儿科医生说的）"
+    },
+    "child.timeOfBirth": {
+      "en": "Time of birth",
+      "where": "Child form field",
+      "zh-Hans": "出生时间"
+    },
+    "child.title": {
+      "en": "Child",
+      "where": "Settings card heading; the editor's child chooser; the PC child chooser's accessibility label",
+      "zh-Hans": "孩子"
+    },
+    "child.waiting": {
+      "en": "Waiting for the first sync — the child is created on the PC.",
+      "where": "Settings → Child before a child exists",
+      "zh-Hans": "等待第一次同步——孩子的资料在电脑上创建。"
+    },
+    "child.wetPerDay": {
+      "en": "Wet / day",
+      "where": "Child form field",
+      "zh-Hans": "每天尿湿次数"
+    },
+    "child.whoIsThisLogFor": {
+      "en": "Who is this log for?",
+      "where": "PC first run heading",
+      "zh-Hans": "这份日志是记谁的？"
+    },
+    "colour.black": {
+      "en": "black",
+      "where": "diaper colour chip and list text",
+      "zh-Hans": "黑色"
+    },
+    "colour.brown": {
+      "en": "brown",
+      "where": "diaper colour chip and list text",
+      "zh-Hans": "棕色"
+    },
+    "colour.darkGreen": {
+      "en": "dark green",
+      "where": "diaper colour chip and list text",
+      "zh-Hans": "深绿"
+    },
+    "colour.green": {
+      "en": "green",
+      "where": "diaper colour chip and list text",
+      "zh-Hans": "绿色"
+    },
+    "colour.other": {
+      "en": "other",
+      "where": "diaper colour chip and list text",
+      "zh-Hans": "其他"
+    },
+    "colour.yellow": {
+      "en": "yellow",
+      "where": "diaper colour chip and list text",
+      "zh-Hans": "黄色"
+    },
+    "common.loading": {
+      "en": "Loading…",
+      "where": "PC Now panel before the first response",
+      "zh-Hans": "加载中…"
+    },
+    "count.diapers.one": {
+      "en": "{n} diaper",
+      "where": "Catch up 'already has' line",
+      "zh-Hans": "{n} 次换尿布"
+    },
+    "count.diapers.other": {
+      "en": "{n} diapers",
+      "where": "Catch up 'already has' line",
+      "zh-Hans": "{n} 次换尿布"
+    },
+    "count.entries.one": {
+      "en": "{n} entry",
+      "where": "Settings → Sync usage line; the PC's journal pill",
+      "zh-Hans": "{n} 条记录"
+    },
+    "count.entries.other": {
+      "en": "{n} entries",
+      "where": "Settings → Sync usage line; the PC's journal pill",
+      "zh-Hans": "{n} 条记录"
+    },
+    "count.feeds.one": {
+      "en": "{n} feed",
+      "where": "Now and Day totals, the Catch up 'already has' line",
+      "zh-Hans": "{n} 次喂奶"
+    },
+    "count.feeds.other": {
+      "en": "{n} feeds",
+      "where": "Now and Day totals, the Catch up 'already has' line",
+      "zh-Hans": "{n} 次喂奶"
+    },
+    "day.asleep": {
+      "en": "{duration} asleep",
+      "where": "Day strip: the day's sleep total",
+      "zh-Hans": "睡了 {duration}"
+    },
+    "day.colBottle": {
+      "en": "Bottle",
+      "where": "PC day sheet column; the Trends / Daily column; the feed editor's section heading",
+      "zh-Hans": "奶瓶"
+    },
+    "day.colBreast": {
+      "en": "Breast",
+      "where": "PC day sheet column",
+      "zh-Hans": "母乳"
+    },
+    "day.colBy": {
+      "en": "By",
+      "where": "PC day sheet, Growth and Health columns",
+      "zh-Hans": "谁"
+    },
+    "day.colColourTexture": {
+      "en": "Colour / texture",
+      "where": "PC day sheet column",
+      "zh-Hans": "颜色 / 质地"
+    },
+    "day.colMadeLeft": {
+      "en": "Made / left",
+      "where": "PC day sheet column",
+      "zh-Hans": "冲了 / 剩余"
+    },
+    "day.colTime": {
+      "en": "Time",
+      "where": "PC day sheet column",
+      "zh-Hans": "时间"
+    },
+    "day.dayNumber": {
+      "en": "day {n}",
+      "where": "Day: day of life under the date; planned photo grouping",
+      "zh-Hans": "第 {n} 天"
+    },
+    "day.diapers": {
+      "en": "Diapers",
+      "where": "Day sheet: the right column's heading; planned outing item",
+      "zh-Hans": "尿布"
+    },
+    "day.feeding": {
+      "en": "Feeding",
+      "where": "Day sheet: the left column's heading",
+      "zh-Hans": "喂奶"
+    },
+    "day.madeLeft": {
+      "en": "made {made} / left {left}",
+      "where": "Day sheet feed cell: made and leftover amounts",
+      "zh-Hans": "冲了 {made} / 剩 {left}"
+    },
+    "day.next": {
+      "en": "Next day",
+      "where": "Day: the › button's accessibility label",
+      "zh-Hans": "后一天"
+    },
+    "day.nextButton": {
+      "en": "next ›",
+      "where": "PC day sheet: the next-day button",
+      "zh-Hans": "后一天 ›"
+    },
+    "day.noDiapers": {
+      "en": "No diapers",
+      "where": "Day sheet: empty diaper column",
+      "zh-Hans": "没有换尿布记录"
+    },
+    "day.noFeeds": {
+      "en": "No feeds",
+      "where": "Day sheet: empty feed column",
+      "zh-Hans": "没有喂奶记录"
+    },
+    "day.other": {
+      "en": "Other",
+      "where": "Day sheet: the section under the two columns",
+      "zh-Hans": "其他"
+    },
+    "day.prevButton": {
+      "en": "‹ prev",
+      "where": "PC day sheet: the previous-day button",
+      "zh-Hans": "‹ 前一天"
+    },
+    "day.previous": {
+      "en": "Previous day",
+      "where": "Day: the ‹ button's accessibility label",
+      "zh-Hans": "前一天"
+    },
+    "day.pumped": {
+      "en": "{amount} pumped",
+      "where": "Day strip: the day's pumped total",
+      "zh-Hans": "吸奶 {amount}"
+    },
+    "day.sides": {
+      "en": "(L {l} / R {r})",
+      "where": "Day sheet feed cell and the feed editor's breast line: minutes per side",
+      "zh-Hans": "（左 {l} / 右 {r}）"
+    },
+    "day.todayMark": {
+      "en": "today",
+      "where": "Day: the small mark after the date when it is today",
+      "zh-Hans": "今天"
+    },
+    "deleted.by": {
+      "en": "by {who}",
+      "where": "Settings → Deleted: who deleted it",
+      "zh-Hans": "由 {who}"
+    },
+    "deleted.nothingDeleted": {
+      "en": "Nothing deleted.",
+      "where": "Settings → Deleted empty state",
+      "zh-Hans": "没有已删除的记录。"
+    },
+    "deleted.reasonMergedInto": {
+      "en": "merged into {id}",
+      "where": "Settings → Deleted: the reason stored by Merge into one",
+      "zh-Hans": "已合并到 {id}"
+    },
+    "deleted.reasonSwipe": {
+      "en": "swipe",
+      "where": "Settings → Deleted: the reason stored by a swipe delete",
+      "zh-Hans": "滑动删除"
+    },
+    "deleted.reasonUndo": {
+      "en": "undo",
+      "where": "Settings → Deleted: the reason stored by a toast Undo",
+      "zh-Hans": "撤销"
+    },
+    "deleted.restore": {
+      "en": "Restore",
+      "where": "Settings → Deleted row button",
+      "zh-Hans": "恢复"
+    },
+    "deleted.sub": {
+      "en": "Restore brings an entry back as it last was",
+      "where": "Settings → Deleted sub heading",
+      "zh-Hans": "“恢复”会把记录按最后的样子找回来"
+    },
+    "deleted.title": {
+      "en": "Deleted ({n})",
+      "where": "Settings card heading",
+      "zh-Hans": "已删除（{n}）"
+    },
+    "describe.approxMinutes": {
+      "en": "~{n} min",
+      "where": "Day sheet and feed editor when the paper minutes were approximate",
+      "zh-Hans": "约 {n} 分钟"
+    },
+    "describe.blowout": {
+      "en": "blowout",
+      "where": "Core.describe and the Day sheet diaper cell, lower case",
+      "zh-Hans": "漏便"
+    },
+    "describe.entry": {
+      "en": "Entry",
+      "where": "Core.describe fallback for an unknown type; Settings → Sync stuck list",
+      "zh-Hans": "记录"
+    },
+    "describe.feedFallback": {
+      "en": "feed",
+      "where": "Day sheet feed cell with nothing recorded",
+      "zh-Hans": "喂奶"
+    },
+    "describe.feedLower": {
+      "en": "feeding",
+      "where": "Day sheet feed cell with nothing recorded yet, timer running",
+      "zh-Hans": "喂奶中"
+    },
+    "describe.feeding": {
+      "en": "Feeding",
+      "where": "Core.describe: a feed with a running timer and nothing recorded yet",
+      "zh-Hans": "喂奶中"
+    },
+    "describe.head": {
+      "en": "Head {head}",
+      "where": "Core.describe of a growth entry; {head} is amount.cm",
+      "zh-Hans": "头围 {head}"
+    },
+    "describe.length": {
+      "en": "Length {length}",
+      "where": "Core.describe of a growth entry; {length} is amount.cm",
+      "zh-Hans": "身长 {length}"
+    },
+    "describe.milestone": {
+      "en": "Milestone",
+      "where": "Core.describe of a milestone note; the note editor's checkbox; planned photo tag",
+      "zh-Hans": "里程碑"
+    },
+    "describe.minutes": {
+      "en": "{n} min",
+      "where": "Core.describe breast minutes; a pump row's minutes; the Day sheet feed cell",
+      "zh-Hans": "{n} 分钟"
+    },
+    "describe.pumped": {
+      "en": "Pumped {amount}",
+      "where": "Core.describe of a pump",
+      "zh-Hans": "吸奶 {amount}"
+    },
+    "describe.rash": {
+      "en": "rash",
+      "where": "Day sheet diaper cell, lower case",
+      "zh-Hans": "尿布疹"
+    },
+    "describe.sleep": {
+      "en": "Sleep {duration}",
+      "where": "Core.describe of a finished sleep",
+      "zh-Hans": "睡了 {duration}"
+    },
+    "describe.sleeping": {
+      "en": "Sleeping {duration}",
+      "where": "Core.describe of a running sleep",
+      "zh-Hans": "已睡 {duration}"
+    },
+    "describe.weight": {
+      "en": "Weight {weight}",
+      "where": "Core.describe of a growth entry; {weight} is amount.kg",
+      "zh-Hans": "体重 {weight}"
+    },
+    "describe.wetDirty": {
+      "en": "Wet + dirty",
+      "where": "Core.describe of a wet and dirty diaper",
+      "zh-Hans": "尿湿 + 便便"
+    },
+    "device.anotherDevice": {
+      "en": "another device",
+      "where": "whose(): fallback when the record is unknown",
+      "zh-Hans": "另一台设备"
+    },
+    "device.anotherPhone": {
+      "en": "another's phone",
+      "where": "whose() on the phone when the record names nobody",
+      "zh-Hans": "另一部手机"
+    },
+    "device.namedPhone": {
+      "en": "{name}'s phone",
+      "where": "whose(): the other parent's phone",
+      "zh-Hans": "{name}的手机"
+    },
+    "device.otherPhone": {
+      "en": "the other's phone",
+      "where": "whose() on the PC when the record names nobody",
+      "zh-Hans": "另一位的手机"
+    },
+    "device.paperSheet": {
+      "en": "the paper sheet",
+      "where": "whose(): an entry imported from paper",
+      "zh-Hans": "纸质记录表"
+    },
+    "device.thePc": {
+      "en": "the PC",
+      "where": "whose() on the phone: a change made on the PC",
+      "zh-Hans": "电脑"
+    },
+    "device.thisPc": {
+      "en": "this PC",
+      "where": "whose() on the PC: its own change",
+      "zh-Hans": "这台电脑"
+    },
+    "diaper.blowout": {
+      "en": "Blowout",
+      "where": "diaper editor toggle",
+      "zh-Hans": "漏便"
+    },
+    "diaper.colour": {
+      "en": "Colour",
+      "where": "diaper editor row",
+      "zh-Hans": "颜色"
+    },
+    "diaper.rash": {
+      "en": "Rash",
+      "where": "diaper editor toggle",
+      "zh-Hans": "尿布疹"
+    },
+    "diaper.size": {
+      "en": "Size",
+      "where": "diaper editor row",
+      "zh-Hans": "量"
+    },
+    "diaper.texture": {
+      "en": "Texture",
+      "where": "diaper editor row",
+      "zh-Hans": "质地"
+    },
+    "editor.blankStillGoing": {
+      "en": "blank = still going",
+      "where": "editor: the End row's hint on a new sleep",
+      "zh-Hans": "留空 = 还在进行"
+    },
+    "editor.cancel": {
+      "en": "Cancel",
+      "where": "editor button",
+      "zh-Hans": "取消"
+    },
+    "editor.changeType": {
+      "en": "Change type…",
+      "where": "editor field",
+      "zh-Hans": "更改类型…"
+    },
+    "editor.clear": {
+      "en": "clear",
+      "where": "editor: the End chip that blanks it",
+      "zh-Hans": "清除"
+    },
+    "editor.close": {
+      "en": "Close",
+      "where": "PC editor: the × button's accessibility label",
+      "zh-Hans": "关闭"
+    },
+    "editor.confirmDelete": {
+      "en": "Delete {type} {time}?",
+      "where": "editor confirm sheet; {type} is the lower-case type label",
+      "zh-Hans": "删除 {time} 的{type}？"
+    },
+    "editor.draftRestored": {
+      "en": "Draft restored",
+      "where": "editor notice when a half-typed entry came back after a reload",
+      "zh-Hans": "已恢复草稿"
+    },
+    "editor.end": {
+      "en": "End",
+      "where": "editor row label",
+      "zh-Hans": "结束"
+    },
+    "editor.fromPaperCheck": {
+      "en": "From the paper sheet, marked for checking — correct it and remove the “Check:” from the note.",
+      "where": "editor notice on a Needs check entry",
+      "zh-Hans": "来自纸质记录表，已标记待核对——请改正，并把备注里的“核对：”去掉。"
+    },
+    "editor.history.one": {
+      "en": "History · {n} revision",
+      "where": "PC editor: the History disclosure",
+      "zh-Hans": "历史 · {n} 次修订"
+    },
+    "editor.history.other": {
+      "en": "History · {n} revisions",
+      "where": "PC editor: the History disclosure",
+      "zh-Hans": "历史 · {n} 次修订"
+    },
+    "editor.historyDeleted": {
+      "en": "deleted",
+      "where": "PC editor History: appended after ' · ' to a tombstone revision",
+      "zh-Hans": "已删除"
+    },
+    "editor.historyDeletedReason": {
+      "en": "deleted: {reason}",
+      "where": "PC editor History: a tombstone with a reason",
+      "zh-Hans": "已删除：{reason}"
+    },
+    "editor.historyLine": {
+      "en": "r{rev} · {time} {day} · {who} ({from})",
+      "where": "PC editor History: one revision; {from} is the device or paper",
+      "zh-Hans": "第 {rev} 版 · {time} {day} · {who}（{from}）"
+    },
+    "editor.keep": {
+      "en": "Keep",
+      "where": "editor confirm sheet: the safe button",
+      "zh-Hans": "保留"
+    },
+    "editor.logAFeed": {
+      "en": "Log a feed",
+      "where": "editor title for a new feed",
+      "zh-Hans": "记一次喂奶"
+    },
+    "editor.logAnother": {
+      "en": "Log another",
+      "where": "the action on editor.sameAsLast",
+      "zh-Hans": "再记一次"
+    },
+    "editor.minus30Min": {
+      "en": "−30 min",
+      "where": "editor: the third shift chip (−5 and −15 are numerals)",
+      "zh-Hans": "−30 分钟"
+    },
+    "editor.newTitle": {
+      "en": "New {type}",
+      "where": "PC editor title for a new entry; {type} is the lower-case type label",
+      "zh-Hans": "新建{type}"
+    },
+    "editor.note": {
+      "en": "Note",
+      "where": "editor field",
+      "zh-Hans": "备注"
+    },
+    "editor.now": {
+      "en": "now",
+      "where": "editor: the End chip that sets the current time",
+      "zh-Hans": "现在"
+    },
+    "editor.running": {
+      "en": "running",
+      "where": "the End row's hint on a saved entry with no end",
+      "zh-Hans": "进行中"
+    },
+    "editor.sameAsLast": {
+      "en": "Same as the {time} one? Save adds to it · Log another adds a new one",
+      "where": "editor notice under the 2-minute diaper rule",
+      "zh-Hans": "和 {time} 那次是同一片吗？“保存”会并入它 · “再记一次”会新建一条"
+    },
+    "editor.save": {
+      "en": "Save",
+      "where": "editor button for a new entry",
+      "zh-Hans": "保存"
+    },
+    "editor.saveAnyway": {
+      "en": "Save anyway",
+      "where": "the action on editor.unusualFeed",
+      "zh-Hans": "仍然保存"
+    },
+    "editor.saveChanges": {
+      "en": "Save changes",
+      "where": "editor button for an existing entry",
+      "zh-Hans": "保存修改"
+    },
+    "editor.start": {
+      "en": "Start",
+      "where": "editor row label; planned outing button prefix",
+      "zh-Hans": "开始"
+    },
+    "editor.titleRunning": {
+      "en": "{type} · {datetime} · running",
+      "where": "editor title for an entry whose timer is going",
+      "zh-Hans": "{type} · {datetime} · 进行中"
+    },
+    "editor.unusualFeed": {
+      "en": "That's more than twice his biggest recent feed. Save anyway?",
+      "where": "editor: the question before saving an unusually large bottle",
+      "zh-Hans": "这比他最近最大的一次喂奶量还多出一倍。仍然保存吗？"
+    },
+    "editor.who": {
+      "en": "Who",
+      "where": "editor row label",
+      "zh-Hans": "谁"
+    },
+    "error.couldNotLoadConfig": {
+      "en": "Could not load config: {error}",
+      "where": "PC: status line at start",
+      "zh-Hans": "无法加载配置：{error}"
+    },
+    "error.couldNotSaveSettings": {
+      "en": "Could not save settings — storage is blocked",
+      "where": "toast on Save settings",
+      "zh-Hans": "无法保存设置——存储被阻止"
+    },
+    "error.downloadFailed": {
+      "en": "download failed",
+      "where": "Settings → Sync last error",
+      "zh-Hans": "下载失败"
+    },
+    "error.networkError": {
+      "en": "network error {what}",
+      "where": "Settings → Sync last error; {what} names the request",
+      "zh-Hans": "网络错误 {what}"
+    },
+    "error.notSavedStorageFull": {
+      "en": "Not saved — storage full",
+      "where": "toast or editor message when the local store refuses a write",
+      "zh-Hans": "未保存——存储已满"
+    },
+    "error.signInServiceUnreachable": {
+      "en": "could not reach the sign-in service",
+      "where": "Settings → Sync last error",
+      "zh-Hans": "无法连接登录服务"
+    },
+    "error.slowDown": {
+      "en": "waiting {n} s after OneDrive asked us to slow down",
+      "where": "Settings → Sync last error after a 429/503",
+      "zh-Hans": "OneDrive 要求放慢速度，等待 {n} 秒"
+    },
+    "error.storageUnavailable": {
+      "en": "Storage is unavailable on this phone — nothing can be saved. Reopen the app; if it persists, free some space.",
+      "where": "Now: notice when the local store would not open",
+      "zh-Hans": "这部手机的存储不可用——无法保存任何内容。请重新打开应用；如果仍然如此，请清理一些空间。"
+    },
+    "feed.anotherPortion": {
+      "en": "Another portion",
+      "where": "feed editor chip",
+      "zh-Hans": "再加一瓶"
+    },
+    "feed.asRecorded": {
+      "en": "— as recorded; breast feeding is no longer entered",
+      "where": "feed editor: after the breast line",
+      "zh-Hans": "——按原记录保留；母乳亲喂已不再录入"
+    },
+    "feed.breastMilk": {
+      "en": "Breast milk",
+      "where": "feed editor: a portion's kind toggle",
+      "zh-Hans": "母乳"
+    },
+    "feed.breastMinutes": {
+      "en": "Breast {n} min",
+      "where": "feed editor: the read-only line for breast minutes on an older record",
+      "zh-Hans": "母乳 {n} 分钟"
+    },
+    "feed.formula": {
+      "en": "Formula",
+      "where": "feed editor: a portion's kind toggle",
+      "zh-Hans": "配方奶"
+    },
+    "feed.formulaName": {
+      "en": "Formula name",
+      "where": "feed editor: that field's accessibility label",
+      "zh-Hans": "配方奶名称"
+    },
+    "feed.formulaNamePlaceholder": {
+      "en": "formula name",
+      "where": "feed editor: the free-text field after Other… on the formula chips",
+      "zh-Hans": "配方奶名称"
+    },
+    "feed.fromPaperSheet": {
+      "en": "from the paper sheet",
+      "where": "PC feed editor: appended to the breast line after a comma",
+      "zh-Hans": "来自纸质记录表"
+    },
+    "feed.leftover": {
+      "en": "leftover",
+      "where": "feed editor: leftover amount label (and accessibility label 'leftover')",
+      "zh-Hans": "剩余"
+    },
+    "feed.made": {
+      "en": "Made",
+      "where": "feed editor: made amount label (and accessibility label 'made')",
+      "zh-Hans": "冲了"
+    },
+    "feed.portion": {
+      "en": "portion",
+      "where": "feed editor: a portion amount field's accessibility label",
+      "zh-Hans": "这一瓶"
+    },
+    "feed.range": {
+      "en": "range",
+      "where": "PC feed editor: the range control's label",
+      "zh-Hans": "范围"
+    },
+    "feed.rangeAria": {
+      "en": "Range {label}",
+      "where": "feed editor: a range field's accessibility label, e.g. Range from",
+      "zh-Hans": "范围 {label}"
+    },
+    "feed.rangeBy": {
+      "en": "by",
+      "where": "PC feed editor: the range control",
+      "zh-Hans": "每隔"
+    },
+    "feed.rangeFrom": {
+      "en": "from",
+      "where": "feed editor: the range control beside the chips",
+      "zh-Hans": "从"
+    },
+    "feed.rangeStep": {
+      "en": "step",
+      "where": "feed editor: the range control on the phone",
+      "zh-Hans": "步长"
+    },
+    "feed.rangeTo": {
+      "en": "to",
+      "where": "feed editor: the range control",
+      "zh-Hans": "到"
+    },
+    "feed.rangeTooltip": {
+      "en": "The quick amounts: every step from the first to the last, in ml",
+      "where": "PC feed editor: the range control's tooltip",
+      "zh-Hans": "快捷奶量：从第一个到最后一个，每隔一个步长，单位毫升"
+    },
+    "feed.removePortion": {
+      "en": "Remove portion",
+      "where": "feed editor: the × on a portion (accessibility label)",
+      "zh-Hans": "移除这一瓶"
+    },
+    "feed.sameAsLast": {
+      "en": "Same as last · {amount}",
+      "where": "feed editor: the first quick chip",
+      "zh-Hans": "同上次 · {amount}"
+    },
+    "feed.timerStillRunning": {
+      "en": "This feed still has a timer running — Stop it from its card on Now.",
+      "where": "feed editor notice",
+      "zh-Hans": "这次喂奶的计时还在进行——请到“现在”页的卡片上停止。"
+    },
+    "formula.enfamil": {
+      "en": "Enfamil",
+      "where": "a starter formula chip before any feed names one",
+      "zh-Hans": "Enfamil"
+    },
+    "formula.similac": {
+      "en": "Similac",
+      "where": "a starter formula chip before any feed names one",
+      "zh-Hans": "Similac"
+    },
+    "growth.addWeight": {
+      "en": "Add weight",
+      "where": "Growth: button",
+      "zh-Hans": "添加体重"
+    },
+    "growth.birthWeight": {
+      "en": "birth weight {weight}",
+      "where": "Growth: sub heading",
+      "zh-Hans": "出生体重 {weight}"
+    },
+    "growth.birthWeightNotSet": {
+      "en": "birth weight not set — Settings → Child",
+      "where": "Growth: sub heading when unset",
+      "zh-Hans": "未设置出生体重——设置 → 孩子"
+    },
+    "growth.colHead": {
+      "en": "Head",
+      "where": "Growth column",
+      "zh-Hans": "头围"
+    },
+    "growth.colLength": {
+      "en": "Length",
+      "where": "Growth column",
+      "zh-Hans": "身长"
+    },
+    "growth.colWhen": {
+      "en": "When",
+      "where": "Growth and Health columns",
+      "zh-Hans": "时间"
+    },
+    "growth.headCm": {
+      "en": "Head (cm)",
+      "where": "growth editor field",
+      "zh-Hans": "头围（厘米）"
+    },
+    "growth.lengthCm": {
+      "en": "Length (cm)",
+      "where": "growth editor field",
+      "zh-Hans": "身长（厘米）"
+    },
+    "growth.noWeightsYet": {
+      "en": "No weights yet.",
+      "where": "Growth: empty state",
+      "zh-Hans": "还没有体重记录。"
+    },
+    "growth.weightG": {
+      "en": "Weight (g)",
+      "where": "growth editor field",
+      "zh-Hans": "体重（克）"
+    },
+    "header.waitingFirstSync": {
+      "en": "Waiting for the first sync",
+      "where": "header subtitle before a child exists; also the heading of the Now screen's waiting card",
+      "zh-Hans": "等待第一次同步"
+    },
+    "health.colTemp": {
+      "en": "Temp",
+      "where": "Health column",
+      "zh-Hans": "体温"
+    },
+    "health.colWhat": {
+      "en": "What",
+      "where": "Health column",
+      "zh-Hans": "内容"
+    },
+    "health.dose": {
+      "en": "Dose",
+      "where": "health editor field",
+      "zh-Hans": "剂量"
+    },
+    "health.lastGiven": {
+      "en": "last given {since} ago",
+      "where": "Health: the medicine cards",
+      "zh-Hans": "上次给药 {since}前"
+    },
+    "health.medicine": {
+      "en": "Medicine",
+      "where": "health editor field",
+      "zh-Hans": "药物"
+    },
+    "health.symptom": {
+      "en": "Symptom",
+      "where": "health editor field",
+      "zh-Hans": "症状"
+    },
+    "health.tempC": {
+      "en": "Temp (°C)",
+      "where": "health editor field",
+      "zh-Hans": "体温（°C）"
+    },
+    "health.vitaminD": {
+      "en": "Vitamin D",
+      "where": "the starter medicine chip in the health editor",
+      "zh-Hans": "维生素 D"
+    },
+    "journal.newest": {
+      "en": "newest {time}",
+      "where": "PC journal pill, after the entry count",
+      "zh-Hans": "最新 {time}"
+    },
+    "journal.pathTitle": {
+      "en": "Journal: {path}",
+      "where": "PC journal pill tooltip",
+      "zh-Hans": "日志：{path}"
+    },
+    "journal.status": {
+      "en": "Journal status",
+      "where": "PC journal pill tooltip title",
+      "zh-Hans": "日志状态"
+    },
+    "journal.thisPcLabel": {
+      "en": "This PC's label",
+      "where": "PC label pill tooltip",
+      "zh-Hans": "这台电脑的署名"
+    },
+    "journal.unknown": {
+      "en": "journal?",
+      "where": "PC journal pill before the first health check",
+      "zh-Hans": "日志？"
+    },
+    "journal.unreadable": {
+      "en": "{n} unreadable",
+      "where": "PC journal pill tooltip",
+      "zh-Hans": "{n} 个无法读取"
+    },
+    "kind.breastMilk": {
+      "en": "breast milk",
+      "where": "a bottle portion's kind in Core.describe and the Day sheet, lower case",
+      "zh-Hans": "母乳"
+    },
+    "kind.formula": {
+      "en": "formula",
+      "where": "a bottle portion's kind in Core.describe and the Day sheet, lower case, e.g. 60 ml formula",
+      "zh-Hans": "配方奶"
+    },
+    "label.body": {
+      "en": "It is stamped on every entry logged here as who did it. You can change it in Settings.",
+      "where": "first-run screen",
+      "zh-Hans": "这里记录的每一条都会署上这个名字。以后可以在设置里更改。"
+    },
+    "label.continue": {
+      "en": "Continue",
+      "where": "first-run button after typing a name",
+      "zh-Hans": "继续"
+    },
+    "label.couldNotSave": {
+      "en": "Could not save the name — storage is blocked on this phone.",
+      "where": "first-run error",
+      "zh-Hans": "无法保存名字——这部手机的存储被阻止。"
+    },
+    "label.dad": {
+      "en": "Dad",
+      "where": "first-run choice",
+      "zh-Hans": "爸爸"
+    },
+    "label.mom": {
+      "en": "Mom",
+      "where": "first-run choice",
+      "zh-Hans": "妈妈"
+    },
+    "label.namePlaceholder": {
+      "en": "Name",
+      "where": "first-run text field placeholder; the Child card's name field",
+      "zh-Hans": "姓名"
+    },
+    "label.namePlaceholderLower": {
+      "en": "name",
+      "where": "the editor's Who row: the free-text field after Other…",
+      "zh-Hans": "姓名"
+    },
+    "label.other": {
+      "en": "Other…",
+      "where": "first-run choice; the editor's Who row; the formula chips",
+      "zh-Hans": "其他…"
+    },
+    "label.title": {
+      "en": "Who is holding this phone?",
+      "where": "first-run screen heading",
+      "zh-Hans": "这部手机是谁在用？"
+    },
+    "log.both": {
+      "en": "Both",
+      "where": "log button and Catch up: wet and dirty",
+      "zh-Hans": "都有"
+    },
+    "log.catchUp": {
+      "en": "Catch up",
+      "where": "log button, the Catch up screen's title, the PC view",
+      "zh-Hans": "补记"
+    },
+    "log.catchUpTooltip": {
+      "en": "Type in the paper slips: one tap per entry, at the time you write",
+      "where": "PC: the Catch up button's tooltip",
+      "zh-Hans": "把纸条上的记录输进来：每条一下，时间照纸条上写"
+    },
+    "log.dirty": {
+      "en": "Dirty",
+      "where": "log button, the diaper editor's toggle, Catch up, Core.describe of a dirty diaper, the Trends / Daily column",
+      "zh-Hans": "便便"
+    },
+    "log.feed": {
+      "en": "Feed",
+      "where": "the big log button; the Feed entry type; Catch up's feed group heading",
+      "zh-Hans": "喂奶"
+    },
+    "log.less": {
+      "en": "Less",
+      "where": "the More button once unfolded",
+      "zh-Hans": "收起"
+    },
+    "log.more": {
+      "en": "More",
+      "where": "log button that unfolds Health · Note · Catch up",
+      "zh-Hans": "更多"
+    },
+    "log.moreMenu": {
+      "en": "More ▾",
+      "where": "PC log bar: the More button",
+      "zh-Hans": "更多 ▾"
+    },
+    "log.note": {
+      "en": "Note",
+      "where": "log button; the Note entry type; the editor's note field; a list column",
+      "zh-Hans": "备注"
+    },
+    "log.pump": {
+      "en": "Pump",
+      "where": "log button; the Pump entry type; Core.describe of a pump with no amounts",
+      "zh-Hans": "吸奶"
+    },
+    "log.sleep": {
+      "en": "Sleep",
+      "where": "log button; the Sleep entry type",
+      "zh-Hans": "睡觉"
+    },
+    "log.sleeping": {
+      "en": "Sleeping…",
+      "where": "the Sleep button while a sleep timer runs",
+      "zh-Hans": "睡觉中…"
+    },
+    "log.weight": {
+      "en": "Weight",
+      "where": "log button; the new-growth editor's title; the Growth screen's column",
+      "zh-Hans": "体重"
+    },
+    "log.wet": {
+      "en": "Wet",
+      "where": "log button, the diaper editor's toggle, Catch up, Core.describe of a wet diaper, the Trends / Daily column",
+      "zh-Hans": "尿湿"
+    },
+    "needs.checkPrefix": {
+      "en": "Check:",
+      "where": "the prefix in a note that marks a paper reading for checking (stored in the journal in English; shown translated)",
+      "zh-Hans": "核对："
+    },
+    "needs.nothingLeft": {
+      "en": "Nothing left to check.",
+      "where": "Settings → Needs check empty state",
+      "zh-Hans": "没有需要核对的了。"
+    },
+    "needs.pcSub": {
+      "en": "readings from the paper sheet that were hard to read — open, correct, and drop the “Check:” from the note",
+      "where": "PC Settings → Needs check sub heading",
+      "zh-Hans": "纸质记录表上难以辨认的记录——打开、改正，并把备注里的“核对：”去掉"
+    },
+    "needs.sub": {
+      "en": "hard-to-read paper readings — swipe right if it looks right, left to delete, or tap to correct it",
+      "where": "Settings → Needs check sub heading",
+      "zh-Hans": "纸上难以辨认的记录——右滑表示没问题，左滑删除，或点开修改"
+    },
+    "needs.title": {
+      "en": "Needs check ({n})",
+      "where": "Settings card heading",
+      "zh-Hans": "待核对（{n}）"
+    },
+    "notice.collision": {
+      "en": "{type} {time} · {line}",
+      "where": "a collision toast and Settings row: the type, the start time and a notice.* line, e.g. Feed 02:10 · Updated from the PC",
+      "zh-Hans": "{time} 的{type} · {line}"
+    },
+    "notice.deletedOn": {
+      "en": "Deleted on {who}",
+      "where": "editor notice and the collision list when a pull deleted the open entry",
+      "zh-Hans": "已在{who}上删除"
+    },
+    "notice.deletedOnLookAgain": {
+      "en": "Deleted on {who} — look again",
+      "where": "PC: when a save finds the entry deleted elsewhere",
+      "zh-Hans": "已在{who}上删除——请再看一遍"
+    },
+    "notice.updatedFrom": {
+      "en": "Updated from {who}",
+      "where": "editor notice and the collision list after a pull changed the open entry; {who} is a device.* text",
+      "zh-Hans": "来自{who}的更新"
+    },
+    "notice.updatedFromLookAgain": {
+      "en": "Updated from {who} — look again",
+      "where": "PC: the editor or a toast when a save finds the entry changed elsewhere",
+      "zh-Hans": "来自{who}的更新——请再看一遍"
+    },
+    "notice.updatedOnLookAgain": {
+      "en": "Updated on {who} — look again",
+      "where": "error when a Switch or Stop finds the entry changed elsewhere",
+      "zh-Hans": "{who}已更新——请再看一遍"
+    },
+    "now.bottleTotal": {
+      "en": "{amount} bottle",
+      "where": "Now and Day totals: today's bottle total",
+      "zh-Hans": "奶量 {amount}"
+    },
+    "now.childCreatedOnPc": {
+      "en": "The child is created on the PC and arrives with the first pull.",
+      "where": "Now: the waiting card before a child exists",
+      "zh-Hans": "孩子的资料在电脑上创建，第一次同步后就会出现。"
+    },
+    "now.dirtyTotal": {
+      "en": "{n} dirty",
+      "where": "Now and Day totals",
+      "zh-Hans": "{n} 次便便"
+    },
+    "now.feedingNow": {
+      "en": "Feeding now",
+      "where": "Now: the feed tile while a feed timer runs",
+      "zh-Hans": "正在喂奶"
+    },
+    "now.lastDiaper": {
+      "en": "Last diaper",
+      "where": "Now: the right tile's label",
+      "zh-Hans": "上次换尿布"
+    },
+    "now.lastFeed": {
+      "en": "Last feed",
+      "where": "Now: the left tile's label",
+      "zh-Hans": "上次喂奶"
+    },
+    "now.mergeIntoOne": {
+      "en": "Merge into one",
+      "where": "Now: button when two feed timers run at once",
+      "zh-Hans": "合并为一条"
+    },
+    "now.minBreast": {
+      "en": "{n} min breast",
+      "where": "Now and Day totals: today's breast minutes; the PC feed editor's read-only breast line",
+      "zh-Hans": "母乳 {n} 分钟"
+    },
+    "now.nextAround": {
+      "en": "next around {time}",
+      "where": "Now: appended to the gap line after ' · '",
+      "zh-Hans": "下次约 {time}"
+    },
+    "now.noDiaperYet": {
+      "en": "No diaper yet",
+      "where": "Now: the diaper tile's sub line before any diaper",
+      "zh-Hans": "还没有换尿布记录"
+    },
+    "now.noFeedYet": {
+      "en": "No feed yet",
+      "where": "Now: the feed tile's sub line before any feed",
+      "zh-Hans": "还没有喂奶记录"
+    },
+    "now.nothingLoggedYet": {
+      "en": "Nothing logged yet.",
+      "where": "Now: empty Recent list; the PC Health screen's empty state",
+      "zh-Hans": "还没有记录。"
+    },
+    "now.ofTarget": {
+      "en": "/ {target}",
+      "where": "Now and Day totals: the pediatrician's target after a count, e.g. 6 feeds / 8",
+      "zh-Hans": "/ 目标 {target}"
+    },
+    "now.past": {
+      "en": "(past)",
+      "where": "Now: after next around {time} when that time has passed",
+      "zh-Hans": "（已过）"
+    },
+    "now.pumpedTotal": {
+      "en": "{n} pumped · {amount}",
+      "where": "Now totals",
+      "zh-Hans": "{n} 次吸奶 · {amount}"
+    },
+    "now.recent": {
+      "en": "Recent",
+      "where": "Now: heading of the last-ten list",
+      "zh-Hans": "最近"
+    },
+    "now.recentSub": {
+      "en": "tap an entry to change it",
+      "where": "Now: sub heading of Recent",
+      "zh-Hans": "点一条记录可修改"
+    },
+    "now.signInFromSettings": {
+      "en": "Sign in from Settings or the pill above.",
+      "where": "Now: the waiting card, signed out",
+      "zh-Hans": "请在设置里或点上方的状态条登录。"
+    },
+    "now.sleepTotal.one": {
+      "en": "{n} sleep · {duration}",
+      "where": "Now totals, one sleep",
+      "zh-Hans": "{n} 次睡觉 · {duration}"
+    },
+    "now.sleepTotal.other": {
+      "en": "{n} sleeps · {duration}",
+      "where": "Now totals",
+      "zh-Hans": "{n} 次睡觉 · {duration}"
+    },
+    "now.syncingWhenOpen": {
+      "en": "Syncing whenever this screen is open.",
+      "where": "Now: the waiting card, signed in",
+      "zh-Hans": "只要打开这个页面就会同步。"
+    },
+    "now.twoFeedsRunning": {
+      "en": "Two feeds are running — keep the earlier start, add the sides together.",
+      "where": "Now: the note beside Merge into one",
+      "zh-Hans": "有两次喂奶同时在计时——保留较早的开始时间，把两侧时间相加。"
+    },
+    "now.usualGapAfterThree": {
+      "en": "Usual gap shows after three feeds.",
+      "where": "Now: the gap line before three feeds exist",
+      "zh-Hans": "记满三次喂奶后会显示通常间隔。"
+    },
+    "now.usuallyEvery": {
+      "en": "Usually every {gap}",
+      "where": "Now: the gap line; {gap} is a since.* duration",
+      "zh-Hans": "通常每 {gap} 一次"
+    },
+    "now.wetTotal": {
+      "en": "{n} wet",
+      "where": "Now and Day totals",
+      "zh-Hans": "{n} 次尿湿"
+    },
+    "outing.addItem": {
+      "en": "Add an item",
+      "where": "planned: button",
+      "zh-Hans": "添加物品"
+    },
+    "outing.allPacked": {
+      "en": "All packed",
+      "where": "planned: progress line when done",
+      "zh-Hans": "都装好了"
+    },
+    "outing.editTemplate": {
+      "en": "Edit template",
+      "where": "planned: button",
+      "zh-Hans": "编辑模板"
+    },
+    "outing.finish": {
+      "en": "Finish the outing",
+      "where": "planned: button",
+      "zh-Hans": "结束出门"
+    },
+    "outing.itemBlanket": {
+      "en": "Blanket",
+      "where": "planned: default item",
+      "zh-Hans": "毯子"
+    },
+    "outing.itemBottles": {
+      "en": "Bottles",
+      "where": "planned: default item",
+      "zh-Hans": "奶瓶"
+    },
+    "outing.itemCarrier": {
+      "en": "Carrier",
+      "where": "planned: default item",
+      "zh-Hans": "背带"
+    },
+    "outing.itemChangeOfClothes": {
+      "en": "Change of clothes",
+      "where": "planned: default item",
+      "zh-Hans": "换洗衣物"
+    },
+    "outing.itemDocuments": {
+      "en": "Documents",
+      "where": "planned: default item",
+      "zh-Hans": "证件"
+    },
+    "outing.itemFormulaPowder": {
+      "en": "Formula powder",
+      "where": "planned: default item",
+      "zh-Hans": "奶粉"
+    },
+    "outing.itemPacifier": {
+      "en": "Pacifier",
+      "where": "planned: default item",
+      "zh-Hans": "安抚奶嘴"
+    },
+    "outing.itemWater": {
+      "en": "Water",
+      "where": "planned: default item",
+      "zh-Hans": "水"
+    },
+    "outing.itemWipes": {
+      "en": "Wipes",
+      "where": "planned: default item",
+      "zh-Hans": "湿巾"
+    },
+    "outing.items": {
+      "en": "Items",
+      "where": "planned: heading",
+      "zh-Hans": "物品"
+    },
+    "outing.leavingAt": {
+      "en": "leaving at {time} — {n} items unchecked",
+      "where": "planned: the time-based notification",
+      "zh-Hans": "{time} 出发——还有 {n} 项未勾选"
+    },
+    "outing.leavingHome": {
+      "en": "Leaving home — {n} items unchecked",
+      "where": "planned: the leaving-home notification",
+      "zh-Hans": "要出门了——还有 {n} 项未勾选"
+    },
+    "outing.packed": {
+      "en": "{done} of {total} packed",
+      "where": "planned: progress line",
+      "zh-Hans": "已装 {done}/{total}"
+    },
+    "outing.packedBy": {
+      "en": "packed by {who}",
+      "where": "planned: an item checked on the other phone",
+      "zh-Hans": "{who} 装的"
+    },
+    "outing.quantity": {
+      "en": "Quantity",
+      "where": "planned: item field",
+      "zh-Hans": "数量"
+    },
+    "outing.reset": {
+      "en": "Reset for next time",
+      "where": "planned: button",
+      "zh-Hans": "重置，下次再用"
+    },
+    "outing.start": {
+      "en": "Start an outing",
+      "where": "planned: button",
+      "zh-Hans": "开始出门"
+    },
+    "outing.templateDoctorVisit": {
+      "en": "Doctor visit",
+      "where": "planned: template name",
+      "zh-Hans": "看医生"
+    },
+    "outing.templateLongDay": {
+      "en": "Long day",
+      "where": "planned: template name",
+      "zh-Hans": "一整天"
+    },
+    "outing.templateOvernight": {
+      "en": "Overnight",
+      "where": "planned: template name",
+      "zh-Hans": "过夜"
+    },
+    "outing.templateShortTrip": {
+      "en": "Short trip",
+      "where": "planned: template name",
+      "zh-Hans": "短途出门"
+    },
+    "outing.templates": {
+      "en": "Templates",
+      "where": "planned: heading",
+      "zh-Hans": "模板"
+    },
+    "outing.title": {
+      "en": "Outing checklist",
+      "where": "planned: screen title and Settings row",
+      "zh-Hans": "出门清单"
+    },
+    "outing.unchecked.one": {
+      "en": "{n} item unchecked",
+      "where": "planned: progress line",
+      "zh-Hans": "还有 {n} 项未勾选"
+    },
+    "outing.unchecked.other": {
+      "en": "{n} items unchecked",
+      "where": "planned: progress line",
+      "zh-Hans": "还有 {n} 项未勾选"
+    },
+    "photos.accessNeeded": {
+      "en": "Baby Log needs access to your photos to sort them by {name}'s age.",
+      "where": "planned: the photo-library permission prompt",
+      "zh-Hans": "Baby Log 需要访问你的照片，才能按 {name} 的月龄整理。"
+    },
+    "photos.addMilestone": {
+      "en": "Add a milestone",
+      "where": "planned: button",
+      "zh-Hans": "添加里程碑"
+    },
+    "photos.bestOf": {
+      "en": "Best of {month}",
+      "where": "planned: the month view's heading",
+      "zh-Hans": "{month} 精选"
+    },
+    "photos.byAge": {
+      "en": "By age",
+      "where": "planned: grouping",
+      "zh-Hans": "按月龄"
+    },
+    "photos.copied": {
+      "en": "{n} copied to OneDrive",
+      "where": "planned: toast after sharing",
+      "zh-Hans": "已复制 {n} 张到 OneDrive"
+    },
+    "photos.copyToOneDrive": {
+      "en": "Copy favourites to OneDrive",
+      "where": "planned: share button",
+      "zh-Hans": "把收藏复制到 OneDrive"
+    },
+    "photos.favourite": {
+      "en": "Favourite",
+      "where": "planned: the tag button on a photo",
+      "zh-Hans": "收藏"
+    },
+    "photos.favourites": {
+      "en": "Favourites",
+      "where": "planned: grouping",
+      "zh-Hans": "收藏"
+    },
+    "photos.milestonePlaceholder": {
+      "en": "first smile, first bath, first outing…",
+      "where": "planned: the milestone name field's placeholder",
+      "zh-Hans": "第一次笑、第一次洗澡、第一次出门…"
+    },
+    "photos.milestones": {
+      "en": "Milestones",
+      "where": "planned: grouping",
+      "zh-Hans": "里程碑"
+    },
+    "photos.monthNumber": {
+      "en": "month {n}",
+      "where": "planned: age grouping heading",
+      "zh-Hans": "第 {n} 个月"
+    },
+    "photos.nothingYet": {
+      "en": "No photos since {name} was born.",
+      "where": "planned: empty state",
+      "zh-Hans": "{name} 出生后还没有照片。"
+    },
+    "photos.title": {
+      "en": "Photos",
+      "where": "planned: the Photos tab and screen",
+      "zh-Hans": "照片"
+    },
+    "photos.unfavourite": {
+      "en": "Remove from favourites",
+      "where": "planned: the tag button on a favourited photo",
+      "zh-Hans": "取消收藏"
+    },
+    "photos.videos": {
+      "en": "Videos",
+      "where": "planned: the video filter",
+      "zh-Hans": "视频"
+    },
+    "photos.weekNumber": {
+      "en": "week {n}",
+      "where": "planned: age grouping heading",
+      "zh-Hans": "第 {n} 周"
+    },
+    "pump.left": {
+      "en": "Left ({unit})",
+      "where": "pump editor field",
+      "zh-Hans": "左侧（{unit}）"
+    },
+    "pump.minutes": {
+      "en": "Minutes",
+      "where": "pump editor field",
+      "zh-Hans": "分钟"
+    },
+    "pump.right": {
+      "en": "Right ({unit})",
+      "where": "pump editor field",
+      "zh-Hans": "右侧（{unit}）"
+    },
+    "reminder.allowAtNight": {
+      "en": "Allow reminders during night mode",
+      "where": "planned: Settings toggle",
+      "zh-Hans": "夜间模式下也允许提醒"
+    },
+    "reminder.feedAfterHours": {
+      "en": "Remind me {hours} h after the last feed",
+      "where": "planned: Settings rule",
+      "zh-Hans": "上次喂奶后 {hours} 小时提醒我"
+    },
+    "reminder.notificationsOff": {
+      "en": "Notifications are off for Baby Log — turn them on in iPhone Settings.",
+      "where": "planned: Settings notice",
+      "zh-Hans": "Baby Log 的通知已关闭——请在 iPhone 设置里打开。"
+    },
+    "reminder.reminders": {
+      "en": "Reminders",
+      "where": "planned: Settings heading",
+      "zh-Hans": "提醒"
+    },
+    "reminder.sinceLastFeed": {
+      "en": "It has been {since} since the last feed",
+      "where": "planned: notification; {since} is a since.* duration, e.g. 3 h",
+      "zh-Hans": "距上次喂奶已经 {since}"
+    },
+    "reminder.sleepOverHours": {
+      "en": "Remind me when a sleep runs over {hours} h",
+      "where": "planned: Settings rule",
+      "zh-Hans": "睡觉超过 {hours} 小时时提醒我"
+    },
+    "reminder.sleepStillRunning": {
+      "en": "Sleep timer still running since {time}",
+      "where": "planned: notification",
+      "zh-Hans": "睡觉计时从 {time} 起一直在进行"
+    },
+    "reminder.title": {
+      "en": "Reminder",
+      "where": "planned: notification category",
+      "zh-Hans": "提醒"
+    },
+    "reports.dateRange": {
+      "en": "Date range",
+      "where": "Reports: card heading",
+      "zh-Hans": "日期范围"
+    },
+    "reports.daySheet": {
+      "en": "Day sheet",
+      "where": "Reports: card heading",
+      "zh-Hans": "日记录表"
+    },
+    "reports.folder": {
+      "en": "Folder:",
+      "where": "Reports: the output folder line",
+      "zh-Hans": "文件夹："
+    },
+    "reports.from": {
+      "en": "From",
+      "where": "Reports: date field",
+      "zh-Hans": "从"
+    },
+    "reports.journal": {
+      "en": "Journal:",
+      "where": "Reports: the journal folder line",
+      "zh-Hans": "日志："
+    },
+    "reports.printDailyTotals": {
+      "en": "Print daily totals",
+      "where": "Reports: button",
+      "zh-Hans": "打印每日汇总"
+    },
+    "reports.printDaySheet": {
+      "en": "Print day sheet",
+      "where": "Reports: button",
+      "zh-Hans": "打印日记录表"
+    },
+    "reports.rebuildWorkbook": {
+      "en": "Rebuild Baby Log.xlsx",
+      "where": "Reports: button",
+      "zh-Hans": "重新生成 Baby Log.xlsx"
+    },
+    "reports.rebuildsItself": {
+      "en": "It also rebuilds itself 20 s after any change and when the phones' entries arrive.",
+      "where": "Reports: note beside Rebuild",
+      "zh-Hans": "任何改动 20 秒后，以及手机的记录到达时，它也会自动重新生成。"
+    },
+    "reports.saveDaySheet": {
+      "en": "Save day sheet",
+      "where": "Reports: button",
+      "zh-Hans": "保存日记录表"
+    },
+    "reports.saveWrites": {
+      "en": "Save writes {path} into Yisen File.",
+      "where": "Reports: the note under Save day sheet; {path} is Day sheets/<date>.html",
+      "zh-Hans": "“保存”会把 {path} 写入 Yisen File。"
+    },
+    "reports.to": {
+      "en": "To",
+      "where": "Reports: date field",
+      "zh-Hans": "到"
+    },
+    "reports.written": {
+      "en": "Written",
+      "where": "Reports: heading of the files written this session",
+      "zh-Hans": "已写入"
+    },
+    "running.feedingSince": {
+      "en": "Feeding since {time}",
+      "where": "Now: a running feed's card title",
+      "zh-Hans": "{time} 开始喂奶"
+    },
+    "running.lastSide": {
+      "en": "last side {side}",
+      "where": "running feed card and the feed editor's read-only breast line",
+      "zh-Hans": "上次为{side}"
+    },
+    "running.onSideSince": {
+      "en": "on the {side} since {time}",
+      "where": "running feed card: the side timer line; {side} is side.left / side.right",
+      "zh-Hans": "{time} 起在{side}"
+    },
+    "running.setEndTime": {
+      "en": "Set end time",
+      "where": "running card: opens the editor on End",
+      "zh-Hans": "设置结束时间"
+    },
+    "running.sideMinutes": {
+      "en": "L {l} min · R {r} min",
+      "where": "running feed card: minutes per side",
+      "zh-Hans": "左 {l} 分 · 右 {r} 分"
+    },
+    "running.sleepingSince": {
+      "en": "Sleeping since {time}",
+      "where": "Now: a running sleep's card title; the toast after the Sleep button",
+      "zh-Hans": "{time} 开始睡觉"
+    },
+    "running.staleFeed": {
+      "en": "Running for over an hour — forgot to stop it?",
+      "where": "running feed card, after 60 minutes",
+      "zh-Hans": "已经计时超过一小时——是不是忘了停？"
+    },
+    "running.staleSleep": {
+      "en": "Running for over six hours — forgot to stop it?",
+      "where": "running sleep card, after 6 hours",
+      "zh-Hans": "已经计时超过六小时——是不是忘了停？"
+    },
+    "running.stop": {
+      "en": "Stop",
+      "where": "running card button",
+      "zh-Hans": "停止"
+    },
+    "running.switchTo": {
+      "en": "Switch to {side}",
+      "where": "running feed card button",
+      "zh-Hans": "换到{side}"
+    },
+    "settings.autoStep": {
+      "en": "Automatic step right now: {amount}",
+      "where": "Settings: the line under the form",
+      "zh-Hans": "当前自动步长：{amount}"
+    },
+    "settings.customAmounts": {
+      "en": "Custom amounts (ml, comma separated)",
+      "where": "Settings field",
+      "zh-Hans": "自定义奶量（毫升，用逗号分隔）"
+    },
+    "settings.labelPlaceholder": {
+      "en": "Dad, Mom…",
+      "where": "Settings: the label field's placeholder",
+      "zh-Hans": "爸爸、妈妈…"
+    },
+    "settings.labelWhoLogs": {
+      "en": "Label (who logs from here)",
+      "where": "PC Settings: the label field",
+      "zh-Hans": "署名（从这里记录的是谁）"
+    },
+    "settings.language": {
+      "en": "Language",
+      "where": "planned Settings field",
+      "zh-Hans": "语言"
+    },
+    "settings.languageChinese": {
+      "en": "Simplified Chinese",
+      "where": "planned: the Language option",
+      "zh-Hans": "简体中文"
+    },
+    "settings.languageEnglish": {
+      "en": "English",
+      "where": "planned: the Language option (a picker may show each language in its own name)",
+      "zh-Hans": "英语"
+    },
+    "settings.languageFollowPhone": {
+      "en": "Follow the phone",
+      "where": "planned: the Language option that uses the system language",
+      "zh-Hans": "跟随手机"
+    },
+    "settings.nightFrom": {
+      "en": "Night from",
+      "where": "Settings field",
+      "zh-Hans": "夜间开始"
+    },
+    "settings.nightMode": {
+      "en": "Night mode",
+      "where": "the moon button's accessibility label; planned Settings row",
+      "zh-Hans": "夜间模式"
+    },
+    "settings.nightTo": {
+      "en": "Night to",
+      "where": "Settings field",
+      "zh-Hans": "夜间结束"
+    },
+    "settings.quickAmounts": {
+      "en": "Quick amounts",
+      "where": "Settings field",
+      "zh-Hans": "快捷奶量"
+    },
+    "settings.quickCustom": {
+      "en": "custom list",
+      "where": "Settings: Quick amounts option",
+      "zh-Hans": "自定义列表"
+    },
+    "settings.quickRange": {
+      "en": "a range",
+      "where": "Settings: Quick amounts option",
+      "zh-Hans": "一个范围"
+    },
+    "settings.quickRecent": {
+      "en": "from recent feeds",
+      "where": "Settings: Quick amounts option",
+      "zh-Hans": "按最近几次喂奶"
+    },
+    "settings.rangeBy": {
+      "en": "by (ml)",
+      "where": "PC Settings field",
+      "zh-Hans": "每隔（毫升）"
+    },
+    "settings.rangeFrom": {
+      "en": "Range from (ml)",
+      "where": "Settings field",
+      "zh-Hans": "范围从（毫升）"
+    },
+    "settings.rangeStep": {
+      "en": "step (ml)",
+      "where": "Settings field on the phone",
+      "zh-Hans": "步长（毫升）"
+    },
+    "settings.rangeTo": {
+      "en": "to (ml)",
+      "where": "Settings field",
+      "zh-Hans": "到（毫升）"
+    },
+    "settings.saveSettings": {
+      "en": "Save settings",
+      "where": "Settings button",
+      "zh-Hans": "保存设置"
+    },
+    "settings.stepMl": {
+      "en": "−/+ step (ml, blank = auto)",
+      "where": "Settings field",
+      "zh-Hans": "−/+ 步长（毫升，留空 = 自动）"
+    },
+    "settings.stepMlPc": {
+      "en": "−/+ step (ml, blank = automatic)",
+      "where": "PC Settings field",
+      "zh-Hans": "−/+ 步长（毫升，留空 = 自动）"
+    },
+    "settings.thisPc": {
+      "en": "This PC",
+      "where": "PC Settings: first card heading",
+      "zh-Hans": "这台电脑"
+    },
+    "settings.thisPhone": {
+      "en": "This phone",
+      "where": "Settings: first card heading",
+      "zh-Hans": "这部手机"
+    },
+    "settings.unitMl": {
+      "en": "ml",
+      "where": "Settings: the Units option; the unit beside amount fields",
+      "zh-Hans": "毫升"
+    },
+    "settings.unitOz": {
+      "en": "oz",
+      "where": "Settings: the Units option; the unit beside amount fields",
+      "zh-Hans": "盎司"
+    },
+    "settings.units": {
+      "en": "Units",
+      "where": "Settings field",
+      "zh-Hans": "单位"
+    },
+    "settings.whoIsHolding": {
+      "en": "Who is holding this phone",
+      "where": "Settings: the label field",
+      "zh-Hans": "这部手机是谁在用"
+    },
+    "side.left": {
+      "en": "left",
+      "where": "a breast side in running.* and feed.* lines",
+      "zh-Hans": "左侧"
+    },
+    "side.right": {
+      "en": "right",
+      "where": "a breast side in running.* and feed.* lines",
+      "zh-Hans": "右侧"
+    },
+    "since.ago": {
+      "en": "{since} ago",
+      "where": "the Now tiles and Health: a since.* duration followed by ago, e.g. 1 h 15 m ago",
+      "zh-Hans": "{since}前"
+    },
+    "since.days": {
+      "en": "{d} d",
+      "where": "Core.sinceText whole days, e.g. 2 d",
+      "zh-Hans": "{d}天"
+    },
+    "since.daysHours": {
+      "en": "{d} d {h} h",
+      "where": "Core.sinceText, e.g. 2 d 3 h",
+      "zh-Hans": "{d}天{h}小时"
+    },
+    "since.hours": {
+      "en": "{h} h",
+      "where": "Core.sinceText whole hours, e.g. 2 h",
+      "zh-Hans": "{h}小时"
+    },
+    "since.hoursMinutes": {
+      "en": "{h} h {m} m",
+      "where": "Core.sinceText, e.g. 1 h 15 m",
+      "zh-Hans": "{h}小时{m}分"
+    },
+    "since.minutes": {
+      "en": "{m} m",
+      "where": "Core.sinceText under an hour, e.g. 45 m",
+      "zh-Hans": "{m}分"
+    },
+    "siri.logDirtyDiaper": {
+      "en": "Log a dirty diaper in Baby Log",
+      "where": "planned: App Intent phrase",
+      "zh-Hans": "在 Baby Log 里记一次便便"
+    },
+    "siri.logFeed": {
+      "en": "Log a {amount} ml feed in Baby Log",
+      "where": "planned: App Intent phrase",
+      "zh-Hans": "在 Baby Log 里记一次 {amount} 毫升的喂奶"
+    },
+    "siri.logWetDiaper": {
+      "en": "Log a wet diaper in Baby Log",
+      "where": "planned: App Intent phrase",
+      "zh-Hans": "在 Baby Log 里记一次尿湿"
+    },
+    "siri.loggedDiaper": {
+      "en": "Logged {description} at {time}",
+      "where": "planned: the intent's spoken result; {description} is a Core.describe text",
+      "zh-Hans": "已记录 {time} 的{description}"
+    },
+    "siri.loggedFeed": {
+      "en": "Logged a {amount} feed at {time}",
+      "where": "planned: the intent's spoken result",
+      "zh-Hans": "已记录 {time} 的 {amount} 喂奶"
+    },
+    "siri.noChildYet": {
+      "en": "Baby Log has no child yet — open the app first",
+      "where": "planned: the intent's refusal",
+      "zh-Hans": "Baby Log 里还没有孩子的资料——请先打开应用"
+    },
+    "siri.noSleepRunning": {
+      "en": "No sleep is running",
+      "where": "planned: the intent's spoken result",
+      "zh-Hans": "目前没有在计时的睡觉"
+    },
+    "siri.sleepStarted": {
+      "en": "Sleep started at {time}",
+      "where": "planned: the intent's spoken result",
+      "zh-Hans": "睡觉计时已于 {time} 开始"
+    },
+    "siri.sleepStopped": {
+      "en": "Sleep stopped · {duration}",
+      "where": "planned: the intent's spoken result",
+      "zh-Hans": "睡觉已停止 · {duration}"
+    },
+    "siri.startSleep": {
+      "en": "Start sleep in Baby Log",
+      "where": "planned: App Intent phrase",
+      "zh-Hans": "在 Baby Log 里开始睡觉计时"
+    },
+    "siri.stopSleep": {
+      "en": "Stop sleep in Baby Log",
+      "where": "planned: App Intent phrase",
+      "zh-Hans": "在 Baby Log 里停止睡觉计时"
+    },
+    "siri.title": {
+      "en": "Siri",
+      "where": "planned: Settings heading for the phrases",
+      "zh-Hans": "Siri"
+    },
+    "size.large": {
+      "en": "large",
+      "where": "diaper size chip and list text",
+      "zh-Hans": "大量"
+    },
+    "size.medium": {
+      "en": "medium",
+      "where": "diaper size chip and list text",
+      "zh-Hans": "中等"
+    },
+    "size.small": {
+      "en": "small",
+      "where": "diaper size chip and list text",
+      "zh-Hans": "少量"
+    },
+    "sleep.stopNow": {
+      "en": "Stop now",
+      "where": "sleep editor: ends a running sleep",
+      "zh-Hans": "现在停止"
+    },
+    "sleep.where": {
+      "en": "Where",
+      "where": "sleep editor field",
+      "zh-Hans": "在哪儿睡"
+    },
+    "sleep.wherePlaceholder": {
+      "en": "bassinet, arms, car seat…",
+      "where": "sleep editor: the Where field's placeholder",
+      "zh-Hans": "摇篮、怀里、安全座椅…"
+    },
+    "swipe.delete": {
+      "en": "Delete",
+      "where": "swipe-left action on a row; the editor's Delete button and its confirm sheet",
+      "zh-Hans": "删除"
+    },
+    "swipe.looksRight": {
+      "en": "Looks right",
+      "where": "swipe-right action on a paper row that carries a Check: question",
+      "zh-Hans": "没问题"
+    },
+    "sync.checking.one": {
+      "en": "Syncing… checking {n} day",
+      "where": "pill during the listing phase, one folder",
+      "zh-Hans": "同步中… 正在检查 {n} 天"
+    },
+    "sync.checking.other": {
+      "en": "Syncing… checking {n} days",
+      "where": "pill during the listing phase",
+      "zh-Hans": "同步中… 正在检查 {n} 天"
+    },
+    "sync.failed": {
+      "en": "Sync failed · {time} · tap for details",
+      "where": "pill after a failed run",
+      "zh-Hans": "同步失败 · {time} · 点击查看详情"
+    },
+    "sync.notSyncedYet": {
+      "en": "Not synced yet",
+      "where": "pill when signed in but no pull has finished",
+      "zh-Hans": "尚未同步"
+    },
+    "sync.offline": {
+      "en": "Offline",
+      "where": "pill when the phone is offline with nothing queued; Settings → Sync state line",
+      "zh-Hans": "离线"
+    },
+    "sync.offlineWaiting": {
+      "en": "Offline · {n} waiting",
+      "where": "pill when offline with entries queued",
+      "zh-Hans": "离线 · {n} 条待上传"
+    },
+    "sync.reading": {
+      "en": "Syncing… reading {n} new",
+      "where": "pill during the download phase",
+      "zh-Hans": "同步中… 正在读取 {n} 条新记录"
+    },
+    "sync.sending": {
+      "en": "Syncing… sending {done} of {total}",
+      "where": "pill during the flush phase",
+      "zh-Hans": "同步中… 正在发送 {done}/{total}"
+    },
+    "sync.signedOutShowing": {
+      "en": "Signed out · showing data from {time}",
+      "where": "pill when signed out, nothing queued, a previous sync exists",
+      "zh-Hans": "未登录 · 显示 {time} 的数据"
+    },
+    "sync.signedOutTap": {
+      "en": "Signed out · tap to sign in",
+      "where": "pill when signed out and never synced",
+      "zh-Hans": "未登录 · 点此登录"
+    },
+    "sync.signedOutWaiting": {
+      "en": "Signed out · {n} waiting · tap to sign in",
+      "where": "pill when signed out with entries queued",
+      "zh-Hans": "未登录 · {n} 条待上传 · 点此登录"
+    },
+    "sync.stuck": {
+      "en": "{n} stuck · tap",
+      "where": "pill when uploads were refused permanently",
+      "zh-Hans": "{n} 条卡住 · 点击查看"
+    },
+    "sync.syncedDaysAgo": {
+      "en": "Synced {n} d ago",
+      "where": "pill, last sync a day or more ago",
+      "zh-Hans": "{n} 天前同步"
+    },
+    "sync.syncedHoursAgo": {
+      "en": "Synced {n} h ago",
+      "where": "pill, last sync under a day ago",
+      "zh-Hans": "{n} 小时前同步"
+    },
+    "sync.syncedJustNow": {
+      "en": "Synced just now",
+      "where": "pill, last sync under a minute ago",
+      "zh-Hans": "刚刚同步"
+    },
+    "sync.syncedMinAgo": {
+      "en": "Synced {n} min ago",
+      "where": "pill, last sync under an hour ago",
+      "zh-Hans": "{n} 分钟前同步"
+    },
+    "sync.syncedNew": {
+      "en": "Synced · {received} new",
+      "where": "pill after a clean run that only received",
+      "zh-Hans": "已同步 · 新 {received} 条"
+    },
+    "sync.syncedNothingNew": {
+      "en": "Synced · nothing new",
+      "where": "pill after a clean run with nothing either way",
+      "zh-Hans": "已同步 · 没有新内容"
+    },
+    "sync.syncedSent": {
+      "en": "Synced · {sent} sent",
+      "where": "pill after a clean run that only sent",
+      "zh-Hans": "已同步 · 发送 {sent} 条"
+    },
+    "sync.syncedSentNew": {
+      "en": "Synced · {sent} sent · {received} new",
+      "where": "pill for six seconds after a clean run that sent and received",
+      "zh-Hans": "已同步 · 发送 {sent} 条 · 新 {received} 条"
+    },
+    "sync.syncing": {
+      "en": "Syncing…",
+      "where": "pill while a run is on with no phase yet; the editor's 'Syncing…' line during a pull-before-save",
+      "zh-Hans": "同步中…"
+    },
+    "syncCard.changedOnTwoDevices": {
+      "en": "Changed on two devices ({n})",
+      "where": "Settings → Sync: the collision list heading",
+      "zh-Hans": "两台设备都改过（{n}）"
+    },
+    "syncCard.clearList": {
+      "en": "Clear the list",
+      "where": "Settings → Sync: collision list button",
+      "zh-Hans": "清空列表"
+    },
+    "syncCard.collisionsBody": {
+      "en": "This phone and another device both changed these while apart; one version won. Open each and check it.",
+      "where": "Settings → Sync: under the collision heading",
+      "zh-Hans": "这部手机和另一台设备在离线时都改过这些记录；保留了其中一个版本。请逐条打开核对。"
+    },
+    "syncCard.discard": {
+      "en": "Discard",
+      "where": "Settings → Sync: stuck row button",
+      "zh-Hans": "丢弃"
+    },
+    "syncCard.fullCatchUp": {
+      "en": "full catch-up {day}",
+      "where": "Settings → Sync, after Last sync: when every folder was last walked",
+      "zh-Hans": "完整同步 {day}"
+    },
+    "syncCard.lastError": {
+      "en": "Last error {time} · {code} {message}",
+      "where": "Settings → Sync",
+      "zh-Hans": "上次错误 {time} · {code} {message}"
+    },
+    "syncCard.lastSync": {
+      "en": "Last sync {time}",
+      "where": "Settings → Sync",
+      "zh-Hans": "上次同步 {time}"
+    },
+    "syncCard.mbUsed": {
+      "en": "{mb} MB used",
+      "where": "Settings → Sync usage line",
+      "zh-Hans": "已用 {mb} MB"
+    },
+    "syncCard.mbUsedOf": {
+      "en": "{mb} MB used of {quota}",
+      "where": "Settings → Sync usage line",
+      "zh-Hans": "已用 {mb} MB，共 {quota} MB"
+    },
+    "syncCard.neverSynced": {
+      "en": "Never synced on this phone",
+      "where": "Settings → Sync",
+      "zh-Hans": "这部手机还从未同步过"
+    },
+    "syncCard.notSignedIn": {
+      "en": "Not signed in",
+      "where": "Settings → Sync state line",
+      "zh-Hans": "未登录"
+    },
+    "syncCard.onThisPhone": {
+      "en": "{entries} on this phone · {waiting}",
+      "where": "Settings → Sync usage line; {entries} is count.entries, {waiting} is syncCard.waiting",
+      "zh-Hans": "这部手机上有{entries} · {waiting}"
+    },
+    "syncCard.online": {
+      "en": "Online",
+      "where": "Settings → Sync state line",
+      "zh-Hans": "在线"
+    },
+    "syncCard.retry": {
+      "en": "Retry",
+      "where": "Settings → Sync: stuck row button",
+      "zh-Hans": "重试"
+    },
+    "syncCard.signIn": {
+      "en": "Sign in",
+      "where": "Settings → Sync button",
+      "zh-Hans": "登录"
+    },
+    "syncCard.signInWithMicrosoft": {
+      "en": "Sign in with Microsoft",
+      "where": "planned: the native sign-in button",
+      "zh-Hans": "用 Microsoft 账户登录"
+    },
+    "syncCard.signOut": {
+      "en": "Sign out",
+      "where": "Settings → Sync button",
+      "zh-Hans": "退出登录"
+    },
+    "syncCard.signedInAs": {
+      "en": "Signed in as {who}",
+      "where": "Settings → Sync state line",
+      "zh-Hans": "已登录：{who}"
+    },
+    "syncCard.signedOutWas": {
+      "en": "Signed out · was {who}",
+      "where": "Settings → Sync state line",
+      "zh-Hans": "未登录 · 之前是 {who}"
+    },
+    "syncCard.stuck": {
+      "en": "Stuck ({n})",
+      "where": "Settings → Sync: refused uploads heading",
+      "zh-Hans": "卡住（{n}）"
+    },
+    "syncCard.stuckChild": {
+      "en": "child",
+      "where": "Settings → Sync: a stuck child record",
+      "zh-Hans": "孩子资料"
+    },
+    "syncCard.syncNow": {
+      "en": "Sync now",
+      "where": "Settings → Sync button: the full catch-up",
+      "zh-Hans": "立即同步"
+    },
+    "syncCard.syncNowChecks": {
+      "en": "Sync now checks every day folder of the last 120 days.",
+      "where": "Settings → Sync note",
+      "zh-Hans": "“立即同步”会检查最近 120 天的每一个日期文件夹。"
+    },
+    "syncCard.title": {
+      "en": "Sync",
+      "where": "Settings card heading",
+      "zh-Hans": "同步"
+    },
+    "syncCard.waiting": {
+      "en": "{n} waiting",
+      "where": "Settings → Sync usage line: the queue",
+      "zh-Hans": "{n} 条待上传"
+    },
+    "tab.day": {
+      "en": "Day",
+      "where": "tab bar and the Day screen's header title",
+      "zh-Hans": "当天"
+    },
+    "tab.growth": {
+      "en": "Growth",
+      "where": "PC nav; the Growth screen heading; the Growth entry type",
+      "zh-Hans": "成长"
+    },
+    "tab.health": {
+      "en": "Health",
+      "where": "PC nav; the Health screen heading; the Health log button and entry type",
+      "zh-Hans": "健康"
+    },
+    "tab.now": {
+      "en": "Now",
+      "where": "tab bar; also the Now screen's name in notices",
+      "zh-Hans": "现在"
+    },
+    "tab.reports": {
+      "en": "Reports",
+      "where": "PC nav",
+      "zh-Hans": "报表"
+    },
+    "tab.settings": {
+      "en": "Settings",
+      "where": "tab bar, the Settings screen's header title, the PC nav, the toast action that opens Settings",
+      "zh-Hans": "设置"
+    },
+    "tab.today": {
+      "en": "Today",
+      "where": "PC nav (the Today view); also the Day screen's 'Today' button that jumps back to today",
+      "zh-Hans": "今天"
+    },
+    "tab.trends": {
+      "en": "Trends",
+      "where": "tab bar, the Trends screen's header title, the PC nav",
+      "zh-Hans": "趋势"
+    },
+    "texture.seedy": {
+      "en": "seedy",
+      "where": "diaper texture chip and list text",
+      "zh-Hans": "颗粒状"
+    },
+    "texture.soft": {
+      "en": "soft",
+      "where": "diaper texture chip and list text",
+      "zh-Hans": "软"
+    },
+    "texture.solid": {
+      "en": "solid",
+      "where": "diaper texture chip and list text",
+      "zh-Hans": "成形"
+    },
+    "texture.sticky": {
+      "en": "sticky",
+      "where": "diaper texture chip and list text",
+      "zh-Hans": "黏稠"
+    },
+    "texture.watery": {
+      "en": "watery",
+      "where": "diaper texture chip and list text",
+      "zh-Hans": "水样"
+    },
+    "toast.checked": {
+      "en": "Checked · {time} stands as read",
+      "where": "toast after Looks right",
+      "zh-Hans": "已核对 · {time} 的记录按原样保留"
+    },
+    "toast.childAdded": {
+      "en": "{name} added",
+      "where": "PC: status after Add child",
+      "zh-Hans": "已添加 {name}"
+    },
+    "toast.childUpdated": {
+      "en": "{name} updated",
+      "where": "toast after Save child (the PC shows it with a full stop)",
+      "zh-Hans": "{name} 已更新"
+    },
+    "toast.deleted": {
+      "en": "Deleted",
+      "where": "toast after the editor's Delete; the Deleted list heading",
+      "zh-Hans": "已删除"
+    },
+    "toast.deletedType": {
+      "en": "Deleted {type} {time}",
+      "where": "toast after a swipe delete; {type} is the lower-case type label",
+      "zh-Hans": "已删除{type} {time}"
+    },
+    "toast.edit": {
+      "en": "Edit",
+      "where": "toast action; the running card's Edit button; a Catch up row's edit link on the PC",
+      "zh-Hans": "编辑"
+    },
+    "toast.finishEntryFirst": {
+      "en": "Finish this entry first — then sign in from Settings",
+      "where": "toast when the pill is tapped to sign in while an editor is open",
+      "zh-Hans": "请先完成这条记录——然后再到设置里登录"
+    },
+    "toast.inDeletedList": {
+      "en": "It is in the Deleted list — Restore brings it back",
+      "where": "toast when a collided entry opened from Settings is deleted",
+      "zh-Hans": "它在“已删除”列表里——点“恢复”可以找回"
+    },
+    "toast.mergedInto": {
+      "en": "Merged into the {time} feed",
+      "where": "toast after Merge into one",
+      "zh-Hans": "已合并到 {time} 的那次喂奶"
+    },
+    "toast.moreInSettings": {
+      "en": "{n} more in Settings",
+      "where": "appended to a collision toast after ' · ' when several entries collided",
+      "zh-Hans": "设置里还有 {n} 条"
+    },
+    "toast.newVersionReady": {
+      "en": "New version ready",
+      "where": "toast when an updated shell is installed",
+      "zh-Hans": "新版本已就绪"
+    },
+    "toast.reload": {
+      "en": "Reload",
+      "where": "the action on the New version ready toast",
+      "zh-Hans": "重新加载"
+    },
+    "toast.saved": {
+      "en": "{type} saved · {time}",
+      "where": "toast after saving a new entry",
+      "zh-Hans": "{type}已保存 · {time}"
+    },
+    "toast.settingsSaved": {
+      "en": "Settings saved",
+      "where": "toast after Save settings (the PC shows it with a full stop)",
+      "zh-Hans": "设置已保存"
+    },
+    "toast.stopped": {
+      "en": "{type} stopped · {time}",
+      "where": "toast after Stop on a running card",
+      "zh-Hans": "{type}已停止 · {time}"
+    },
+    "toast.undo": {
+      "en": "Undo",
+      "where": "toast action",
+      "zh-Hans": "撤销"
+    },
+    "toast.updated": {
+      "en": "{type} updated · {time}",
+      "where": "toast after saving a change",
+      "zh-Hans": "{type}已更新 · {time}"
+    },
+    "trends.colBaths": {
+      "en": "Baths",
+      "where": "planned: Daily column once baths exist",
+      "zh-Hans": "洗澡"
+    },
+    "trends.colBreastMin": {
+      "en": "Breast min",
+      "where": "Trends / Daily column",
+      "zh-Hans": "母乳分钟"
+    },
+    "trends.colFeeds": {
+      "en": "Feeds",
+      "where": "Trends / Daily column",
+      "zh-Hans": "喂奶"
+    },
+    "trends.colPumped": {
+      "en": "Pumped",
+      "where": "Trends / Daily column",
+      "zh-Hans": "吸奶量"
+    },
+    "trends.colPumps": {
+      "en": "Pumps",
+      "where": "Trends / Daily column (PC)",
+      "zh-Hans": "吸奶次数"
+    },
+    "trends.colSleep": {
+      "en": "Sleep",
+      "where": "Trends / Daily column: the day's sleep total",
+      "zh-Hans": "睡觉时长"
+    },
+    "trends.colSleeps": {
+      "en": "Sleeps",
+      "where": "Trends / Daily column (PC)",
+      "zh-Hans": "睡觉次数"
+    },
+    "trends.last14Days": {
+      "en": "Last 14 days",
+      "where": "Trends heading on the PC",
+      "zh-Hans": "最近 14 天"
+    },
+    "trends.last7Days": {
+      "en": "Last 7 days",
+      "where": "Trends heading on the phone",
+      "zh-Hans": "最近 7 天"
+    },
+    "trends.legendBottleOnly": {
+      "en": "bottle only",
+      "where": "PC Trends legend",
+      "zh-Hans": "仅奶瓶"
+    },
+    "trends.legendBreast": {
+      "en": "breast feed (length)",
+      "where": "PC Trends legend",
+      "zh-Hans": "母乳（时长）"
+    },
+    "trends.legendNight": {
+      "en": "night {from}–{to}",
+      "where": "PC Trends legend",
+      "zh-Hans": "夜间 {from}–{to}"
+    },
+    "trends.rhythm": {
+      "en": "24-hour rhythm",
+      "where": "PC Trends: the chart heading",
+      "zh-Hans": "24 小时节律"
+    },
+    "trends.rhythmAria": {
+      "en": "24-hour rhythm chart",
+      "where": "PC Trends: the chart's accessibility label",
+      "zh-Hans": "24 小时节律图"
+    },
+    "trends.rhythmSub": {
+      "en": "last 7 days · feeds as bars by start time and breast length · wet and dirty as dots · night shaded",
+      "where": "PC Trends: the chart sub heading",
+      "zh-Hans": "最近 7 天 · 喂奶按开始时间画成条，长度为母乳时长 · 尿湿和便便为点 · 夜间加阴影"
+    },
+    "trends.rowOpensDay": {
+      "en": "a row opens that day",
+      "where": "Trends sub heading",
+      "zh-Hans": "点一行打开那一天"
+    },
+    "trends.target": {
+      "en": "target",
+      "where": "Trends: the target row's label on the phone",
+      "zh-Hans": "目标"
+    },
+    "trends.targetN": {
+      "en": "target {n}",
+      "where": "PC Trends: a target cell",
+      "zh-Hans": "目标 {n}"
+    },
+    "trends.targetsHint": {
+      "en": "Targets from the pediatrician go under Settings → Child.",
+      "where": "Trends: shown when no targets are set",
+      "zh-Hans": "儿科医生给的目标请填在 设置 → 孩子。"
+    },
+    "type.bath": {
+      "en": "Bath",
+      "where": "planned: the bath entry type and its log button",
+      "zh-Hans": "洗澡"
+    },
+    "type.diaper": {
+      "en": "Diaper",
+      "where": "entry type label; Core.describe of a diaper with neither flag; Catch up's diaper group heading",
+      "zh-Hans": "尿布"
+    },
+    "validate.endBeforeStart": {
+      "en": "End can't be before Start",
+      "where": "editor refusal",
+      "zh-Hans": "结束不能早于开始"
+    },
+    "validate.endNeedsDateTime": {
+      "en": "End needs a date and time, or leave it blank",
+      "where": "editor refusal",
+      "zh-Hans": "结束需要填写日期和时间，或留空"
+    },
+    "validate.madeLessThanLeftover": {
+      "en": "Made can't be less than leftover",
+      "where": "editor refusal",
+      "zh-Hans": "冲的奶量不能少于剩余"
+    },
+    "validate.startBeforeBorn": {
+      "en": "Start is before {name} was born ({born})",
+      "where": "editor refusal",
+      "zh-Hans": "开始时间早于 {name} 的出生时间（{born}）"
+    },
+    "validate.startInFuture": {
+      "en": "Start can't be more than 10 minutes in the future",
+      "where": "editor refusal",
+      "zh-Hans": "开始时间不能超过未来 10 分钟"
+    },
+    "validate.startNeedsDateTime": {
+      "en": "Start needs a date and time",
+      "where": "editor refusal",
+      "zh-Hans": "开始需要填写日期和时间"
+    }
+  }
+}

@@ -165,6 +165,22 @@ home) or a time-based one ("leaving at 10:00 — 3 items unchecked"). The lists 
 outing's state are shared between the two phones through the journal (`checklist` records),
 so either parent can pack and the other sees what is done.
 
+### 1.7c Decided 2 Nov 2026: two languages, and friends' families later
+
+- **The app displays in English or Simplified Chinese**, following the phone's language (a
+  manual switch in Settings as well). Every user-facing text lives in one bilingual table,
+  `i18n/strings.json` (en + zh-Hans, started 2 Nov 2026, kept current from here on); the native
+  app generates its `Localizable.xcstrings` from it. Dates, numbers and units are formatted by
+  the system locale, never by hand.
+- **Beyond the two of us**: the owner wants to be able to give the app to friends when they
+  have a baby. That changes two things, both planned for rather than built now: (a) each
+  family signs in with **its own** Microsoft account and gets its own journal in its own
+  OneDrive — the same code, no server, no shared data; (b) distribution goes beyond TestFlight
+  internal testers (Part 4 lists the options). Known catch for a *new* family's first sign-in:
+  Microsoft's open personal-OneDrive provisioning bug (`serviceReadOnly` on a brand-new
+  app+user consent) may need the one-time consent-then-revoke workaround in SETUP.md.
+
+### 1.8 Constraints
 ### 1.8 Constraints
 
 - A **private app for two people** — never a public product; no App Store listing wanted unless
@@ -340,6 +356,9 @@ registration, a bundle ID chosen (e.g. `com.rollingshuttle.babylog`).
 12. TestFlight: upload, add the wife as an App Store Connect user, install on her phone;
     a reminder (or a `push.bat`-style script on the Mac) to re-upload every 90 days.
 13. Guides: a RUNNING section for the iOS app; CLAUDE.md notes for the Swift package.
+13a. Localisation: generate `Localizable.xcstrings` from `i18n/strings.json` (a script in
+    `tools/`), English and Simplified Chinese, a language switch in Settings; every new screen
+    adds its strings to the table first.
 
 **Stage 4 — the photo and video library (pillar 2, about two weeks).**
 14. PhotoKit access (limited-library friendly), an index of the phone's photos and videos from
@@ -358,12 +377,40 @@ app for wrist logging; a grandparents' read-only view.
 
 ## Part 4 — What the owner decides or does before the first build session
 
-Decisions (answer these in the chat when the time comes):
-1. **Which MacBook?** Apple silicon (M1 or later) on macOS Tahoe 26.6+ is required for Xcode 27.
-   An Intel MacBook changes the plan (Xcode 26.6 at most, and a deadline of April 2027).
-2. **Pay the US$99/year Apple Developer Program?** Yes is assumed — it is the only sane way to put
-   the app on the wife's phone and keep it updated. Enrol a few weeks ahead; verification can
-   be slow.
+Answered 2 Nov 2026: the MacBook is an **Apple-silicon MacBook Air** (good — Xcode 27 runs;
+update it to macOS Tahoe 26.6+); the owner **will join the Apple Developer Program** so that
+both parents, and later friends' families, can use the app; the app is **bilingual** (1.7c).
+
+#### Joining the Apple Developer Program — what to do
+
+1. Use the Apple Account you want the app published under (it needs two-factor authentication;
+   the owner's personal Apple ID is fine). Enrol as an **Individual** — no company paperwork; the
+   legal name is what would show as the developer if the app were ever on the App Store.
+2. Easiest route: install the **Apple Developer** app on the iPhone → Account → *Enroll Now* →
+   it scans a government ID and takes a selfie for identity verification → pay US$99 by in-app
+   purchase. The web route (developer.apple.com/programs/enroll) asks the same things.
+3. Wait for Apple's verification — usually a day or two, sometimes two to three weeks; the
+   status shows in the Developer app or at developer.apple.com/account. Do this well before the
+   first build session.
+4. Once active: sign in to Xcode with the account (Xcode → Settings → Accounts), and in **App
+   Store Connect** (appstoreconnect.apple.com) create the app record (name *Baby Log*, the bundle
+   ID) and under *Users and Access* invite the wife with her Apple Account (role Developer) so she
+   can be an internal TestFlight tester.
+5. Renewal is yearly; let it lapse and TestFlight builds stop installing, so turn on auto-renew.
+
+#### What the program gives (and what each person-group needs)
+
+| Need | What the program provides |
+|---|---|
+| Both parents, updates by themselves | **TestFlight internal testing**: up to 100 App Store Connect users; no review; builds last 90 days (upload a new one at least every 90 days). |
+| Friends' families | **TestFlight external testing**: up to 10,000 testers through an email invite or a **public link**; the first build of each version passes Beta App Review (hours to ~2 days; keep a short privacy-policy page ready); same 90-day builds. Or, for a permanent install, an **App Store** listing (public or *unlisted*, which is reachable only by link) — full App Review and the listing paperwork. |
+| Reminders, widgets, Live Activities, background refresh | The capabilities those need (App Groups, Background Modes, push if ever) are only available to program members. |
+| Keeping the free-tier pain away | No more 7-day installs, no 3-device limit; Ad Hoc installs last a year. |
+| Tooling | Xcode Cloud (builds in Apple's cloud), code-level technical support incidents, beta OS access. |
+
+Decisions still open (answer these in the chat when the time comes):
+1. ~~Which MacBook?~~ Answered: Apple-silicon MacBook Air.
+2. ~~Pay the Apple Developer Program?~~ Answered: yes.
 3. **Bundle ID** (suggest `com.rollingshuttle.babylog`) and the Siri phrases wanted (up to 10;
    each ends "in Baby Log").
 4. **Reminder rules**: minutes since the last feed before a reminder (3 h?), hours for a running
@@ -378,8 +425,12 @@ Preparation (can be done any time before the first session):
 - Entra: open the `Baby Log` registration → Authentication → *Add a platform* → **iOS / macOS**
   → bundle ID. (The web platform stays; nothing else changes.)
 - Both iPhones on iOS 17 or later.
-- Install Xcode 27 from the Mac App Store (large download) and sign in to it with the Apple
-  Account.
+- **The MacBook Air is the wife's.** Add a separate macOS user for the owner (System Settings →
+  Users & Groups → Add User) so Xcode settings, the signing certificate's private key in the
+  keychain, the git identity and Claude Code stay his. The Developer Program is tied to the
+  owner's Apple ID, not to the Mac; the wife's Apple ID is only ever a TestFlight tester.
+- Install Xcode 27 from the Mac App Store (large download; any App Store account may download
+  it) and sign in to Xcode → Settings → Accounts with the **owner's** Apple ID.
 - Clone the repository on the Mac (`git clone https://github.com/RollingShuttle/baby-log.git`);
   the Swift package will live beside the other folders (`ios/`), and `push.bat` gets a Mac twin
   (`push.command`).
