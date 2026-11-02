@@ -688,7 +688,9 @@ const ids = (host) => host.querySelectorAll("[data-event-id]").map((n) => n.data
       born_time: null, sex: null, birth_weight_g: 3400, targets: { feeds_per_day: 8, wet_per_day: 6, dirty_per_day: 3 }, device: "pc", created_at: "2026-09-21T00:00:00.000000+00:00" };
     check("child applied", await G("Store").applyRemote(child, "C-20260921-000000-0000-r1-0000.json"));
     G("renderNow(); renderHeader();");
-    check("Now shows the child", document.getElementById("title").textContent === "Yisen" && document.getElementById("subtitle").textContent.includes("old"), document.getElementById("subtitle").textContent);
+    // The age text changes with the calendar ("2 days old", then "6 weeks 1 day", then months), so
+    // compare with what Core says for today rather than a word that was true in September.
+    check("Now shows the child", document.getElementById("title").textContent === "Yisen" && /^\d+ (days? old|weeks?|months?)/.test(document.getElementById("subtitle").textContent), document.getElementById("subtitle").textContent);
     check("log buttons enabled", !screen("now").querySelectorAll(".btn.feed")[0].disabled);
 
     // One-tap diaper, then the same-diaper rule.
