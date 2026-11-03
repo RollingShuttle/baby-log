@@ -1357,7 +1357,8 @@ function renderCatchup() {
               el("button", { class: "logbtn diaper", type: "button", onclick: () => catchupDiaper(true, true) }, "Both")))),
         el("div", { class: "ed-msg", id: "cu-msg", hidden: true }),
         el("div", { class: "cu-formula muted small", id: "cu-formula" }),
-        el("div", { id: "cu-list" })));
+        el("div", { id: "cu-list" }),
+        bulkPanel()));
   }
   // The chips follow the settings (the range control in the feed editor moves them), the formula
   // line follows the newest name on file, and the list follows the journal.
@@ -1429,6 +1430,159 @@ function catchupFeed(mlv) {
 
 function catchupDiaper(wet, dirty) {
   return catchupWrite(() => ({ type: "diaper", end: null, data: { wet, dirty } }), wet && dirty ? "wet + dirty" : (wet ? "wet" : "dirty"));
+}
+
+// ---------------------------------------------------------------- Bulk entry
+/* A month of paper notes, 20-odd lines a day, is too many for the one-tap strip. The owner types
+   them as shorthand — a day header, then "<time> <what> [# note]" per line (the contract is in
+   static/bulk.js) — sees every line parsed live, and saves the lot with one click. The text is
+   mirrored to localStorage so a half-typed month survives a reload or a crash; the mirror is
+   cleared only when the server has taken every line. Rows that the server refuses stay in the
+   box to be fixed: a second Save skips the written ones as duplicates, so nothing is written twice. */
+const BULK_KEY = "bl.pc.bulk";
+const bulk = { parsed: null, entries: [], timer: null, saving: false };
+
+function bulkPanel() {
+  const text = el("textarea", { id: "bulk-text", class: "bulk-text", rows: "12", spellcheck: "false",
+    placeholder: "11/02\n0130 70\n0315 w\n0540 70 enfamil # spat up a little\n0800 wd\n11/03\n0100 80",
+    "aria-label": "Bulk entry",
+    oninput: (x) => { bulkMirror(x.target.value); bulkGrow(x.target); bulkSchedule(); },
+    onkeydown: (x) => { if (x.key === "Enter" && (x.ctrlKey || x.metaKey)) { x.preventDefault(); bulkSave(); } } });
+  try { text.value = localStorage.getItem(BULK_KEY) || ""; } catch { /* a convenience only */ }
+  bulkGrow(text);
+  const code = (s) => el("code", {}, s);
+  const panel = el("div", { class: "bulk" },
+    el("div", { class: "h2" }, "Bulk entry · 批量录入",
+      el("span", { class: "sub" }, "one line per entry · 一行一条 · the preview updates as you type")),
+    el("div", { class: "bulk-legend" },
+      el("span", {}, code("11/02"), " a day header · 日期"),
+      el("span", {}, code("0130 70"), " time then ml = feed · 时间 + 毫升 = 喝奶"),
+      el("span", {}, code("w"), " / ", code("尿"), " wet"),
+      el("span", {}, code("d"), " / ", code("屎"), " dirty"),
+      el("span", {}, code("wd"), " / ", code("尿屎"), " both"),
+      el("span", {}, code("# note"), " 备注"),
+      el("span", { class: "muted" }, "a formula name may follow the ml: ", code("70 enfamil"))),
+    el("div", { class: "bulk-grid" },
+      el("div", { class: "bulk-left" }, text),
+      el("div", { class: "bulk-right" },
+        el("div", { class: "bulk-preview", id: "bulk-preview" }),
+        el("div", { class: "bulk-foot" },
+          el("span", { class: "bulk-counts num", id: "bulk-counts" }),
+          el("button", { class: "primary feed", type: "button", id: "bulk-save", disabled: true,
+            title: "Ctrl+Enter in the box does the same", onclick: bulkSave }, "Save all")))),
+    el("div", { class: "ed-msg", id: "bulk-msg", hidden: true }));
+  // The first parse happens once the panel is in the page (the ids above have to resolve).
+  setTimeout(bulkRender, 0);
+  return panel;
+}
+
+function bulkMirror(text) {
+  try { if (text) localStorage.setItem(BULK_KEY, text); else localStorage.removeItem(BULK_KEY); } catch { /* a convenience only */ }
+}
+// Twelve rows at least; past that the box follows the text, so a month never needs an inner scroll.
+function bulkGrow(ta) {
+  ta.rows = Math.max(12, ta.value.split("\n").length + 1);
+}
+function bulkSchedule() {
+  clearTimeout(bulk.timer);
+  bulk.timer = setTimeout(bulkRender, 150);
+}
+function bulkMsg(text, kind) {
+  const box = document.getElementById("bulk-msg");
+  if (!box) return;
+  box.hidden = !text;
+  box.className = `ed-msg ${kind || "ok"}`;
+  box.replaceChildren(text && text.nodeType ? text : document.createTextNode(text || ""));
+}
+
+// Parse the box and redraw the preview, the counts and the button. Header lines become a thin
+// date divider, ignored lines are not shown, an error is red on its own line.
+function bulkRender() {
+  const ta = document.getElementById("bulk-text");
+  const preview = document.getElementById("bulk-preview");
+  const counts = document.getElementById("bulk-counts");
+  const save = document.getElementById("bulk-save");
+  if (!ta || !preview || !counts || !save) return;
+  if (typeof Bulk === "undefined") {
+    preview.replaceChildren(el("div", { class: "empty" }, "Bulk entry needs /static/bulk.js, which this build does not have."));
+    counts.textContent = "";
+    save.disabled = true;
+    return;
+  }
+  const parsed = Bulk.parse(ta.value, {
+    now: new Date(), born: (state.child && state.child.born) || null, lastFormula: lastFormula(),
+    formulas: formulaChoices(), isoLocal: Core.isoLocal });
+  bulk.parsed = parsed;
+  bulk.entries = parsed.rows.filter((r) => r.kind === "entry");
+  const c = parsed.counts || {};
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  counts.textContent = bulk.entries.length || c.errors
+    ? [plural(c.feeds || 0, "feed", "feeds"), `${c.wet || 0} wet`, `${c.dirty || 0} dirty`, `${c.both || 0} both`,
+      plural(c.errors || 0, "error", "errors"), plural((parsed.days || []).length, "day", "days")].join(" · ")
+    : "";
+  save.disabled = bulk.saving || !bulk.entries.length || !!c.errors;
+  const rows = [];
+  for (const r of parsed.rows) {
+    if (r.kind === "ignore") continue;
+    if (r.kind === "header") {
+      rows.push(el("tr", { class: "bulk-day" }, el("td", { colspan: "5" }, `${Core.fmtDay(r.date)} · ${r.date}`)));
+      continue;
+    }
+    const isErr = r.kind === "error";
+    rows.push(el("tr", { class: isErr ? "bulk-row err" : `bulk-row ${r.type || ""}` },
+      el("td", { class: "bulk-line num" }, String(r.line)),
+      el("td", { class: "num muted bulk-day-cell" }, r.date ? r.date.slice(5) : "—"),
+      el("td", { class: "num bulk-time" }, r.hhmm || "—"),
+      el("td", { class: isErr ? "bulk-what mono" : "bulk-what" }, isErr ? r.text : Bulk.describe(r, unit())),
+      el("td", { class: isErr ? "bulk-err" : "muted small" }, isErr ? r.error : (r.note || ""))));
+  }
+  preview.replaceChildren(rows.length
+    ? el("table", { class: "bulk-table" },
+      el("thead", {}, el("tr", {}, el("th", {}, "#"), el("th", {}, "Day"), el("th", {}, "Time"), el("th", {}, "Entry"), el("th", {}, "Note"))),
+      el("tbody", {}, ...rows))
+    : el("div", { class: "empty" }, "Type the paper notes on the left — one day header, then one line per feed or diaper."));
+}
+
+// One POST for the whole box. Duplicates (same type and minute as something already on file) are
+// skipped by the server, so saving twice is harmless; lines it refuses stay in the box.
+async function bulkSave() {
+  if (bulk.saving || typeof Bulk === "undefined") return;
+  bulkRender();   // the preview may lag the last keystroke by the debounce
+  const entries = bulk.entries;
+  const c = (bulk.parsed && bulk.parsed.counts) || {};
+  if (!entries.length) { bulkMsg("Nothing to save yet", "warn"); return; }
+  if (c.errors) { bulkMsg(`Fix the ${c.errors === 1 ? "line in red" : `${c.errors} lines in red`} first`, "err"); return; }
+  const events = entries.map((r) => ({ type: r.type, time: r.time, data: r.data, note: r.note || "" }));
+  const save = document.getElementById("bulk-save");
+  bulk.saving = true;
+  save.disabled = true;
+  save.textContent = `Saving ${events.length}…`;
+  try {
+    const r = await postJSON("/api/events/bulk", { events, skip_duplicates: true });
+    const skipped = r.skipped || [], errors = r.errors || [];
+    const lineOf = (i) => (entries[i] ? entries[i].line : i + 1);
+    const parts = [`Saved ${r.written || 0}`];
+    if (skipped.length) parts.push(`skipped ${skipped.length} duplicate${skipped.length === 1 ? "" : "s"}`);
+    if (errors.length) parts.push(`${errors.length} refused`);
+    const box = el("span", {}, parts.join(" · "));
+    if (skipped.length) box.append(el("span", { class: "small" }, ` — duplicates on line${skipped.length === 1 ? "" : "s"} ${skipped.map((s) => lineOf(s.index)).join(", ")}`));
+    if (errors.length) {
+      box.append(el("span", { class: "small" }, ` — refused: ${errors.map((e) => `line ${lineOf(e.index)} (${e.error})`).join("; ")}`),
+        el("span", { class: "small" }, " — those lines stay in the box: fix them and Save again (the saved ones are skipped as duplicates)."));
+    }
+    bulkMsg(box, errors.length ? "warn" : "ok");
+    const ta = document.getElementById("bulk-text");
+    if (!errors.length && ta) { ta.value = ""; bulkMirror(""); bulkGrow(ta); }
+    // The new entries join the Catch up list, so each can be opened the way a tapped one can.
+    const cu = state.catchup;
+    for (const id of (r.event_ids || []).slice().reverse()) if (!cu.added.includes(id)) cu.added.unshift(id);
+    await afterWrite();
+  } catch (e) { bulkMsg(e.message, "err"); }
+  finally {
+    bulk.saving = false;
+    save.textContent = "Save all";
+    bulkRender();
+  }
 }
 
 // ---------------------------------------------------------------- Trends

@@ -221,6 +221,43 @@ button.linkish.danger { color: var(--danger); }
 .cu-formula { margin-top: 8px; }
 #cu-list { margin-top: 6px; }
 
+/* bulk entry: the shorthand box on the left, its live preview on the right; stacked when narrow */
+.bulk { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+.bulk-legend {
+  display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center;
+  font-size: 13px; color: var(--ink); margin-bottom: 12px;
+}
+.bulk-legend code, .bulk-table .mono {
+  font-family: Consolas, "Microsoft YaHei", monospace; font-size: 12.5px;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px;
+}
+.bulk-grid { display: grid; grid-template-columns: minmax(280px, 2fr) minmax(0, 3fr); gap: 16px; align-items: start; }
+.bulk-text {
+  width: 100%; font-family: Consolas, "Microsoft YaHei", monospace; font-size: 14.5px; line-height: 1.5;
+  font-variant-numeric: tabular-nums; white-space: pre; overflow-wrap: normal; overflow-x: auto;
+}
+.bulk-preview { max-height: 72vh; overflow: auto; border: 1px solid var(--line); border-radius: 10px; }
+.bulk-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.bulk-table th {
+  position: sticky; top: 0; background: var(--surface-2); text-align: left; color: var(--muted);
+  font-weight: 500; font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--line);
+}
+.bulk-table td { padding: 4px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.bulk-table .bulk-line { color: var(--muted); font-size: 12px; width: 36px; text-align: right; }
+.bulk-table .bulk-day-cell, .bulk-table .bulk-time { white-space: nowrap; }
+.bulk-table .bulk-time { font-weight: 600; }
+.bulk-table .bulk-what { min-width: 120px; }
+.bulk-row.feed .bulk-what { color: var(--feed); }
+.bulk-row.diaper .bulk-what { color: var(--diaper); }
+.bulk-row.err td { background: #FBEDED; }
+.bulk-row.err .bulk-what { color: var(--muted); }
+.bulk-err { color: var(--danger); font-weight: 600; }
+.bulk-day td { background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 600; padding: 3px 8px; letter-spacing: .03em; }
+.bulk-foot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
+.bulk-counts { color: var(--muted); font-size: 13.5px; flex: 1 1 auto; }
+#bulk-msg { word-break: break-word; }
+@media (max-width: 900px) { .bulk-grid { grid-template-columns: 1fr; } .bulk-preview { max-height: 50vh; } }
+
 /* ---------------------------------------------------------------- day sheet */
 .sheet-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .sheet-title { font-size: 17px; font-weight: 600; }

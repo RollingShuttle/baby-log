@@ -399,6 +399,7 @@ deleting an already-deleted event or restoring a live one → 409, no child → 
 | `GET /api/events?from=&to=` | `{ok, events}` inclusive local dates |
 | `GET /api/event/<id>` | `{ok, event: latest rec incl. tombstone, history: [every revision ascending]}` |
 | `POST /api/event` | 201 `{ok, event}`. Body = client-owned fields `{event_id?, child_id?, type, time, end, data, note, logged_by?}`; `child_id` defaults to the current child; `logged_by` defaults to `settings.label` on a new event and is carried on a revision unless sent. The server stamps `device: "pc"`, `entered_from: "pc"`, `edited_by: settings.label` (revisions), ids and `created_at`. An `event_id` that is on file writes a revision; one that is not on file is a 404. |
+| `POST /api/events/bulk` | 201 `{ok, written, skipped: [{index, reason}], errors: [{index, error}], event_ids}`; body `{events: [{type, time, data, note, logged_by?}], skip_duplicates: true}` (≤ 2000). Each event is written as `POST /api/event` would; an invalid one is reported by index and the rest still written; a duplicate — same child, type and `time[:16]` as a live event or an earlier event in the request — is skipped. One rollup after the batch. Used by the PC's **Bulk entry** panel (shorthand parsed by `static/bulk.js`). |
 | `DELETE /api/event/<id>` | `{ok, event: tombstone}`; JSON body `{reason?}` |
 | `POST /api/event/<id>/restore` | `{ok, event}` |
 | `GET /api/deleted` | `{ok, events}` newest tombstone first |

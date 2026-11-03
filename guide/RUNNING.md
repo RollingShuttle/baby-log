@@ -99,6 +99,24 @@ label. The **Settings** tab carries a small number while anything is under Needs
   Both** (a diaper) — each tap saves that entry straight away and lists it underneath, and only
   the time clears, ready for the next line. The date stays until you change it. Every entry
   saved this way is an ordinary entry: tap it in the list to correct it.
+- **Bulk entry · 批量录入** (the panel under Catch up) is for a whole backlog — weeks of slips,
+  twenty lines a day. Type one entry per line in shorthand and watch the preview on the right
+  fill in; **Save all** (or Ctrl+Enter) writes them in one go, skipping any line that duplicates
+  an entry already on file (same kind, same minute). The shorthand:
+
+  ```
+  11/02              a date line (also 11-02, 2026-11-02, 11月2日, or just 2日)
+  0130 70            01:30, a 70 ml feed — the formula is the last one used
+  0245 w             wet            (also "wet", 尿)
+  0410 d             dirty          (also "dirty", "p", 屎, 便)
+  0505 wd            wet + dirty    (also "both", 尿屎)
+  0630 80 enfamil    a feed with the formula named; it then carries to the lines below
+  0800 70 # spat up  anything after # is the note
+  ```
+
+  Times take 130, 0130, 1:30, 13:30, "1:30 pm", 凌晨1:30, 下午1:30. A line it cannot read turns
+  red with the reason and nothing is saved until it is fixed. What you have typed stays in the
+  box if the window is closed, until it is saved.
 
 ---
 

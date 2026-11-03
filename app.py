@@ -57,8 +57,12 @@ SETTINGS_DEFAULTS = {
 # The rhythm of the background rollup (§6.1). The scan is what picks up the phones' files.
 SCAN_INTERVAL_S = 60.0
 
-# The only fields a client may send for an event; everything else is stamped here.
+# The only fields a client may send for an event; everything else is stamped here. A bulk
+# body never names an event_id: it is for new entries, and a revision would look like a
+# duplicate of itself to the minute check.
 EVENT_FIELDS = {"event_id", "child_id", "type", "time", "end", "data", "note", "logged_by"}
+BULK_FIELDS = EVENT_FIELDS - {"event_id"}
+BULK_MAX = 2000
 CHILD_FIELDS = {"child_id", "name", "born", "born_time", "sex", "birth_weight_g", "targets"}
 
 
@@ -69,6 +73,15 @@ def _load_cfg(config_path):
 
 def _is_number(v):
     return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+class _ApiError(Exception):
+    """A refusal with its HTTP status, raised by the shared write path so the single route can
+    answer with it and the bulk route can file it under the event's index instead."""
+
+    def __init__(self, msg, code=400):
+        super().__init__(str(msg))
+        self.code = code
 
 
 def _now_local():
@@ -398,23 +411,20 @@ def create_app(config_path="config.yaml", *, app_folder=None, output_folder=None
         return jsonify({"ok": True, "events": [e for e in journal.events() if _needs_check(e)]})
 
     # -- writing events ------------------------------------------------------
-    @app.post("/api/event")
-    def api_write_event():
-        """New event, or a revision when `event_id` names one on file. The client owns the
-        entry's own fields; everything about *who wrote this file* is stamped here."""
-        try:
-            body = _body()
-        except ValueError as e:
-            return _err(e, 400)
-        unknown = set(body) - EVENT_FIELDS
+    def _write_from_body(body, fields=EVENT_FIELDS):
+        """One client body to one journal file. The client owns the entry's own fields;
+        everything about *who wrote this file* is stamped here. Raises _ApiError."""
+        if not isinstance(body, dict):
+            raise _ApiError("expected a JSON object")
+        unknown = set(body) - fields
         if unknown:
-            return _err(f"unknown field {sorted(unknown)[0]!r}", 400)
+            raise _ApiError(f"unknown field {sorted(unknown)[0]!r}")
 
         event_id = body.get("event_id")
         label = _label()
         if event_id is not None:
             if not isinstance(event_id, str) or journal.event(event_id) is None:
-                return _err(f"no such event {event_id}", 404)
+                raise _ApiError(f"no such event {event_id}", 404)
             edited_by = label
         else:
             edited_by = None
@@ -426,29 +436,93 @@ def create_app(config_path="config.yaml", *, app_folder=None, output_folder=None
             else:
                 child = _current_child()
                 if child is None:
-                    return _err("no child", 400)
+                    raise _ApiError("no child")
                 child_id = child["child_id"]
         elif not isinstance(child_id, str) or journal.child(child_id) is None:
-            return _err(f"no such child {child_id}", 400)
+            raise _ApiError(f"no such child {child_id}")
 
         logged_by = body.get("logged_by")
         if logged_by is None and event_id is None:
             logged_by = label
 
         try:
-            rec = journal.write_event(
+            return journal.write_event(
                 child_id=child_id, type=body.get("type"), time=body.get("time"),
                 end=body.get("end"), data=body.get("data"), note=body.get("note") or "",
                 logged_by=logged_by, device="pc", entered_from="pc", edited_by=edited_by,
                 event_id=event_id)
         except FileExistsError as e:
-            return _err(e, 409)
+            raise _ApiError(e, 409) from None
         except KeyError as e:
-            return _err(e.args[0] if e.args else e, 404)
+            raise _ApiError(e.args[0] if e.args else e, 404) from None
+        except ValueError as e:
+            raise _ApiError(e, 400) from None
+
+    @app.post("/api/event")
+    def api_write_event():
+        """New event, or a revision when `event_id` names one on file."""
+        try:
+            rec = _write_from_body(_body())
         except ValueError as e:
             return _err(e, 400)
+        except _ApiError as e:
+            return _err(e, e.code)
         rollup.schedule()
         return jsonify({"ok": True, "event": rec}), 201
+
+    @app.post("/api/events/bulk")
+    def api_write_events_bulk():
+        """A month of paper slips in one request (the Catch up screen's bulk panel). Each event
+        goes through the same path as POST /api/event; a bad one is reported under its index
+        and the rest are still written, because re-typing 20 lines over one typo is the thing
+        this route exists to avoid. With `skip_duplicates` (the default) an entry whose type and
+        minute match a live event — on file, or earlier in this same request — is skipped, so
+        pasting the same page twice adds nothing."""
+        try:
+            body = _body()
+        except ValueError as e:
+            return _err(e, 400)
+        events = body.get("events")
+        if not isinstance(events, list):
+            return _err("events must be a list", 400)
+        if len(events) > BULK_MAX:
+            return _err(f"at most {BULK_MAX} events per request, got {len(events)}", 400)
+        skip_dups = body.get("skip_duplicates", True)
+        if not isinstance(skip_dups, bool):
+            return _err("skip_duplicates must be true or false", 400)
+        unknown = set(body) - {"events", "skip_duplicates"}
+        if unknown:
+            return _err(f"unknown field {sorted(unknown)[0]!r}", 400)
+        child = _current_child()
+        if child is None:
+            return _err("no child", 400)
+
+        # One read of the journal, then a set: 2000 lookups against events() would rescan.
+        # The key carries the child so a twin's entry at the same minute is not a duplicate.
+        seen = {(e.get("child_id"), e.get("type"), str(e.get("time", ""))[:16])
+                for e in journal.events()}
+        written, skipped, errors, ids = 0, [], [], []
+        for i, ev in enumerate(events):
+            key = None
+            if isinstance(ev, dict) and isinstance(ev.get("type"), str)                     and isinstance(ev.get("time"), str):
+                key = (ev.get("child_id") or child["child_id"], ev["type"], ev["time"][:16])
+                if skip_dups and key in seen:
+                    skipped.append({"index": i, "reason":
+                                    f"a {ev['type']} at {ev['time'][:16]} is already on file"})
+                    continue
+            try:
+                rec = _write_from_body(ev, BULK_FIELDS)
+            except _ApiError as e:
+                errors.append({"index": i, "error": str(e)})
+                continue
+            written += 1
+            ids.append(rec["event_id"])
+            if key is not None:
+                seen.add(key)
+        if written:
+            rollup.schedule()
+        return jsonify({"ok": True, "written": written, "skipped": skipped, "errors": errors,
+                        "event_ids": ids}), 201
 
     @app.delete("/api/event/<event_id>")
     def api_delete_event(event_id):

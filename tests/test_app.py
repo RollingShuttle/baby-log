@@ -454,6 +454,178 @@ class TestWriteEvent(ChildCase):
         self.assertEqual(sched.call_count, 4)
 
 
+class TestBulkEvents(ChildCase):
+    """POST /api/events/bulk — the Catch up screen's bulk panel: a month of paper slips in one
+    request, each written exactly as POST /api/event writes one."""
+
+    def feed(self, time, ml=70, **kw):
+        body = {"type": "feed", "time": time, "data": {"bottles": [{"kind": "formula", "ml": ml,
+                                                                    "formula": "Enfamil"}]}}
+        body.update(kw)
+        return body
+
+    def diaper(self, time, wet=True, dirty=False, **kw):
+        body = {"type": "diaper", "time": time, "data": {"wet": wet, "dirty": dirty}}
+        body.update(kw)
+        return body
+
+    def bulk(self, events, **kw):
+        body = {"events": events}
+        body.update(kw)
+        return self.c.post("/api/events/bulk", json=body)
+
+    def test_writes_every_event_and_returns_their_ids(self):
+        self.c.post("/api/settings", json={"label": "Dad"})
+        r = self.bulk([self.feed(T1), self.diaper(T2, dirty=True), self.feed(T3, 80, note="slow")])
+        self.assertEqual(r.status_code, 201, r.get_json())
+        d = r.get_json()
+        self.assertEqual(set(d), {"ok", "written", "skipped", "errors", "event_ids"})
+        self.assertTrue(d["ok"])
+        self.assertEqual((d["written"], d["skipped"], d["errors"]), (3, [], []))
+        self.assertEqual(len(d["event_ids"]), 3)
+        self.assertEqual(len(set(d["event_ids"])), 3, "ids minted in one second still differ")
+        on_file = self.c.get(f"/api/events?from={D1}").get_json()["events"]
+        self.assertEqual([e["event_id"] for e in on_file], d["event_ids"])
+        feed = on_file[0]
+        # Stamped exactly as the single route stamps a new event.
+        self.assertEqual((feed["device"], feed["entered_from"], feed["edited_by"],
+                          feed["logged_by"], feed["revision"], feed["child_id"]),
+                         ("pc", "pc", None, "Dad", 1, self.kid["child_id"]))
+        self.assertEqual(feed["data"]["bottles"], [{"kind": "formula", "ml": 70, "formula": "Enfamil"}])
+        self.assertEqual(feed["data"]["breast"]["approx"], False)       # defaults filled in
+        self.assertEqual(feed["note"], "")
+        self.assertEqual(on_file[1]["data"]["dirty"], True)
+        self.assertEqual(on_file[2]["note"], "slow")
+
+    def test_logged_by_may_be_sent_per_event(self):
+        d = self.bulk([self.feed(T1, logged_by="Mom"), self.feed(T2)]).get_json()
+        evs = self.c.get(f"/api/events?from={D1}").get_json()["events"]
+        self.assertEqual(d["written"], 2)
+        self.assertEqual([e["logged_by"] for e in evs], ["Mom", ""])
+
+    def test_a_malformed_event_is_reported_by_index_and_the_rest_are_written(self):
+        bad_kind = self.feed(T2)
+        bad_kind["data"] = {"bottles": [{"kind": "juice", "ml": 22}]}
+        r = self.bulk([self.feed(T1), bad_kind, {"type": "bath", "time": T3},
+                       self.diaper("2026-09-23T20:30:00Z"), "not an object",
+                       self.feed(T4, extra=1), self.feed(T4, event_id="E-20200101-000000-0000"),
+                       self.diaper(T4)])
+        self.assertEqual(r.status_code, 201)
+        d = r.get_json()
+        self.assertEqual(d["written"], 2)
+        self.assertEqual([e["index"] for e in d["errors"]], [1, 2, 3, 4, 5, 6])
+        self.assertIn("kind", d["errors"][0]["error"])
+        self.assertIn("bath", d["errors"][1]["error"])
+        self.assertIn("time", d["errors"][2]["error"])
+        self.assertIn("object", d["errors"][3]["error"])
+        self.assertIn("extra", d["errors"][4]["error"])
+        self.assertIn("event_id", d["errors"][5]["error"], "bulk is for new entries only")
+        self.assertEqual(d["skipped"], [])
+        files = list((self.journal_dir / "events").rglob("*.json"))
+        self.assertEqual(len(files), 2, "the bad ones left nothing behind")
+
+    def test_duplicates_on_file_and_within_the_batch_are_skipped_with_reasons(self):
+        on_file = self.event(type="diaper", time=T2, data={"wet": True})
+        # Same minute, different seconds: still the same entry to the paper reader.
+        same_minute = T1[:17] + "30" + T1[19:]
+        r = self.bulk([self.feed(T1), self.feed(same_minute, 90), self.diaper(T2, dirty=True),
+                       self.feed(T2), self.diaper(T3), self.diaper(T3)])
+        self.assertEqual(r.status_code, 201)
+        d = r.get_json()
+        self.assertEqual(d["written"], 3)
+        self.assertEqual(d["errors"], [])
+        self.assertEqual([s["index"] for s in d["skipped"]], [1, 2, 5])
+        for s in d["skipped"]:
+            self.assertIn("already on file", s["reason"])
+        self.assertIn("feed", d["skipped"][0]["reason"])
+        self.assertIn(T1[:16], d["skipped"][0]["reason"])
+        self.assertIn("diaper", d["skipped"][1]["reason"])
+        evs = self.c.get(f"/api/events?from={D1}").get_json()["events"]
+        self.assertEqual(len(evs), 4)
+        self.assertEqual([e["event_id"] for e in evs if e["type"] == "diaper" and e["time"] == T2],
+                         [on_file["event_id"]], "the one on file is untouched")
+        # A feed at a diaper's minute is not a duplicate: the type is part of the key.
+        self.assertEqual([e["type"] for e in evs if e["time"][:16] == T2[:16]], ["feed", "diaper"])
+
+    def test_a_deleted_event_does_not_count_as_a_duplicate(self):
+        ev = self.event(time=T1)
+        self.c.delete(f"/api/event/{ev['event_id']}")
+        d = self.bulk([self.feed(T1)]).get_json()
+        self.assertEqual((d["written"], d["skipped"]), (1, []))
+
+    def test_skip_duplicates_false_writes_them(self):
+        self.event(type="diaper", time=T2, data={"wet": True})
+        r = self.bulk([self.diaper(T2), self.diaper(T2)], skip_duplicates=False)
+        self.assertEqual(r.status_code, 201)
+        d = r.get_json()
+        self.assertEqual((d["written"], d["skipped"], d["errors"]), (2, [], []))
+        self.assertEqual(len(self.c.get(f"/api/events?from={D1}").get_json()["events"]), 3)
+
+    def test_same_page_pasted_twice_adds_nothing(self):
+        page = [self.feed(T1), self.diaper(T2), self.feed(T3, 80)]
+        first = self.bulk(page).get_json()
+        second = self.bulk(page).get_json()
+        self.assertEqual(first["written"], 3)
+        self.assertEqual((second["written"], [s["index"] for s in second["skipped"]]), (0, [0, 1, 2]))
+        self.assertEqual(len(self.c.get(f"/api/events?from={D1}").get_json()["events"]), 3)
+
+    def test_no_child_is_400_no_child_and_nothing_is_written(self):
+        fresh = AppCase()
+        fresh.setUp()
+        try:
+            r = fresh.c.post("/api/events/bulk", json={"events": [self.feed(T1)]})
+            self.assertEqual(r.status_code, 400)
+            self.assertEqual(r.get_json(), {"ok": False, "error": "no child"})
+            self.assertEqual(list((fresh.journal_dir / "events").rglob("*.json")), [])
+        finally:
+            fresh.tearDown()
+
+    def test_a_named_child_is_honoured_and_an_unknown_one_is_an_error(self):
+        other = self.child(name="Two")
+        d = self.bulk([self.feed(T1, child_id=other["child_id"]),
+                       self.feed(T2, child_id="C-20200101-000000-0000")]).get_json()
+        self.assertEqual(d["written"], 1)
+        self.assertEqual(d["errors"][0]["index"], 1)
+        self.assertIn("no such child", d["errors"][0]["error"])
+        ev = self.c.get(f"/api/event/{d['event_ids'][0]}").get_json()["event"]
+        self.assertEqual(ev["child_id"], other["child_id"])
+
+    def test_body_shape_errors_are_400(self):
+        too_many = [self.feed(T1)] * (app_mod.BULK_MAX + 1)
+        r = self.bulk(too_many)
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("2000", r.get_json()["error"])
+        self.assertEqual(list((self.journal_dir / "events").rglob("*.json")), [])
+        self.assertEqual(self.c.post("/api/events/bulk", json={}).status_code, 400)
+        self.assertEqual(self.c.post("/api/events/bulk", json={"events": "x"}).status_code, 400)
+        self.assertEqual(self.c.post("/api/events/bulk", json=[self.feed(T1)]).status_code, 400)
+        self.assertEqual(self.bulk([], skip_duplicates="yes").status_code, 400)
+        self.assertEqual(self.bulk([], bogus=1).status_code, 400)
+        self.assertEqual(self.c.post("/api/events/bulk", data="nope",
+                                     content_type="text/plain").status_code, 400)
+
+    def test_exactly_the_limit_is_accepted(self):
+        # Every one of the 2000 is a duplicate of the first by minute, so the request is
+        # cheap: the point is that the bound is inclusive.
+        d = self.bulk([self.feed(T1)] * app_mod.BULK_MAX).get_json()
+        self.assertEqual((d["written"], len(d["skipped"])), (1, app_mod.BULK_MAX - 1))
+
+    def test_an_empty_list_is_fine_and_schedules_nothing(self):
+        rollup = self.app.config["rollup"]
+        with mock.patch.object(rollup, "schedule") as sched:
+            r = self.bulk([])
+        self.assertEqual(r.status_code, 201)
+        self.assertEqual(r.get_json()["written"], 0)
+        self.assertEqual(sched.call_count, 0)
+
+    def test_the_rollup_is_scheduled_once_for_the_whole_batch(self):
+        rollup = self.app.config["rollup"]
+        with mock.patch.object(rollup, "schedule") as sched:
+            d = self.bulk([self.feed(T1), self.diaper(T2), self.feed(T3), self.feed(T3)]).get_json()
+        self.assertEqual(d["written"], 3)
+        self.assertEqual(sched.call_count, 1)
+
+
 class TestTimers(ChildCase):
     def test_a_feed_with_a_timer_and_no_end_is_running(self):
         ev = self.event(data={"timer": {"side": "left", "side_started": T1}})

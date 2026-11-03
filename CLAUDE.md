@@ -147,6 +147,14 @@ paper slip one tap per entry on both PC and phone, and the phone's pill is a syn
 reports its phases (`sync.js` emits `progress`). Pages deploys from `main`, so the phones see it
 only after the merge; `push.bat` assumes `main` — after merging, `git checkout main` here first.
 
+**3 Nov 2026 — PC bulk entry.** The Catch up screen has a **Bulk entry · 批量录入** panel:
+`static/bulk.js` (global `Bulk`, Node-testable, `tests/test_bulk.py` with 140 JS cases) parses one
+shorthand entry per line (date headers `11/02` / `11月2日`; `0130 70` feed, `w`/`尿` wet, `d`/`屎`
+dirty, `wd`/`尿屎` both, `# note`); `POST /api/events/bulk` writes the batch, skipping same-minute
+duplicates, one rollup after. The textarea mirrors to `localStorage["bl.pc.bulk"]`. The web app under
+`docs/` is frozen (owner's decision 2 Nov 2026); new features go to the PC app or the planned iOS
+app (`guide/IOS-APP-PLAN.md`); UI strings for the iOS app live in `i18n/strings.json`.
+
 **Deployed 26 Sep 2026:** the repository is https://github.com/RollingShuttle/baby-log (public,
 branch `main`), the Entra registration `Baby Log` exists and its client ID is in `docs/config.js`
 (`test_sync.py` and `test_phone.py` now check it is a GUID), with
