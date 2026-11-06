@@ -80,7 +80,7 @@ struct TodayView: View {
             Button {
                 draft = feedDraft()
             } label: {
-                Label(S("log.feed"), systemImage: "drop.fill").frame(maxWidth: .infinity)
+                Text(S("log.feed")).frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             Button {
@@ -109,6 +109,8 @@ struct TodayView: View {
             .buttonStyle(.bordered)
         }
         .controlSize(.large)
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)     // five buttons across a phone: no wrapped CJK labels
         .disabled(model.child == nil)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
