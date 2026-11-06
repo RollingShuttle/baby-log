@@ -309,6 +309,16 @@ implementation of validate/resolve mechanically safe.
 
 ## Part 3 — The recommended path and the build order
 
+> **Built 6 Nov 2026 (Stage 1, items 1–4):** `ios/` holds the Xcode project and the Swift
+> sources, written on the PC and pushed; the owner compiles it on the MacBook (`guide/MAC.md`).
+> Two deliberate departures from the text below: sign-in is a hand-written PKCE flow against the
+> same registration rather than MSAL (no package to resolve on the first build; the refresh token
+> is the same 90-day one), and the language mode is Swift 5 rather than 6 (strict concurrency
+> can be switched on once the code compiles). `pull` is delta-first with parallel downloads and
+> has no three-day-listing fallback: files already on the phone are skipped by name, so a
+> forgotten delta link simply re-walks the folder. Stage 1 item 5 (run on the owner's phone) and
+> everything after are next.
+
 **Target**: a native SwiftUI iPhone app, `Baby Log`, Swift 6 / Xcode 27, iOS 17 or later (MSAL's
 floor), same OneDrive journal, same Entra registration, distributed to both phones through
 TestFlight internal testing. Built in sessions on the MacBook with Claude Code driving Xcode;

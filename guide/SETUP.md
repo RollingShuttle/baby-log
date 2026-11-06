@@ -262,3 +262,7 @@ The one-time escape hatch, on the PC:
 
 Because the PC's setup script created `OneDrive\Apps\Baby Log` locally in Part 3 and the OneDrive
 client uploaded it, you may never hit this at all. It is here in case you do.
+
+## The iPhone app
+
+Building and installing the native app, and the one extra Entra step it needs (the *iOS / macOS* platform on the same registration), are in `guide/MAC.md`.

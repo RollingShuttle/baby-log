@@ -2349,6 +2349,11 @@
       "where": "Settings → Sync: the collision list heading",
       "zh-Hans": "两台设备都改过（{n}）"
     },
+    "syncCard.checkAll": {
+      "en": "Check every file again",
+      "where": "iOS Settings, Sync card: walk the whole app folder once more (files already on the phone are kept)",
+      "zh-Hans": "重新核对全部文件"
+    },
     "syncCard.clearList": {
       "en": "Clear the list",
       "where": "Settings → Sync: collision list button",

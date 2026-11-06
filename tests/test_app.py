@@ -545,7 +545,9 @@ class TestBulkEvents(ChildCase):
         self.assertEqual([e["event_id"] for e in evs if e["type"] == "diaper" and e["time"] == T2],
                          [on_file["event_id"]], "the one on file is untouched")
         # A feed at a diaper's minute is not a duplicate: the type is part of the key.
-        self.assertEqual([e["type"] for e in evs if e["time"][:16] == T2[:16]], ["feed", "diaper"])
+        # (sorted: two events at one instant order by id, and ids written in the same second
+        # differ only in their random suffix)
+        self.assertEqual(sorted(e["type"] for e in evs if e["time"][:16] == T2[:16]), ["diaper", "feed"])
 
     def test_a_deleted_event_does_not_count_as_a_duplicate(self):
         ev = self.event(time=T1)

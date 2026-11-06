@@ -162,4 +162,19 @@ branch `main`), the Entra registration `Baby Log` exists and its client ID is in
 on GitHub Pages for `/docs` on `main` if not yet done, and the phones' first sign-in. Until then the PC app runs from `python launch.py` against whatever
 `config.yaml` points at, and the phone app logs but cannot upload.
 
-
+**6 Nov 2026 — the iPhone app, Stage 1, written on the PC.** `ios/BabyLog.xcodeproj` (Xcode 16+
+format: one synchronized folder group, no packages) and `ios/BabyLog/` — Swift 5 language mode,
+iOS 17, SwiftUI: `Core/Names.swift` (ids, the one filename regex, isoLocal/nowIso),
+`Core/Record.swift` (the §3.4 resolve rule, `live`, `formulaChoices`), `Journal/Journal.swift`
+(a mirror of the app folder plus an outbox), `Sync/Auth.swift` (authorization code + PKCE
+against `/consumers`, no MSAL — nothing to resolve on the first build; refresh token in the
+keychain), `Sync/Graph.swift` + `Sync/SyncEngine.swift` (**delta** walk of the app folder, then
+missing files six at a time through download URLs — the web app's 20-minute pull is seconds),
+`Model/AppModel.swift`, `Model/L10n.swift` (reads the bundled copy of `i18n/strings.json`;
+`S("key")`), and the screens Today / entry sheet / Settings. Nothing here has been compiled: the
+PC has no Swift; the owner builds it in Xcode on the MacBook per `guide/MAC.md` and reports the
+errors. `tests/test_ios.py` checks what can be checked without a compiler: UTF-8/LF, the strings
+copy is byte-identical to `i18n/strings.json`, every `S("…")` key exists, the regexes equal
+core.js's, the client ID equals `docs/config.js`, the pbxproj's ids resolve, no personal data.
+The Entra registration needs the *iOS / macOS* platform (bundle `com.rollingshuttle.babylog`)
+before the first sign-in. `docs/` stays frozen; the PC syncs through the OneDrive client as before.
