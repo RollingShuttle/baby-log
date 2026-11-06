@@ -2624,6 +2624,11 @@
       "where": "toast after saving a change",
       "zh-Hans": "{type}已更新 · {time}"
     },
+    "trends.bottlePerDay": {
+      "en": "Bottle per day",
+      "where": "Trends (iOS): chart title",
+      "zh-Hans": "每日奶量"
+    },
     "trends.colBaths": {
       "en": "Baths",
       "where": "planned: Daily column once baths exist",
@@ -2659,6 +2664,21 @@
       "where": "Trends / Daily column (PC)",
       "zh-Hans": "睡觉次数"
     },
+    "trends.dayTable": {
+      "en": "Day by day",
+      "where": "Trends (iOS): the table under the charts",
+      "zh-Hans": "逐日明细"
+    },
+    "trends.diapersPerDay": {
+      "en": "Diapers per day",
+      "where": "Trends (iOS): chart title, wet and dirty stacked",
+      "zh-Hans": "每日尿布"
+    },
+    "trends.feedsPerDay": {
+      "en": "Feeds per day",
+      "where": "Trends (iOS): chart title",
+      "zh-Hans": "每日喂奶次数"
+    },
     "trends.last14Days": {
       "en": "Last 14 days",
       "where": "Trends heading on the PC",
@@ -2693,6 +2713,11 @@
       "en": "24-hour rhythm chart",
       "where": "PC Trends: the chart's accessibility label",
       "zh-Hans": "24 小时节律图"
+    },
+    "trends.rhythmPhone": {
+      "en": "each dot is a feed, by its start time",
+      "where": "Trends (iOS): footer under the 24-hour rhythm chart",
+      "zh-Hans": "每个点是一次喂奶，按开始时间排列"
     },
     "trends.rhythmSub": {
       "en": "last 7 days · feeds as bars by start time and breast length · wet and dirty as dots · night shaded",

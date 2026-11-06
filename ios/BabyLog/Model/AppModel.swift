@@ -2,6 +2,18 @@ import Combine
 import Foundation
 import SwiftUI
 
+/// One day of the Trends screen.
+struct DayStat: Identifiable {
+    let day: String          // YYYY-MM-DD
+    let label: String        // "11/6"
+    let feeds: Int
+    let ml: Int
+    let wet: Int
+    let dirty: Int
+    let feedHours: [Double]  // start times as hours since local midnight
+    var id: String { day }
+}
+
 /// Everything the screens read: the resolved journal, the sync engine and this phone's own
 /// settings (label, quick-amount range, language). Writes go through here so every one is
 /// stamped the same way and followed by a sync.
@@ -16,6 +28,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var child: Record? = nil
     @Published var signedIn = false
     @Published var lastMessage: String? = nil
+    @Published var undoable: Record? = nil         // the last one-tap diaper, while its toast shows
     @Published var day = Names.dayOf(Date())
     @Published var label: String {
         didSet { UserDefaults.standard.set(label, forKey: "bl.label") }
@@ -130,6 +143,30 @@ final class AppModel: ObservableObject {
         return S("age.monthsWeeks", ["m": String(days / 30), "w": String((days % 30) / 7)])
     }
 
+    /// The last `n` local days, oldest first, for the Trends charts.
+    func dailyStats(days n: Int) -> [DayStat] {
+        let today = Names.dayOf(Date())
+        var out: [DayStat] = []
+        for back in stride(from: n - 1, through: 0, by: -1) {
+            let day = Names.shiftDay(today, -back)
+            let todays = events.filter { $0.day == day }
+            let feeds = todays.filter { $0.type == "feed" }
+            let hours = feeds.compactMap { rec -> Double? in
+                guard let t = rec.time, t.count >= 16,
+                      let h = Int(t.dropFirst(11).prefix(2)), let m = Int(t.dropFirst(14).prefix(2)) else { return nil }
+                return Double(h) + Double(m) / 60
+            }
+            let parts = day.split(separator: "-")
+            let label = parts.count == 3 ? "\(Int(parts[1]) ?? 0)/\(Int(parts[2]) ?? 0)" : day
+            out.append(DayStat(day: day, label: label, feeds: feeds.count,
+                               ml: Int(feeds.reduce(0.0) { $0 + $1.bottleMl }.rounded()),
+                               wet: todays.filter { $0.type == "diaper" && $0.wet }.count,
+                               dirty: todays.filter { $0.type == "diaper" && $0.dirty }.count,
+                               feedHours: hours))
+        }
+        return out
+    }
+
     func typeName(_ type: String) -> String {
         switch type {
         case "feed": return S("log.feed")
@@ -200,8 +237,19 @@ final class AppModel: ObservableObject {
         let portion: [String: Any] = ["kind": "formula", "ml": ml, "formula": orNull(formula)]
         write(type: "feed", time: time, data: ["bottles": [portion]], note: note, editing: editing)
     }
-    func logDiaper(wet: Bool, dirty: Bool, time: Date, note: String, editing: Record? = nil) {
+    @discardableResult
+    func logDiaper(wet: Bool, dirty: Bool, time: Date, note: String, editing: Record? = nil) -> Record? {
         write(type: "diaper", time: time, data: ["wet": wet, "dirty": dirty], note: note, editing: editing)
+    }
+    /// The log bar's one tap: written now, undoable while the toast shows. A mis-tap at 3 a.m.
+    /// is one more tap to take back; the journal keeps the tombstone with reason "undo".
+    func logDiaperQuick(wet: Bool, dirty: Bool) {
+        undoable = logDiaper(wet: wet, dirty: dirty, time: Date(), note: "")
+    }
+    func undo() {
+        guard let rec = undoable else { return }
+        undoable = nil
+        delete(rec, reason: "undo")
     }
     func logNote(text: String, time: Date, editing: Record? = nil) {
         write(type: "note", time: time, data: [:], note: text, editing: editing)
@@ -210,21 +258,22 @@ final class AppModel: ObservableObject {
     func saveOther(time: Date, note: String, editing: Record) {
         write(type: editing.type, time: time, data: [:], note: note, editing: editing)
     }
-    func delete(_ rec: Record) {
+    func delete(_ rec: Record, reason: String = "swipe") {
         guard let id = rec.eventId else { return }
         var body = rec.body
         body["revision"] = journal.highestRevision(of: id) + 1
         body["deleted"] = true
-        body["reason"] = "swipe"
+        body["reason"] = reason
         body["edited_by"] = orNull(label)
         stampAndWrite(&body)
         lastMessage = S("toast.deletedType", ["type": typeName(rec.type), "time": timeText(rec.instant)])
     }
 
-    private func write(type: String, time: Date, data: [String: Any], note: String, editing: Record?) {
+    @discardableResult
+    private func write(type: String, time: Date, data: [String: Any], note: String, editing: Record?) -> Record? {
         guard let childId = child?.childId else {
             lastMessage = S("now.childCreatedOnPc")
-            return
+            return nil
         }
         var body: [String: Any]
         var merged: [String: Any]
@@ -247,20 +296,25 @@ final class AppModel: ObservableObject {
         body["time"] = Names.isoLocal(time)
         body["data"] = merged
         body["note"] = note
-        stampAndWrite(&body)
+        let written = stampAndWrite(&body)
         lastMessage = S("toast.saved", ["type": typeName(type), "time": timeText(time)])
+        return written
     }
-    private func stampAndWrite(_ body: inout [String: Any]) {
+    @discardableResult
+    private func stampAndWrite(_ body: inout [String: Any]) -> Record? {
         body["device"] = device
         body["entered_from"] = "phone"
         body["created_at"] = Names.nowIso()
+        var written: Record? = nil
         do {
-            try journal.write(event: body)
+            let rel = try journal.write(event: body)
+            written = journal.records[rel]
         } catch {
             lastMessage = error.localizedDescription
         }
         refresh()
         requestSync(after: 2)
+        return written
     }
     /// The fixture's defaults for the types this app writes (tests/fixtures/data_cases.json).
     private static func defaults(for type: String) -> [String: Any] {

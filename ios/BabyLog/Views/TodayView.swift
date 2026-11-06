@@ -84,19 +84,19 @@ struct TodayView: View {
             }
             .buttonStyle(.borderedProminent)
             Button {
-                model.logDiaper(wet: true, dirty: false, time: Date(), note: "")
+                model.logDiaperQuick(wet: true, dirty: false)
             } label: {
                 Text(S("log.wet")).frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
             Button {
-                model.logDiaper(wet: false, dirty: true, time: Date(), note: "")
+                model.logDiaperQuick(wet: false, dirty: true)
             } label: {
                 Text(S("log.dirty")).frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
             Button {
-                model.logDiaper(wet: true, dirty: true, time: Date(), note: "")
+                model.logDiaperQuick(wet: true, dirty: true)
             } label: {
                 Text(S("log.both")).frame(maxWidth: .infinity)
             }
@@ -160,7 +160,8 @@ struct EntryRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Text(model.timeText(rec.instant)).monospacedDigit().frame(width: 72, alignment: .leading)
+            Text(model.timeText(rec.instant)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+                .frame(width: 84, alignment: .leading)
             Image(systemName: model.icon(for: rec)).foregroundStyle(model.color(for: rec)).frame(width: 22)
             VStack(alignment: .leading, spacing: 2) {
                 Text(model.describe(rec))

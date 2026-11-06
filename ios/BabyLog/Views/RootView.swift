@@ -12,6 +12,13 @@ struct RootView: View {
                 .navigationTitle(S("app.name"))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        NavigationLink {
+                            TrendsView()
+                        } label: {
+                            Image(systemName: "chart.bar")
+                        }
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         NavigationLink {
                             SettingsView()
@@ -27,17 +34,26 @@ struct RootView: View {
 
     @ViewBuilder private var toast: some View {
         if let message = model.lastMessage {
-            Text(message)
-                .font(.footnote)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(.thinMaterial, in: Capsule())
-                .padding(.bottom, 72)
-                .onTapGesture { model.lastMessage = nil }
-                .task(id: message) {
-                    try? await Task.sleep(nanoseconds: 4_000_000_000)
-                    if model.lastMessage == message { model.lastMessage = nil }
+            HStack(spacing: 14) {
+                Text(message)
+                if model.undoable != nil {
+                    Button(S("toast.undo")) { model.undo() }
+                        .fontWeight(.semibold)
                 }
+            }
+            .font(.footnote)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(.thinMaterial, in: Capsule())
+            .padding(.bottom, 72)
+            .task(id: message) {
+                // Six seconds for a mis-tap to be taken back; then the toast and the undo go.
+                try? await Task.sleep(nanoseconds: 6_000_000_000)
+                if model.lastMessage == message {
+                    model.lastMessage = nil
+                    model.undoable = nil
+                }
+            }
         }
     }
 }
