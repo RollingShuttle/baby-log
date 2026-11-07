@@ -2679,6 +2679,36 @@
       "where": "Trends (iOS): chart title",
       "zh-Hans": "每日喂奶次数"
     },
+    "trends.intakeAverage": {
+      "en": "Average day {avg}: {left} more to reach it",
+      "where": "Trends (iOS): forecast line 4, the plain average",
+      "zh-Hans": "过去平均每天 {avg}，离平均还差 {left}"
+    },
+    "trends.intakeProjected": {
+      "en": "At that pace today ends near {total}: about {left} more",
+      "where": "Trends (iOS): forecast line 3, the projection",
+      "zh-Hans": "照这个节奏今天全天约 {total}，还剩约 {left}"
+    },
+    "trends.intakeSoFar": {
+      "en": "Today so far: {ml}",
+      "where": "Trends (iOS): forecast line 1",
+      "zh-Hans": "今天到现在：{ml}"
+    },
+    "trends.intakeSub": {
+      "en": "each line adds up one day's bottles hour by hour; today in blue, the dotted line is now",
+      "where": "Trends (iOS): footer under the intake chart",
+      "zh-Hans": "每条线是一天的奶量按小时累计；蓝线是今天，虚线是现在"
+    },
+    "trends.intakeTitle": {
+      "en": "Milk through the day",
+      "where": "Trends (iOS): the cumulative intake chart",
+      "zh-Hans": "一天内的奶量累计"
+    },
+    "trends.intakeTypical": {
+      "en": "On the last {n} days, {pct}% of the day's milk was drunk by this time",
+      "where": "Trends (iOS): forecast line 2",
+      "zh-Hans": "过去 {n} 天，到这个时间通常已喝全天的 {pct}%"
+    },
     "trends.last14Days": {
       "en": "Last 14 days",
       "where": "Trends heading on the PC",
@@ -2709,15 +2739,20 @@
       "where": "PC Trends: the chart heading",
       "zh-Hans": "24 小时节律"
     },
+    "trends.rhythmAll": {
+      "en": "All",
+      "where": "Trends (iOS): rhythm chart, show every kind",
+      "zh-Hans": "全部"
+    },
     "trends.rhythmAria": {
       "en": "24-hour rhythm chart",
       "where": "PC Trends: the chart's accessibility label",
       "zh-Hans": "24 小时节律图"
     },
     "trends.rhythmPhone": {
-      "en": "each dot is a feed, by its start time",
+      "en": "each dot is one entry, by its time of day",
       "where": "Trends (iOS): footer under the 24-hour rhythm chart",
-      "zh-Hans": "每个点是一次喂奶，按开始时间排列"
+      "zh-Hans": "每个点是一条记录，按一天中的时间排列"
     },
     "trends.rhythmSub": {
       "en": "last 7 days · feeds as bars by start time and breast length · wet and dirty as dots · night shaded",

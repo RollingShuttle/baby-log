@@ -2,16 +2,36 @@ import Combine
 import Foundation
 import SwiftUI
 
+/// One point of a day's cumulative bottle intake.
+struct IntakePoint: Identifiable {
+    let id: Int
+    let hour: Double
+    let ml: Int
+}
+
 /// One day of the Trends screen.
 struct DayStat: Identifiable {
-    let day: String          // YYYY-MM-DD
-    let label: String        // "11/6"
+    let day: String           // YYYY-MM-DD
+    let label: String         // "11/6"
+    let isToday: Bool
     let feeds: Int
     let ml: Int
     let wet: Int
     let dirty: Int
-    let feedHours: [Double]  // start times as hours since local midnight
+    let feedHours: [Double]   // start times as hours since local midnight
+    let wetHours: [Double]
+    let dirtyHours: [Double]
+    let intake: [IntakePoint] // cumulative ml through the day, (0, 0) first; a past day ends at 24
     var id: String { day }
+}
+
+/// What the intake chart says about today.
+struct IntakeForecast {
+    let soFar: Int
+    let typicalShare: Double   // 0...1: the mean share of a past day's total drunk by this hour
+    let projectedTotal: Int?   // soFar / typicalShare, when both are big enough to mean something
+    let averageTotal: Int
+    let pastDays: Int
 }
 
 /// Everything the screens read: the resolved journal, the sync engine and this phone's own
@@ -143,28 +163,68 @@ final class AppModel: ObservableObject {
         return S("age.monthsWeeks", ["m": String(days / 30), "w": String((days % 30) / 7)])
     }
 
+    /// Hours since local midnight of a record's start, read off the time string itself (the
+    /// writer's clock, never re-zoned).
+    private func hourOf(_ rec: Record) -> Double? {
+        guard let time = rec.time, time.count >= 16,
+              let h = Int(time.dropFirst(11).prefix(2)), let m = Int(time.dropFirst(14).prefix(2)) else { return nil }
+        return Double(h) + Double(m) / 60
+    }
+    var hourNow: Double {
+        let c = Calendar.current.dateComponents([.hour, .minute], from: Date())
+        return Double(c.hour ?? 0) + Double(c.minute ?? 0) / 60
+    }
     /// The last `n` local days, oldest first, for the Trends charts.
     func dailyStats(days n: Int) -> [DayStat] {
         let today = Names.dayOf(Date())
+        let now = hourNow
         var out: [DayStat] = []
         for back in stride(from: n - 1, through: 0, by: -1) {
             let day = Names.shiftDay(today, -back)
+            let isToday = day == today
             let todays = events.filter { $0.day == day }
             let feeds = todays.filter { $0.type == "feed" }
-            let hours = feeds.compactMap { rec -> Double? in
-                guard let t = rec.time, t.count >= 16,
-                      let h = Int(t.dropFirst(11).prefix(2)), let m = Int(t.dropFirst(14).prefix(2)) else { return nil }
-                return Double(h) + Double(m) / 60
+            let diapers = todays.filter { $0.type == "diaper" }
+            let timed = feeds.compactMap { rec -> (hour: Double, ml: Int)? in
+                guard let h = hourOf(rec) else { return nil }
+                return (hour: h, ml: Int(rec.bottleMl.rounded()))
+            }.sorted { $0.hour < $1.hour }
+            var intake = [IntakePoint(id: 0, hour: 0, ml: 0)]
+            var running = 0
+            for (i, feed) in timed.enumerated() {
+                running += feed.ml
+                intake.append(IntakePoint(id: i + 1, hour: feed.hour, ml: running))
             }
+            let lastHour = intake.last?.hour ?? 0
+            intake.append(IntakePoint(id: timed.count + 1, hour: isToday ? max(now, lastHour) : 24, ml: running))
             let parts = day.split(separator: "-")
             let label = parts.count == 3 ? "\(Int(parts[1]) ?? 0)/\(Int(parts[2]) ?? 0)" : day
-            out.append(DayStat(day: day, label: label, feeds: feeds.count,
-                               ml: Int(feeds.reduce(0.0) { $0 + $1.bottleMl }.rounded()),
-                               wet: todays.filter { $0.type == "diaper" && $0.wet }.count,
-                               dirty: todays.filter { $0.type == "diaper" && $0.dirty }.count,
-                               feedHours: hours))
+            out.append(DayStat(day: day, label: label, isToday: isToday, feeds: feeds.count, ml: running,
+                               wet: diapers.filter { $0.wet }.count, dirty: diapers.filter { $0.dirty }.count,
+                               feedHours: timed.map { $0.hour },
+                               wetHours: diapers.filter { $0.wet }.compactMap { hourOf($0) },
+                               dirtyHours: diapers.filter { $0.dirty }.compactMap { hourOf($0) },
+                               intake: intake))
         }
         return out
+    }
+    /// Today against the past days' pace: how much of a day's milk is usually drunk by this
+    /// hour, and what that says about the rest of today. Nil until a past day has feeds.
+    func intakeForecast(_ stats: [DayStat]) -> IntakeForecast? {
+        guard let today = stats.last, today.isToday else { return nil }
+        let past = stats.dropLast().filter { $0.ml > 0 }
+        guard !past.isEmpty else { return nil }
+        let now = hourNow
+        var shares: [Double] = []
+        for d in past {
+            let byNow = d.intake.last(where: { $0.hour <= now })?.ml ?? 0
+            shares.append(Double(byNow) / Double(d.ml))
+        }
+        let share = shares.reduce(0, +) / Double(shares.count)
+        let average = Int((Double(past.reduce(0) { $0 + $1.ml }) / Double(past.count)).rounded())
+        let projected = share >= 0.1 && today.ml > 0 ? Int((Double(today.ml) / share).rounded()) : nil
+        return IntakeForecast(soFar: today.ml, typicalShare: share, projectedTotal: projected,
+                              averageTotal: average, pastDays: past.count)
     }
 
     func typeName(_ type: String) -> String {
