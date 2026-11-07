@@ -14,3 +14,10 @@ error.log
 # Local machine config — holds a username in its file paths. Copy config.example.yaml -> config.yaml.
 config.yaml
 config.local.yaml
+
+# Xcode and Finder leftovers on the Mac
+.DS_Store
+xcuserdata/
+*.xcuserstate
+ios/build/
+DerivedData/
