@@ -178,3 +178,13 @@ copy is byte-identical to `i18n/strings.json`, every `S("…")` key exists, the 
 core.js's, the client ID equals `docs/config.js`, the pbxproj's ids resolve, no personal data.
 The Entra registration needs the *iOS / macOS* platform (bundle `com.rollingshuttle.babylog`)
 before the first sign-in. `docs/` stays frozen; the PC syncs through the OneDrive client as before.
+
+**6 Nov 2026, evening — on the phones.** Compiled in Xcode 27 on the MacBook (two warnings, one
+missing `import Combine`), run in the simulator, signed in, synced the whole journal in seconds.
+Added the same day: Undo on one-tap diapers, the Trends screen (Swift Charts: bottle per day,
+feeds, diapers, milk-through-the-day with a forecast, 24-hour rhythm with a kind switch), the
+app icon. Distributed through **TestFlight internal testing** (App Store Connect app name
+`BabyLogRS`, bundle `com.rollingshuttle.babylog`, group *Family*); installed and working on the
+owner's phone. Updates: pull on the Mac, Product > Archive, Distribute App > App Store Connect,
+answer the export-compliance question; builds expire after 90 days. The Mac keeps a local
+`DEVELOPMENT_TEAM` edit in project.pbxproj, so the pull there is `git stash && git pull && git stash pop`.
