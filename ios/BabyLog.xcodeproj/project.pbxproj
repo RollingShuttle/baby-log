@@ -9,6 +9,7 @@
 /* Begin PBXFileReference section */
 		BAB1060000000000000000A5 /* BabyLog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BabyLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BAB1060000000000000000C2 /* BabyLogWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BabyLogWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BAB1060000000000000000E1 /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXBuildFile section */
@@ -84,6 +85,7 @@
 				BAB1060000000000000000A1 /* BabyLog */,
 				BAB1060000000000000000C1 /* BabyLogWatch */,
 				BAB1060000000000000000A4 /* Products */,
+				BAB1060000000000000000E1 /* Local.xcconfig */,
 			);
 			sourceTree = "<group>";
 		};
@@ -338,6 +340,7 @@
 		};
 		BAB1060000000000000000B4 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = BAB1060000000000000000E1 /* Local.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -363,6 +366,7 @@
 		};
 		BAB1060000000000000000B5 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = BAB1060000000000000000E1 /* Local.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -388,6 +392,7 @@
 		};
 		BAB1060000000000000000D2 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = BAB1060000000000000000E1 /* Local.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -415,6 +420,7 @@
 		};
 		BAB1060000000000000000D3 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = BAB1060000000000000000E1 /* Local.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

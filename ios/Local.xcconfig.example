@@ -1,0 +1,4 @@
+// Copy this file to ios/Local.xcconfig (ignored by git) and put your Apple Developer Team ID
+// here: the ten characters shown in brackets after the team name in Xcode's Signing &
+// Capabilities, or under Membership details on developer.apple.com. Both app targets read it.
+DEVELOPMENT_TEAM = ABCDE12345

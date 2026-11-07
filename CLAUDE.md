@@ -186,8 +186,10 @@ feeds, diapers, milk-through-the-day with a forecast, 24-hour rhythm with a kind
 app icon. Distributed through **TestFlight internal testing** (App Store Connect app name
 `BabyLogRS`, bundle `com.rollingshuttle.babylog`, group *Family*); installed and working on the
 owner's phone. Updates: pull on the Mac, Product > Archive, Distribute App > App Store Connect,
-answer the export-compliance question; builds expire after 90 days. The Mac keeps a local
-`DEVELOPMENT_TEAM` edit in project.pbxproj, so the pull there is `git stash && git pull && git stash pop`.
+answer the export-compliance question; builds expire after 90 days. The team ID lives in the
+untracked `ios/Local.xcconfig` (both targets' base configuration; `ios/Local.xcconfig.example`
+shows the shape), so the pull on the Mac is `git checkout -- ios && git pull`: Xcode's local edits
+to the project file and the string catalogs are thrown away, nothing personal is in the tree.
 
 **7 Nov 2026 — round 3 and the Watch.** Performance (cached formatters, instants parsed once, the
 index built off the main thread, `AppModel.shared`), the feed sheet shows the previous feed with

@@ -15,12 +15,21 @@ After that, every update is *pull, then Run*.
 3. **The code**: Xcode's welcome window → *Clone Git Repository…* →
    `https://github.com/RollingShuttle/baby-log.git` → choose a folder such as
    `~/Developer/baby-log`. (Or in Terminal: `git clone https://github.com/RollingShuttle/baby-log.git`.)
-4. **Open `ios/BabyLog.xcodeproj`.** Select the *BabyLog* target → *Signing & Capabilities* →
-   tick *Automatically manage signing* → pick your *Team*. The bundle ID is
+4. **Your Team ID, once**: in Terminal, with the ten-character ID from Xcode → Settings →
+   Accounts (or the brackets after the team name in Signing & Capabilities):
+
+   ```
+   printf 'DEVELOPMENT_TEAM = ABCDE12345\n' > ~/Documents/baby-log/ios/Local.xcconfig
+   ```
+
+   The file is ignored by git and both app targets read it, so nothing about your account
+   ever enters the project file or the repository.
+5. **Open `ios/BabyLog.xcodeproj`.** Select the *BabyLog* target → *Signing & Capabilities*;
+   *Automatically manage signing* should be ticked and the team already shown. The bundle ID is
    `com.rollingshuttle.babylog`; if Apple says it is taken, change it there **and** in
    `ios/BabyLog/Config.swift` (`bundleId`, `callbackScheme`, `redirectUri`) **and** in the Entra
    step below — the three must match.
-5. **Entra, the iOS platform** (once, on any computer): portal.azure.com → *App registrations*
+6. **Entra, the iOS platform** (once, on any computer): portal.azure.com → *App registrations*
    → *Baby Log* → *Authentication* → *Add a platform* → *iOS / macOS* → Bundle ID
    `com.rollingshuttle.babylog` → *Configure*. That registers the redirect
    `msauth.com.rollingshuttle.babylog://auth` the app signs in through. The existing web
@@ -84,9 +93,7 @@ It keeps no journal and needs no sign-in: a tap goes to the phone over WatchConn
 phone writes and syncs and sends the summary back; with the phone out of reach the tap waits
 on the watch and is delivered, with its original time, when the phone is near.
 
-- **Once, after the first pull that brings it in**: select the *BabyLogWatch* target → *Signing
-  & Capabilities* → *Team* = the same team. (Like the iPhone target's team, this stays a local
-  edit of the project file; the stash/pull/pop line carries it.)
+- **Signing**: the watch target reads the same `ios/Local.xcconfig`, nothing to set.
 - **Installing**: it rides inside the iPhone build. From Xcode, Run the *BabyLog* scheme on the
   phone; through TestFlight, install the iPhone build, then on the iPhone open the **Watch**
   app → *Baby Log* → *Install* (or turn on *Show App on Apple Watch*). Siri on the watch learns
@@ -97,9 +104,17 @@ on the watch and is delivered, with its original time, when the phone is near.
 
 ## Updating
 
-Xcode → *Integrate → Pull* (or `git pull` in the folder), then **Run** again with the phone
-connected. Nothing on the phone needs to be removed first; the journal mirror and the sign-in
-stay.
+In Terminal:
+
+```
+cd ~/Documents/baby-log && git checkout -- ios && git pull
+```
+
+The `checkout -- ios` throws away what Xcode wrote into the project file and the string
+catalogs during builds (it rewrites them on the next build anyway); your team ID lives in
+`ios/Local.xcconfig`, which git never touches. Then Archive and upload as above, or **Run**
+with the phone connected. Nothing on the phone needs to be removed first; the journal mirror
+and the sign-in stay.
 
 ## What is in this first version (Stage 1 of guide/IOS-APP-PLAN.md)
 
