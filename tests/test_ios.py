@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 IOS = ROOT / "ios"
-SWIFT = sorted((IOS / "BabyLog").rglob("*.swift"))
+SWIFT = sorted((IOS / "BabyLog").rglob("*.swift")) + sorted((IOS / "BabyLogWatch").rglob("*.swift"))
 HEX24 = re.compile(r"\b[0-9A-F]{24}\b")
 TEXT_SUFFIXES = (".swift", ".json", ".pbxproj", ".xcworkspacedata", ".xcstrings")
 
@@ -30,6 +30,12 @@ class TestIOS(unittest.TestCase):
         copy = IOS / "BabyLog" / "Resources" / "strings.json"
         self.assertEqual(copy.read_bytes(), (ROOT / "i18n" / "strings.json").read_bytes(),
                          "copy i18n/strings.json to ios/BabyLog/Resources/strings.json")
+
+    def test_watch_catalogs_are_copies_of_the_phone_ones(self):
+        for name in ("AppShortcuts.xcstrings", "Localizable.xcstrings"):
+            self.assertEqual((IOS / "BabyLogWatch" / name).read_bytes(), (IOS / "BabyLog" / name).read_bytes(), name)
+        self.assertEqual((IOS / "BabyLogWatch" / "Assets.xcassets" / "AppIcon.appiconset" / "AppIcon.png").read_bytes(),
+                         (IOS / "BabyLog" / "Assets.xcassets" / "AppIcon.appiconset" / "AppIcon.png").read_bytes())
 
     def test_every_string_key_used_exists(self):
         table = json.loads((ROOT / "i18n" / "strings.json").read_text(encoding="utf-8"))["strings"]

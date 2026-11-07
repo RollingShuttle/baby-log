@@ -1,0 +1,46 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Log a ${kind} diaper in ${applicationName}" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在${applicationName}记一次${kind}"
+          }
+        }
+      }
+    },
+    "Log a bottle in ${applicationName}" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在${applicationName}记一瓶奶"
+          }
+        }
+      }
+    },
+    "Log a diaper in ${applicationName}" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在${applicationName}记一次尿布"
+          }
+        }
+      }
+    },
+    "Log a feed in ${applicationName}" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在${applicationName}记一次喂奶"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

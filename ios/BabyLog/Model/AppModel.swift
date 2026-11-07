@@ -97,6 +97,7 @@ final class AppModel: ObservableObject {
         signedIn = auth.isSignedIn
         sync.onChange = { [weak self] in self?.refresh() }
         sync.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &bag)
+        WatchBridge.shared.start()
         let root = j.root
         loadTask = Task { [weak self] in
             let scanned = await Task.detached(priority: .userInitiated) { Journal.scan(root: root) }.value
@@ -118,6 +119,82 @@ final class AppModel: ObservableObject {
         events = journal.events
         child = journal.child
         signedIn = auth.isSignedIn
+        pushWatchSummary()
+    }
+    func pushWatchSummary() {
+        if loading { return }
+        WatchBridge.shared.push(watchSummary())
+    }
+    /// What the watch shows: the last feed and diaper as instants and texts, today's totals,
+    /// the quick amounts, and every label in this phone's language.
+    func watchSummary() -> [String: Any] {
+        var out: [String: Any] = [
+            "child": child?.string("name") ?? "",
+            "totals": todayTotals,
+            "quick": quickAmounts,
+            "lastMl": lastFeed.map { Int($0.bottleMl.rounded()) } ?? 0,
+        ]
+        if let feed = lastFeed, let at = feed.instant {
+            out["lastFeedAt"] = at.timeIntervalSince1970
+            out["lastFeedText"] = describe(feed)
+        }
+        if let diaper = lastDiaper, let at = diaper.instant {
+            out["lastDiaperAt"] = at.timeIntervalSince1970
+            out["lastDiaperText"] = describe(diaper)
+        }
+        out["labels"] = [
+            "feed": S("log.feed"), "wet": S("log.wet"), "dirty": S("log.dirty"), "both": S("log.both"),
+            "lastFeed": S("now.lastFeed"), "lastDiaper": S("now.lastDiaper"),
+            "noFeed": S("now.noFeedYet"), "noDiaper": S("now.noDiaperYet"),
+            "minutes": S("since.minutes"), "hoursMinutes": S("since.hoursMinutes"),
+            "daysHours": S("since.daysHours"), "ago": S("since.ago"),
+            "queued": S("watch.queued"), "noPhone": S("watch.noPhone"), "sent": S("watch.sent"),
+        ] as [String: String]
+        return out
+    }
+    /// A tap or a Siri phrase on the watch: a diaper or a feed, at the time it was made
+    /// (a queued one arrives late). Returns the summary plus the text the watch shows or speaks.
+    func handleWatch(_ message: [String: Any]) async -> [String: Any] {
+        await ready()
+        guard child != nil else { return ["ok": false, "text": S("siri.noChildYet")] }
+        let at = (message["at"] as? Double).map { Date(timeIntervalSince1970: $0) } ?? Date()
+        let type = (message["type"] as? String) ?? ""
+        // The watch re-sends a tap through transferUserInfo when the answer to its message was
+        // lost (usual while this app is cold-launched and still scanning): same tap, same time,
+        // same device, so the second copy answers with the record already written.
+        let timeString = Names.isoLocal(at)
+        if let dup = events.last(where: { $0.type == type && $0.time == timeString && $0.device == device }) {
+            var reply = watchSummary()
+            reply["ok"] = true
+            reply["text"] = type == "feed"
+                ? S("siri.loggedFeed", ["amount": S("amount.ml", ["n": String(Int(dup.bottleMl.rounded()))]), "time": timeText(dup.instant)])
+                : S("siri.loggedDiaper", ["description": describe(dup), "time": timeText(dup.instant)])
+            return reply
+        }
+        var written: Record? = nil
+        var text = ""
+        switch type {
+        case "diaper":
+            written = logDiaper(wet: (message["wet"] as? Bool) ?? true, dirty: (message["dirty"] as? Bool) ?? false,
+                                time: at, note: "")
+            if let rec = written {
+                text = S("siri.loggedDiaper", ["description": describe(rec), "time": timeText(rec.instant)])
+            }
+        case "feed":
+            let ml = (message["ml"] as? Int) ?? 0
+            guard ml > 0 else { return ["ok": false, "text": S("amount.ml", ["n": "0"])] }
+            written = logFeed(ml: ml, formula: formulaChoices.first ?? "", made: nil, time: at, note: "")
+            if let rec = written {
+                text = S("siri.loggedFeed", ["amount": S("amount.ml", ["n": String(ml)]), "time": timeText(rec.instant)])
+            }
+        default:
+            return ["ok": false, "text": "?"]
+        }
+        guard written != nil else { return ["ok": false, "text": S("error.notSavedStorageFull")] }
+        var reply = watchSummary()
+        reply["ok"] = true
+        reply["text"] = text
+        return reply
     }
     func becameActive() {
         if loading { return }

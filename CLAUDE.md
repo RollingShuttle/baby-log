@@ -188,3 +188,12 @@ app icon. Distributed through **TestFlight internal testing** (App Store Connect
 owner's phone. Updates: pull on the Mac, Product > Archive, Distribute App > App Store Connect,
 answer the export-compliance question; builds expire after 90 days. The Mac keeps a local
 `DEVELOPMENT_TEAM` edit in project.pbxproj, so the pull there is `git stash && git pull && git stash pop`.
+
+**7 Nov 2026 — round 3 and the Watch.** Performance (cached formatters, instants parsed once, the
+index built off the main thread, `AppModel.shared`), the feed sheet shows the previous feed with
+made/leftover and takes typed amounts, weight/length/head entries, Siri App Intents on the phone
+(`Intents/BabyLogIntents.swift`, phrases localised in `AppShortcuts.xcstrings`), and a watchOS
+companion target `ios/BabyLogWatch` (no journal, no sign-in: WatchConnectivity to the phone, the
+phone pushes a summary; `Sync/WatchBridge.swift` + `AppModel.handleWatch`). Each round was checked
+by a three-agent Workflow of verifiers before pushing; their findings are fixed. Version and build
+number live at project level so the two apps always match.

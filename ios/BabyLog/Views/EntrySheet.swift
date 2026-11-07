@@ -192,7 +192,7 @@ struct EntrySheet: View {
         Section(S("tab.growth")) {
             HStack {
                 Text(S("growth.weightG"))
-                TextField("0", text: $d.weightText)
+                TextField(S("amount.field"), text: $d.weightText)
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.trailing)
                     .focused($focus, equals: .weight)
@@ -203,14 +203,14 @@ struct EntrySheet: View {
             }
             HStack {
                 Text(S("growth.lengthCm"))
-                TextField("0", text: $d.lengthText)
+                TextField(S("amount.field"), text: $d.lengthText)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
                     .focused($focus, equals: .length)
             }
             HStack {
                 Text(S("growth.headCm"))
-                TextField("0", text: $d.headText)
+                TextField(S("amount.field"), text: $d.headText)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
                     .focused($focus, equals: .head)

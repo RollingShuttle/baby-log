@@ -2818,6 +2818,21 @@
       "en": "Start needs a date and time",
       "where": "editor refusal",
       "zh-Hans": "开始需要填写日期和时间"
+    },
+    "watch.noPhone": {
+      "en": "iPhone not reachable",
+      "where": "Watch: no paired phone at all",
+      "zh-Hans": "连不上 iPhone"
+    },
+    "watch.queued": {
+      "en": "Saved on the watch; sends when the iPhone is near",
+      "where": "Watch: a tap made while the phone was out of reach",
+      "zh-Hans": "已存在手表上，iPhone 在附近时发送"
+    },
+    "watch.sent": {
+      "en": "Sent to iPhone",
+      "where": "Watch: the phone received the tap but its answer was late",
+      "zh-Hans": "已发给 iPhone"
     }
   }
 }

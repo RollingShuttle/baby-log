@@ -76,6 +76,25 @@ months; the phones update themselves through the TestFlight app.
    Number*, the default), *Product → Archive → Distribute → Upload*; the phones get a
    TestFlight notification within the hour.
 
+## The Apple Watch app
+
+`ios/BabyLogWatch` is a second target, embedded in the iPhone app: four big buttons (Wet,
+Dirty, Both, Feed with the quick amounts), the last feed and diaper, and the same Siri phrases.
+It keeps no journal and needs no sign-in: a tap goes to the phone over WatchConnectivity, the
+phone writes and syncs and sends the summary back; with the phone out of reach the tap waits
+on the watch and is delivered, with its original time, when the phone is near.
+
+- **Once, after the first pull that brings it in**: select the *BabyLogWatch* target → *Signing
+  & Capabilities* → *Team* = the same team. (Like the iPhone target's team, this stays a local
+  edit of the project file; the stash/pull/pop line carries it.)
+- **Installing**: it rides inside the iPhone build. From Xcode, Run the *BabyLog* scheme on the
+  phone; through TestFlight, install the iPhone build, then on the iPhone open the **Watch**
+  app → *Baby Log* → *Install* (or turn on *Show App on Apple Watch*). Siri on the watch learns
+  the phrases after the watch app has been opened once.
+- **Versions**: both apps take their version and build number from the project level, so one
+  bump (Xcode's *Manage Version and Build Number* in the Distribute dialog does it) covers
+  both; App Store Connect refuses an upload where they differ.
+
 ## Updating
 
 Xcode → *Integrate → Pull* (or `git pull` in the folder), then **Run** again with the phone
