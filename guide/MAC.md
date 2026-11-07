@@ -40,6 +40,42 @@ After that, every update is *pull, then Run*.
 9. The other phone: the same steps 6–7 with that phone plugged in, or, once Stage 3 is built,
    TestFlight. A build from a paid team runs for a year before it needs another Run.
 
+## Putting it on both phones for good
+
+Two ways; the first works today, the second is for the other phone and for updates without a
+cable.
+
+**A. Straight from Xcode (a development build).** Steps 6–8 above, with each phone plugged in
+in turn. A build signed by a paid team runs for a year; after that, plug in and Run again.
+Updates are *pull, then Run* with the phone connected.
+
+**B. TestFlight (over the air).** Builds expire after 90 days, so re-upload about every two
+months; the phones update themselves through the TestFlight app.
+
+1. **An app icon** is required for any upload: `Assets.xcassets/AppIcon.appiconset/AppIcon.png`
+   (a blue square with a white drop, made by a script on the PC). Replace it with any
+   1024×1024 PNG without transparency whenever you like.
+2. **The app record**, once: appstoreconnect.apple.com → *My Apps* → **+** → *New App*:
+   platform iOS, a name (App Store names are unique across all developers, so plain
+   *Baby Log* is probably taken; try *Baby Log RS* or any name you like — it only shows in
+   TestFlight), primary language, Bundle ID `com.rollingshuttle.babylog` from the list (it
+   appears there after the first run on a real phone registered the App ID), SKU `babylog`.
+3. **Upload** from Xcode: run destination *Any iOS Device (arm64)* → menu *Product → Archive*
+   → in the Organizer window that opens, *Distribute App* → *TestFlight & App Store* (or
+   *App Store Connect*) → *Upload*, defaults all the way. Takes a few minutes; Apple then
+   processes the build (an email arrives).
+4. **Export compliance**: the build shows a *Missing Compliance* badge in TestFlight. Click
+   *Manage* → *None of the algorithms mentioned above* (the app only uses HTTPS) → Save.
+   (Or answer the same once in *App Information → App Encryption Documentation*.)
+5. **Testers**: App Store Connect → *Users and Access* → **+** → invite your wife's Apple ID
+   with the *Customer Support* role (the smallest). Then *TestFlight* → *Internal Testing* →
+   **+** group → add both of you. Each phone: install **TestFlight** from the App Store, open
+   the invitation email, *Install*. Internal testing needs no Apple review.
+6. **Each update**: pull on the Mac, bump nothing (TestFlight accepts the same version with a
+   higher build number — Xcode's Organizer does that when you tick *Manage Version and Build
+   Number*, the default), *Product → Archive → Distribute → Upload*; the phones get a
+   TestFlight notification within the hour.
+
 ## Updating
 
 Xcode → *Integrate → Pull* (or `git pull` in the folder), then **Run** again with the phone
