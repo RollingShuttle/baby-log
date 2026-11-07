@@ -1,0 +1,106 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Amount in ml" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "毫升数"
+          }
+        }
+      }
+    },
+    "Diaper" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尿布"
+          }
+        }
+      }
+    },
+    "Dirty" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "便便"
+          }
+        }
+      }
+    },
+    "Kind" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "种类"
+          }
+        }
+      }
+    },
+    "Log a diaper" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记一次尿布"
+          }
+        }
+      }
+    },
+    "Log a feed" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记一次喂奶"
+          }
+        }
+      }
+    },
+    "Logs a bottle now, with the formula used last time." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "现在记一瓶奶，奶粉沿用上一次的。"
+          }
+        }
+      }
+    },
+    "Logs a wet, dirty, or wet and dirty diaper now." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "现在记一次尿湿、便便或两者都有。"
+          }
+        }
+      }
+    },
+    "Wet" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尿湿"
+          }
+        }
+      }
+    },
+    "Wet and dirty" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尿湿加便便"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

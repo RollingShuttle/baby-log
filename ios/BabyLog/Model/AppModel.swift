@@ -39,6 +39,9 @@ struct IntakeForecast {
 /// stamped the same way and followed by a sync.
 @MainActor
 final class AppModel: ObservableObject {
+    /// One instance for the app and its Siri intents, so both see the same index.
+    static let shared = AppModel()
+
     let journal: Journal
     let sync: SyncEngine
     let auth = Auth.shared
@@ -69,7 +72,9 @@ final class AppModel: ObservableObject {
         didSet { UserDefaults.standard.set(quickStep, forKey: "bl.quick_step") }
     }
 
+    @Published private(set) var loading = true
     private var syncTask: Task<Void, Never>? = nil
+    private var loadTask: Task<Void, Never>? = nil
     private var bag = Set<AnyCancellable>()
 
     init() {
@@ -83,24 +88,45 @@ final class AppModel: ObservableObject {
         let dev = d.string(forKey: "bl.device") ?? ("d-" + Names.rand4())
         d.set(dev, forKey: "bl.device")
         device = dev
-        let j = Journal()
+        // The index is built off the main thread: a thousand files parsed at launch would
+        // otherwise freeze the first screen.
+        let j = Journal(load: false)
         journal = j
         sync = SyncEngine(journal: j, graph: Graph(token: { try await Auth.shared.accessToken() }))
         L10n.override = language
         signedIn = auth.isSignedIn
         sync.onChange = { [weak self] in self?.refresh() }
         sync.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &bag)
-        refresh()
+        let root = j.root
+        loadTask = Task { [weak self] in
+            let scanned = await Task.detached(priority: .userInitiated) { Journal.scan(root: root) }.value
+            guard let self = self else { return }
+            self.journal.install(scanned)
+            self.loading = false
+            self.refresh()
+            self.requestSync(after: 0)
+        }
+    }
+
+    /// Waits for the index; Siri intents call this before reading or writing.
+    func ready() async {
+        await loadTask?.value
     }
 
     func refresh() {
+        if loading { return }
         events = journal.events
         child = journal.child
         signedIn = auth.isSignedIn
     }
     func becameActive() {
+        if loading { return }
         refresh()
         requestSync(after: 0)
+    }
+    /// Once a minute: the "2 h ago" texts re-render; nothing is recomputed.
+    func tickMinute() {
+        objectWillChange.send()
     }
     /// One sync after a pause, so a burst of taps becomes one upload.
     func requestSync(after seconds: Double) {
@@ -227,6 +253,13 @@ final class AppModel: ObservableObject {
                               averageTotal: average, pastDays: past.count)
     }
 
+    /// "made 120 ml / left 40 ml" for a feed that recorded its bottle, else nil.
+    func madeLeftText(_ rec: Record) -> String? {
+        guard let made = rec.madeMl, made > 0 else { return nil }
+        let left = rec.leftoverMl ?? max(0, made - rec.bottleMl)
+        return S("day.madeLeft", ["made": S("amount.ml", ["n": String(Int(made.rounded()))]),
+                                "left": S("amount.ml", ["n": String(Int(left.rounded()))])])
+    }
     func typeName(_ type: String) -> String {
         switch type {
         case "feed": return S("log.feed")
@@ -254,6 +287,14 @@ final class AppModel: ObservableObject {
             return rec.dirty ? S("log.dirty") : S("log.wet")
         case "note":
             return rec.note.isEmpty ? S("log.note") : rec.note
+        case "growth":
+            var parts: [String] = []
+            if let g = rec.number("weight_g"), g > 0 {
+                parts.append(S("describe.weight", ["weight": S("amount.kg", ["n": String(format: "%.2f", (g / 10).rounded() / 100)])]))
+            }
+            if let l = rec.number("length_cm"), l > 0 { parts.append(S("describe.length", ["length": S("amount.cm", ["n": EntryDraft.trim(l)])])) }
+            if let h = rec.number("head_cm"), h > 0 { parts.append(S("describe.head", ["head": S("amount.cm", ["n": EntryDraft.trim(h)])])) }
+            return parts.isEmpty ? S("tab.growth") : parts.joined(separator: " · ")
         default:
             return typeName(rec.type)
         }
@@ -293,9 +334,24 @@ final class AppModel: ObservableObject {
 
     // -- writes: every one a new revision file, stamped alike (SPEC §3.1)
 
-    func logFeed(ml: Int, formula: String, time: Date, note: String, editing: Record? = nil) {
+    /// `made` is the bottle prepared; the leftover is what was not drunk. Both optional.
+    @discardableResult
+    func logFeed(ml: Int, formula: String, made: Int?, time: Date, note: String, editing: Record? = nil) -> Record? {
         let portion: [String: Any] = ["kind": "formula", "ml": ml, "formula": orNull(formula)]
-        write(type: "feed", time: time, data: ["bottles": [portion]], note: note, editing: editing)
+        var data: [String: Any] = ["bottles": [portion]]
+        if let made = made, made > 0 {
+            data["made_ml"] = made
+            data["leftover_ml"] = max(0, made - ml)
+        } else {
+            data["made_ml"] = NSNull()
+            data["leftover_ml"] = NSNull()
+        }
+        return write(type: "feed", time: time, data: data, note: note, editing: editing)
+    }
+    func logGrowth(weightG: Int?, lengthCm: Double?, headCm: Double?, time: Date, note: String, editing: Record? = nil) {
+        let data: [String: Any] = ["weight_g": orNull(weightG.map { Double($0) }),
+                                   "length_cm": orNull(lengthCm), "head_cm": orNull(headCm)]
+        write(type: "growth", time: time, data: data, note: note, editing: editing)
     }
     @discardableResult
     func logDiaper(wet: Bool, dirty: Bool, time: Date, note: String, editing: Record? = nil) -> Record? {
@@ -388,6 +444,8 @@ final class AppModel: ObservableObject {
                     "rash": false, "blowout": false]
         case "note":
             return ["milestone": false]
+        case "growth":
+            return ["weight_g": NSNull(), "length_cm": NSNull(), "head_cm": NSNull()]
         default:
             return [:]
         }
@@ -395,5 +453,9 @@ final class AppModel: ObservableObject {
     private func orNull(_ s: String) -> Any {
         if s.isEmpty { return NSNull() }
         return s
+    }
+    private func orNull(_ x: Double?) -> Any {
+        if let x = x, x > 0 { return x }
+        return NSNull()
     }
 }

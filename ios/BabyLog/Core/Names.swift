@@ -1,7 +1,9 @@
 import Foundation
 
 /// Ids, filenames and instants in exactly the shapes of core.js and store.py (SPEC §3.1, §3.2),
-/// so the three implementations name files and order revisions identically.
+/// so the three implementations name files and order revisions identically. The formatters are
+/// built once: a DateFormatter costs milliseconds to make, and the first version made one per
+/// record per sort, which is where the app's stutter came from.
 enum Names {
     // The one filename rule: <id>-r<n>-<w>.json. The pattern text must stay equal to core.js's
     // NAME_RE; tests/test_ios.py compares them.
@@ -10,6 +12,14 @@ enum Names {
     private static let nameRegex = try! NSRegularExpression(pattern: namePattern)
     private static let isoRegex = try! NSRegularExpression(pattern: isoPattern)
     private static let wRegex = try! NSRegularExpression(pattern: "-r\\d+-([0-9a-f]{4})\\.json$")
+
+    private static let posix = Locale(identifier: "en_US_POSIX")
+    private static let stampFormatter = utc("yyyyMMdd-HHmmss")
+    private static let createdFormatter = utc("yyyy-MM-dd'T'HH:mm:ss")
+    private static let utcDayFormatter = utc("yyyy-MM-dd")
+    private static let localFormatter = local("yyyy-MM-dd'T'HH:mm:ss")
+    private static let localDayFormatter = local("yyyy-MM-dd")
+    private static let isoFormatter = local("yyyy-MM-dd'T'HH:mm:ssXXX")
 
     struct Parsed {
         let id: String
@@ -22,7 +32,7 @@ enum Names {
         String(format: "%02x%02x", Int.random(in: 0...255), Int.random(in: 0...255))
     }
     /// UTC "YYYYMMDD-HHMMSS", the same stamp as the other two writers.
-    static func stamp(_ date: Date = Date()) -> String { utc("yyyyMMdd-HHmmss").string(from: date) }
+    static func stamp(_ date: Date = Date()) -> String { stampFormatter.string(from: date) }
     static func newId(_ prefix: String, _ date: Date = Date()) -> String {
         "\(prefix)-\(stamp(date))-\(rand4())"
     }
@@ -50,17 +60,14 @@ enum Names {
     static func nowIso(_ date: Date = Date()) -> String {
         let t = date.timeIntervalSince1970
         let micro = Int(((t - floor(t)) * 1_000_000).rounded(.down))
-        return utc("yyyy-MM-dd'T'HH:mm:ss").string(from: date) + String(format: ".%06d+00:00", micro)
+        return createdFormatter.string(from: date) + String(format: ".%06d+00:00", micro)
     }
-    /// Whole seconds with the zone's numeric offset on that instant: the time/end shape.
-    static func isoLocal(_ date: Date = Date(), zone: TimeZone = .current) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.timeZone = zone
-        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        let off = zone.secondsFromGMT(for: date)
+    /// Whole seconds with this phone's numeric offset on that instant: the time/end shape.
+    static func isoLocal(_ date: Date = Date()) -> String {
+        let off = localFormatter.timeZone.secondsFromGMT(for: date)
         let a = abs(off)
-        return f.string(from: date) + (off < 0 ? "-" : "+") + String(format: "%02d:%02d", a / 3600, (a % 3600) / 60)
+        return localFormatter.string(from: date) + (off < 0 ? "-" : "+")
+            + String(format: "%02d:%02d", a / 3600, (a % 3600) / 60)
     }
     /// A Date for a string of exactly the time/end shape, else nil.
     static func parseIso(_ iso: String?) -> Date? {
@@ -69,34 +76,32 @@ enum Names {
         guard isoRegex.firstMatch(in: iso, range: NSRange(location: 0, length: ns.length)) != nil else {
             return nil
         }
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ssXXX"
-        return f.date(from: iso)
+        return isoFormatter.date(from: iso)
     }
     /// The display day: the writer's local date, never re-zoned.
     static func localDate(_ iso: String?) -> String { String((iso ?? "").prefix(10)) }
     /// The UTC date of a write: the day folder.
-    static func utcDate(_ date: Date = Date()) -> String { utc("yyyy-MM-dd").string(from: date) }
+    static func utcDate(_ date: Date = Date()) -> String { utcDayFormatter.string(from: date) }
     /// This phone's local "YYYY-MM-DD" for an instant.
-    static func dayOf(_ date: Date) -> String { String(isoLocal(date).prefix(10)) }
+    static func dayOf(_ date: Date) -> String { localDayFormatter.string(from: date) }
     static func shiftDay(_ day: String, _ n: Int) -> String {
-        let f = utc("yyyy-MM-dd")
-        guard let d = f.date(from: day) else { return day }
-        return f.string(from: d.addingTimeInterval(Double(n) * 86400))
+        guard let d = utcDayFormatter.date(from: day) else { return day }
+        return utcDayFormatter.string(from: d.addingTimeInterval(Double(n) * 86400))
     }
     /// Local midnight of a "YYYY-MM-DD", for display and ages.
-    static func dateOfDay(_ day: String) -> Date? {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "yyyy-MM-dd"
-        return f.date(from: day)
-    }
+    static func dateOfDay(_ day: String) -> Date? { localDayFormatter.date(from: day) }
 
     private static func utc(_ format: String) -> DateFormatter {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
+        f.locale = posix
         f.timeZone = TimeZone(identifier: "UTC")
+        f.dateFormat = format
+        return f
+    }
+    private static func local(_ format: String) -> DateFormatter {
+        let f = DateFormatter()
+        f.locale = posix
+        f.timeZone = TimeZone.autoupdatingCurrent   // live, so a zone change needs no rebuild
         f.dateFormat = format
         return f
     }

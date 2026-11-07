@@ -9,7 +9,9 @@ struct TodayView: View {
             Section { syncPill }
             Section { NowPanel() }
             Section(header: dayHeader) {
-                if model.dayEvents.isEmpty {
+                if model.loading {
+                    Text(S("common.loading")).foregroundStyle(.secondary)
+                } else if model.dayEvents.isEmpty {
                     Text(S("now.nothingLoggedYet")).foregroundStyle(.secondary)
                 }
                 ForEach(model.dayEvents, id: \.file) { rec in
@@ -101,10 +103,19 @@ struct TodayView: View {
                 Text(S("log.both")).frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
-            Button {
-                draft = EntryDraft(kind: "note")
+            Menu {
+                Button {
+                    draft = EntryDraft(kind: "growth")
+                } label: {
+                    Label(S("log.weight"), systemImage: "scalemass")
+                }
+                Button {
+                    draft = EntryDraft(kind: "note")
+                } label: {
+                    Label(S("log.note"), systemImage: "note.text")
+                }
             } label: {
-                Image(systemName: "note.text")
+                Image(systemName: "ellipsis")
             }
             .buttonStyle(.bordered)
         }

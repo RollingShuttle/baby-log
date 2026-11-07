@@ -28,7 +28,7 @@ struct RootView: View {
                     }
                 }
         }
-        .onReceive(clock) { _ in model.refresh() }
+        .onReceive(clock) { _ in model.tickMinute() }
         .overlay(alignment: .bottom) { toast }
     }
 

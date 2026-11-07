@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 IOS = ROOT / "ios"
 SWIFT = sorted((IOS / "BabyLog").rglob("*.swift"))
 HEX24 = re.compile(r"\b[0-9A-F]{24}\b")
-TEXT_SUFFIXES = (".swift", ".json", ".pbxproj", ".xcworkspacedata")
+TEXT_SUFFIXES = (".swift", ".json", ".pbxproj", ".xcworkspacedata", ".xcstrings")
 
 
 class TestIOS(unittest.TestCase):

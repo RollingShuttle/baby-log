@@ -2,10 +2,23 @@ import Foundation
 
 /// One journal file as read: the JSON body plus the filename it came from (the w tie-break).
 /// Fields are read leniently, as core.js reads them; JSON nulls arrive as NSNull and count as
-/// absent.
+/// absent. The instant, the day and the w are parsed once here, because sorting and
+/// resolving read them thousands of times.
 struct Record {
-    var body: [String: Any]
-    var file: String
+    let body: [String: Any]
+    let file: String
+    let instant: Date?
+    let day: String
+    let w: String
+
+    init(body: [String: Any], file: String) {
+        self.body = body
+        self.file = file
+        let time = body["time"] as? String
+        instant = Names.parseIso(time)
+        day = Names.localDate(time)
+        w = Names.wSuffix(file)
+    }
 
     func string(_ key: String) -> String? { body[key] as? String }
     func int(_ key: String) -> Int? {
@@ -28,8 +41,6 @@ struct Record {
     var device: String { string("device") ?? "" }
     var loggedBy: String? { string("logged_by") }
     var editedBy: String? { string("edited_by") }
-    var instant: Date? { Names.parseIso(time) }
-    var day: String { Names.localDate(time) }
 
     var bottles: [[String: Any]] { (data["bottles"] as? [[String: Any]]) ?? [] }
     var bottleMl: Double {
@@ -40,6 +51,9 @@ struct Record {
         guard let first = bottles.first, let f = first["formula"] as? String, !f.isEmpty else { return nil }
         return f
     }
+    func number(_ key: String) -> Double? { data[key] as? Double }
+    var madeMl: Double? { number("made_ml") }
+    var leftoverMl: Double? { number("leftover_ml") }
     var wet: Bool { (data["wet"] as? Bool) ?? false }
     var dirty: Bool { (data["dirty"] as? Bool) ?? false }
 
@@ -48,7 +62,7 @@ struct Record {
     // device, and the filename's w.
     static let endTypes: Set<String> = ["feed", "sleep", "pump"]
     var rank: (Int, Int, String, String, String) {
-        (revision, Record.endTypes.contains(type) && end != nil ? 1 : 0, createdAt, device, Names.wSuffix(file))
+        (revision, Record.endTypes.contains(type) && end != nil ? 1 : 0, createdAt, device, w)
     }
     func beats(_ other: Record) -> Bool { rank > other.rank }
 

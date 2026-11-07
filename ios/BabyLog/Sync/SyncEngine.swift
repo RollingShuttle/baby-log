@@ -95,18 +95,22 @@ final class SyncEngine: ObservableObject {
             // 3. The downloads, a few at a time; each file is kept as soon as it arrives.
             if !wanted.isEmpty {
                 let graph = self.graph
-                try await withThrowingTaskGroup(of: (String, Data).self) { group in
+                try await withThrowingTaskGroup(of: (String, Data, Record?).self) { group in
                     var next = 0
                     while next < wanted.count && next < SyncEngine.parallel {
                         let item = wanted[next]
                         next += 1
                         group.addTask {
                             let data = try await graph.download(item)
-                            return (item.relative ?? "", data)
+                            let rel = item.relative ?? ""
+                            return (rel, data, Journal.parse(data: data, relative: rel))
                         }
                     }
-                    while let (rel, data) = try await group.next() {
-                        try journal.store(relative: rel, data: data)
+                    // Written and indexed in one step here: a file on disk that this session has
+                    // not indexed would be skipped by every later sync until a relaunch.
+                    while let (rel, data, record) = try await group.next() {
+                        try Journal.writeFile(root: journal.root, relative: rel, data: data)
+                        if let record = record { journal.insert(relative: rel, record: record) }
                         received += 1
                         phase = S("sync.reading", ["n": String(wanted.count - received)])
                         if next < wanted.count {
@@ -114,7 +118,8 @@ final class SyncEngine: ObservableObject {
                             next += 1
                             group.addTask {
                                 let data = try await graph.download(item)
-                                return (item.relative ?? "", data)
+                                let rel = item.relative ?? ""
+                                return (rel, data, Journal.parse(data: data, relative: rel))
                             }
                         }
                     }
@@ -128,6 +133,10 @@ final class SyncEngine: ObservableObject {
             backoffUntil = Date().addingTimeInterval(Double(seconds))
         } catch AuthError.signedOut {
             // The pill reads "Signed out" from Auth; nothing to record here.
+        } catch is CancellationError {
+            // A write or a tap asked for a fresh sync; the next one picks up where this stopped.
+        } catch let e as URLError where e.code == .cancelled {
+            // The same, seen from URLSession.
         } catch {
             state.lastError = error.localizedDescription
             state.lastErrorAt = Date()
