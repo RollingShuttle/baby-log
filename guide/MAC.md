@@ -121,11 +121,17 @@ on the watch and is delivered, with its original time, when the phone is near.
 
 ## Updating
 
-In Terminal:
+Double-click **`update-mac.command`** in the `baby-log` folder in Finder (drag it to the right
+side of the Dock to keep it handy; the first time, right-click → *Open* if macOS asks). It is
+the same as typing in Terminal:
 
 ```
 cd ~/Documents/baby-log && git checkout -- ios && git pull
 ```
+
+Xcode's own *Integrate → Pull* also works as long as Xcode has not changed anything locally;
+string extraction on build is turned off (`SWIFT_EMIT_LOC_STRINGS = NO`) so that it usually
+has not. If it ever complains about local changes, use the double-click file.
 
 The `checkout -- ios` throws away what Xcode wrote into the project file and the string
 catalogs during builds (it rewrites them on the next build anyway); your team ID lives in
