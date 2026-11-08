@@ -9,9 +9,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 IOS = ROOT / "ios"
-SWIFT = sorted((IOS / "BabyLog").rglob("*.swift")) + sorted((IOS / "BabyLogWatch").rglob("*.swift"))
+SWIFT = (sorted((IOS / "BabyLog").rglob("*.swift")) + sorted((IOS / "BabyLogWatch").rglob("*.swift"))
+         + sorted((IOS / "BabyLogWatchWidgets").rglob("*.swift")))
 HEX24 = re.compile(r"\b[0-9A-F]{24}\b")
-TEXT_SUFFIXES = (".swift", ".json", ".pbxproj", ".xcworkspacedata", ".xcstrings")
+TEXT_SUFFIXES = (".swift", ".json", ".pbxproj", ".xcworkspacedata", ".xcstrings", ".plist", ".entitlements")
 
 
 class TestIOS(unittest.TestCase):

@@ -1,46 +1,276 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "Log a ${kind} diaper in ${applicationName}" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在${applicationName}记一次${kind}"
+  "sourceLanguage": "en",
+  "strings": {
+    "${applicationName} dirty diaper": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "${applicationName}记一次拉屎"
           }
         }
       }
     },
-    "Log a bottle in ${applicationName}" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在${applicationName}记一瓶奶"
+    "${applicationName} feed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "${applicationName}记一次喂奶"
           }
         }
       }
     },
-    "Log a diaper in ${applicationName}" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在${applicationName}记一次尿布"
+    "${applicationName} wet diaper": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "${applicationName}记一次尿湿"
           }
         }
       }
     },
-    "Log a feed in ${applicationName}" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在${applicationName}记一次喂奶"
+    "Add a dirty diaper in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记大便"
+          }
+        }
+      }
+    },
+    "Add a feed in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记一次奶"
+          }
+        }
+      }
+    },
+    "Add a wet and dirty diaper in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记又尿又拉"
+          }
+        }
+      }
+    },
+    "Add a wet diaper in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记尿"
+          }
+        }
+      }
+    },
+    "Log a ${kind} diaper in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记一次${kind}"
+          }
+        }
+      }
+    },
+    "Log a bottle in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记一瓶奶"
+          }
+        }
+      }
+    },
+    "Log a bowel movement in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记一次大便"
+          }
+        }
+      }
+    },
+    "Log a diaper in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记一次尿布"
+          }
+        }
+      }
+    },
+    "Log a dirty diaper in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记一次便便"
+          }
+        }
+      }
+    },
+    "Log a feed in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记一次喂奶"
+          }
+        }
+      }
+    },
+    "Log a pee in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记一次小便"
+          }
+        }
+      }
+    },
+    "Log a poo in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记一次屎"
+          }
+        }
+      }
+    },
+    "Log a poop in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记一次拉屎"
+          }
+        }
+      }
+    },
+    "Log a wet and dirty diaper in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记一次尿湿加便便"
+          }
+        }
+      }
+    },
+    "Log a wet diaper in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记一次尿湿"
+          }
+        }
+      }
+    },
+    "Log a wet one in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记一次尿"
+          }
+        }
+      }
+    },
+    "Log both in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记一次都有"
+          }
+        }
+      }
+    },
+    "Log feeding in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记一次喂食"
+          }
+        }
+      }
+    },
+    "Log milk in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记奶"
+          }
+        }
+      }
+    },
+    "Log pee and poop in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记一次尿和屎"
+          }
+        }
+      }
+    },
+    "Record a dirty diaper in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记便便"
+          }
+        }
+      }
+    },
+    "Record a feed in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记一次喝奶"
+          }
+        }
+      }
+    },
+    "Record a wet and dirty diaper in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记尿湿便便"
+          }
+        }
+      }
+    },
+    "Record a wet diaper in ${applicationName}": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在${applicationName}记尿湿"
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

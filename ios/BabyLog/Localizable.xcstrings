@@ -1,106 +1,196 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "Amount in ml" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "毫升数"
+  "sourceLanguage": "en",
+  "strings": {
+    "Amount in ml": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "毫升数"
           }
         }
       }
     },
-    "Diaper" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "尿布"
+    "Diaper": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尿布"
           }
         }
       }
     },
-    "Dirty" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "便便"
+    "Dirty": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "便便"
           }
         }
       }
     },
-    "Kind" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "种类"
+    "Dirty diaper": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "便便"
           }
         }
       }
     },
-    "Log a diaper" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "记一次尿布"
+    "Kind": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "种类"
           }
         }
       }
     },
-    "Log a feed" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "记一次喂奶"
+    "Log a diaper": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记一次尿布"
           }
         }
       }
     },
-    "Logs a bottle now, with the formula used last time." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "现在记一瓶奶，奶粉沿用上一次的。"
+    "Log a dirty diaper": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记一次便便"
           }
         }
       }
     },
-    "Logs a wet, dirty, or wet and dirty diaper now." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "现在记一次尿湿、便便或两者都有。"
+    "Log a feed": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记一次喂奶"
           }
         }
       }
     },
-    "Wet" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "尿湿"
+    "Log a wet and dirty diaper": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记一次尿湿加便便"
           }
         }
       }
     },
-    "Wet and dirty" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "尿湿加便便"
+    "Log a wet diaper": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记一次尿湿"
+          }
+        }
+      }
+    },
+    "Logs a bottle now, with the formula used last time.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "现在记一瓶奶，奶粉沿用上一次的。"
+          }
+        }
+      }
+    },
+    "Logs a dirty diaper now.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "现在记一次便便。"
+          }
+        }
+      }
+    },
+    "Logs a wet and dirty diaper now.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "现在记一次尿湿加便便。"
+          }
+        }
+      }
+    },
+    "Logs a wet diaper now.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "现在记一次尿湿。"
+          }
+        }
+      }
+    },
+    "Logs a wet, dirty, or wet and dirty diaper now.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "现在记一次尿湿、便便或两者都有。"
+          }
+        }
+      }
+    },
+    "Wet": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尿湿"
+          }
+        }
+      }
+    },
+    "Wet and dirty": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尿湿加便便"
+          }
+        }
+      }
+    },
+    "Wet and dirty diaper": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尿湿加便便"
+          }
+        }
+      }
+    },
+    "Wet diaper": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尿湿"
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

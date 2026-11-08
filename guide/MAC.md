@@ -85,6 +85,16 @@ months; the phones update themselves through the TestFlight app.
    Number*, the default), *Product → Archive → Distribute → Upload*; the phones get a
    TestFlight notification within the hour.
 
+## Siri
+
+The phrases are App Shortcuts: "Log a feed in Baby Log", "Log a wet diaper in Baby Log"
+(Chinese: 在Baby Log记一次喂奶 / 尿湿 / 便便). `Info.plist` adds alternative app names for Siri,
+so 在宝宝日志记一次喂奶 and 在宝宝记录记一次尿湿 work too. They register when the app is first
+opened after an install; the Shortcuts app shows a *Baby Log* tile with every phrase, which is
+the quickest check. If Siri says it cannot find the app: iPhone Settings → Siri (or *Apps →
+Baby Log → Siri*) → make sure the app's shortcuts are allowed, and that Siri's language matches
+the phrase's language.
+
 ## The Apple Watch app
 
 `ios/BabyLogWatch` is a second target, embedded in the iPhone app: four big buttons (Wet,
@@ -98,6 +108,13 @@ on the watch and is delivered, with its original time, when the phone is near.
   phone; through TestFlight, install the iPhone build, then on the iPhone open the **Watch**
   app → *Baby Log* → *Install* (or turn on *Show App on Apple Watch*). Siri on the watch learns
   the phrases after the watch app has been opened once.
+- **The complication** (`ios/BabyLogWatchWidgets`, a widget extension inside the watch app):
+  on the iPhone's Watch app → a face → a slot → *Baby Log*. It shows the drop and the time since
+  the last feed, counting; a tap opens the watch app. It reads the last feed from the App Group
+  `group.com.rollingshuttle.babylog`, which both the watch app and the extension carry in their
+  entitlements; automatic signing registers the group on the first build. If Xcode complains
+  about it, select the *BabyLogWatch* target → Signing & Capabilities → *+ Capability* →
+  *App Groups* → tick that group, and the same on *BabyLogWatchWidgets*.
 - **Versions**: both apps take their version and build number from the project level, so one
   bump (Xcode's *Manage Version and Build Number* in the Distribute dialog does it) covers
   both; App Store Connect refuses an upload where they differ.

@@ -10,10 +10,12 @@
 		BAB1060000000000000000A5 /* BabyLog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BabyLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BAB1060000000000000000C2 /* BabyLogWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BabyLogWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BAB1060000000000000000E1 /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
+		BAB1060000000000000000E3 /* BabyLogWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BabyLogWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXBuildFile section */
 		BAB1060000000000000000C4 /* BabyLogWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = BAB1060000000000000000C2 /* BabyLogWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BAB1060000000000000000E5 /* BabyLogWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BAB1060000000000000000E3 /* BabyLogWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -23,6 +25,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = BAB1060000000000000000C3;
 			remoteInfo = BabyLogWatch;
+		};
+		BAB1060000000000000000E7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BAB1060000000000000000B0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BAB1060000000000000000E4;
+			remoteInfo = BabyLogWatchWidgets;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -38,6 +47,17 @@
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BAB1060000000000000000E6 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BAB1060000000000000000E5 /* BabyLogWatchWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -46,17 +66,60 @@
 			target = BAB1060000000000000000C3 /* BabyLogWatch */;
 			targetProxy = BAB1060000000000000000C6 /* PBXContainerItemProxy */;
 		};
+		BAB1060000000000000000E8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BAB1060000000000000000E4 /* BabyLogWatchWidgets */;
+			targetProxy = BAB1060000000000000000E7 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		BAB1060000000000000000F5 /* Exceptions for "BabyLog" folder in "BabyLog" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = BAB1060000000000000000A6 /* BabyLog */;
+		};
+		BAB1060000000000000000F6 /* Exceptions for "BabyLogWatch" folder in "BabyLogWatch" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = BAB1060000000000000000C3 /* BabyLogWatch */;
+		};
+		BAB1060000000000000000F7 /* Exceptions for "BabyLogWatchWidgets" folder in "BabyLogWatchWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = BAB1060000000000000000E4 /* BabyLogWatchWidgets */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		BAB1060000000000000000A1 /* BabyLog */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BAB1060000000000000000F5 /* Exceptions for "BabyLog" folder */,
+			);
 			path = BabyLog;
 			sourceTree = "<group>";
 		};
 		BAB1060000000000000000C1 /* BabyLogWatch */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BAB1060000000000000000F6 /* Exceptions for "BabyLogWatch" folder */,
+			);
 			path = BabyLogWatch;
+			sourceTree = "<group>";
+		};
+		BAB1060000000000000000E2 /* BabyLogWatchWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BAB1060000000000000000F7 /* Exceptions for "BabyLogWatchWidgets" folder */,
+			);
+			path = BabyLogWatchWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -76,6 +139,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BAB1060000000000000000F0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -84,6 +154,7 @@
 			children = (
 				BAB1060000000000000000A1 /* BabyLog */,
 				BAB1060000000000000000C1 /* BabyLogWatch */,
+				BAB1060000000000000000E2 /* BabyLogWatchWidgets */,
 				BAB1060000000000000000A4 /* Products */,
 				BAB1060000000000000000E1 /* Local.xcconfig */,
 			);
@@ -94,6 +165,7 @@
 			children = (
 				BAB1060000000000000000A5 /* BabyLog.app */,
 				BAB1060000000000000000C2 /* BabyLogWatch.app */,
+				BAB1060000000000000000E3 /* BabyLogWatchWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -132,10 +204,12 @@
 				BAB1060000000000000000C8 /* Sources */,
 				BAB1060000000000000000C9 /* Frameworks */,
 				BAB1060000000000000000D0 /* Resources */,
+				BAB1060000000000000000E6 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				BAB1060000000000000000E8 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				BAB1060000000000000000C1 /* BabyLogWatch */,
@@ -146,6 +220,28 @@
 			productName = BabyLogWatch;
 			productReference = BAB1060000000000000000C2 /* BabyLogWatch.app */;
 			productType = "com.apple.product-type.application";
+		};
+		BAB1060000000000000000E4 /* BabyLogWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BAB1060000000000000000F2 /* Build configuration list for PBXNativeTarget "BabyLogWatchWidgets" */;
+			buildPhases = (
+				BAB1060000000000000000E9 /* Sources */,
+				BAB1060000000000000000F0 /* Frameworks */,
+				BAB1060000000000000000F1 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				BAB1060000000000000000E2 /* BabyLogWatchWidgets */,
+			);
+			name = BabyLogWatchWidgets;
+			packageProductDependencies = (
+			);
+			productName = BabyLogWatchWidgets;
+			productReference = BAB1060000000000000000E3 /* BabyLogWatchWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -161,6 +257,9 @@
 						CreatedOnToolsVersion = 27.0;
 					};
 					BAB1060000000000000000C3 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					BAB1060000000000000000E4 = {
 						CreatedOnToolsVersion = 27.0;
 					};
 				};
@@ -182,6 +281,7 @@
 			targets = (
 				BAB1060000000000000000A6 /* BabyLog */,
 				BAB1060000000000000000C3 /* BabyLogWatch */,
+				BAB1060000000000000000E4 /* BabyLogWatchWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -201,6 +301,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BAB1060000000000000000F1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -212,6 +319,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		BAB1060000000000000000C8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BAB1060000000000000000E9 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -347,6 +461,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BabyLog/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Baby Log";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -373,6 +488,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BabyLog/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Baby Log";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -396,9 +512,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = BabyLogWatch/BabyLogWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BabyLogWatch/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Baby Log";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.rollingshuttle.babylog;
@@ -424,9 +542,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = BabyLogWatch/BabyLogWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BabyLogWatch/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Baby Log";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.rollingshuttle.babylog;
@@ -436,6 +556,62 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.rollingshuttle.babylog.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		BAB1060000000000000000F3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BAB1060000000000000000E1 /* Local.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = BabyLogWatchWidgets/BabyLogWatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BabyLogWatchWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Baby Log";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rollingshuttle.babylog.watchkitapp.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		BAB1060000000000000000F4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BAB1060000000000000000E1 /* Local.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = BabyLogWatchWidgets/BabyLogWatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BabyLogWatchWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Baby Log";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rollingshuttle.babylog.watchkitapp.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -472,6 +648,15 @@
 			buildConfigurations = (
 				BAB1060000000000000000D2 /* Debug */,
 				BAB1060000000000000000D3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BAB1060000000000000000F2 /* Build configuration list for PBXNativeTarget "BabyLogWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BAB1060000000000000000F3 /* Debug */,
+				BAB1060000000000000000F4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

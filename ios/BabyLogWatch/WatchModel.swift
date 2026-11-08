@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import WatchConnectivity
+import WidgetKit
 
 /// The watch keeps no journal: it shows the summary the iPhone pushes and sends taps to the
 /// phone, which writes and syncs. A tap while the phone is out of reach is queued on the watch
@@ -10,7 +11,9 @@ import WatchConnectivity
 final class WatchModel: NSObject, ObservableObject {
     static let shared = WatchModel()
 
-    @Published private(set) var summary: [String: Any] = [:]
+    @Published private(set) var summary: [String: Any] = [:] {
+        didSet { shareWithComplication() }
+    }
     @Published var message: String? = nil
     @Published private(set) var busy = false
 
@@ -21,6 +24,18 @@ final class WatchModel: NSObject, ObservableObject {
             WCSession.default.activate()
             summary = WCSession.default.receivedApplicationContext
         }
+    }
+
+    /// The complication runs in its own process: it reads the last feed and diaper from the
+    /// App Group defaults, which this writes on every summary, then asks WidgetKit to redraw.
+    private func shareWithComplication() {
+        guard let d = UserDefaults(suiteName: "group.com.rollingshuttle.babylog") else { return }
+        for key in ["lastFeedAt", "lastFeedText", "lastDiaperAt", "lastDiaperText", "child"] {
+            d.set(summary[key], forKey: key)
+        }
+        d.set(label("lastFeed", "Last feed"), forKey: "lastFeedLabel")
+        d.set(label("lastDiaper", "Last diaper"), forKey: "lastDiaperLabel")
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     // MARK: what the screen shows

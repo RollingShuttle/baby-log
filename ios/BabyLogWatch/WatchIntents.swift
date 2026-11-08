@@ -57,15 +57,89 @@ struct LogFeedIntent: AppIntent {
     }
 }
 
+/// Fixed-kind diapers, so each kind has its own spoken variants (记一次尿 / 拉屎 / 都有 ...).
+struct LogWetDiaperIntent: AppIntent {
+    static var title: LocalizedStringResource = "Log a wet diaper"
+    static var description = IntentDescription("Logs a wet diaper now.")
+
+    init() {}
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        try await LogDiaperIntent(kind: .wet).perform()
+    }
+}
+
+struct LogDirtyDiaperIntent: AppIntent {
+    static var title: LocalizedStringResource = "Log a dirty diaper"
+    static var description = IntentDescription("Logs a dirty diaper now.")
+
+    init() {}
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        try await LogDiaperIntent(kind: .dirty).perform()
+    }
+}
+
+struct LogBothDiaperIntent: AppIntent {
+    static var title: LocalizedStringResource = "Log a wet and dirty diaper"
+    static var description = IntentDescription("Logs a wet and dirty diaper now.")
+
+    init() {}
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        try await LogDiaperIntent(kind: .both).perform()
+    }
+}
+
 struct BabyLogWatchShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: LogFeedIntent(),
-                    phrases: ["Log a feed in \(.applicationName)",
-                              "Log a bottle in \(.applicationName)"],
+                    phrases: [
+                              "Log a feed in \(.applicationName)",
+                              "Log a bottle in \(.applicationName)",
+                              "Record a feed in \(.applicationName)",
+                              "Add a feed in \(.applicationName)",
+                              "Log feeding in \(.applicationName)",
+                              "Log milk in \(.applicationName)",
+                              "\(.applicationName) feed"],
                     shortTitle: "Log a feed",
                     systemImageName: "drop.fill")
+        AppShortcut(intent: LogWetDiaperIntent(),
+                    phrases: [
+                              "Log a wet diaper in \(.applicationName)",
+                              "Log a wet one in \(.applicationName)",
+                              "Log a pee in \(.applicationName)",
+                              "Record a wet diaper in \(.applicationName)",
+                              "Add a wet diaper in \(.applicationName)",
+                              "\(.applicationName) wet diaper"],
+                    shortTitle: "Wet diaper",
+                    systemImageName: "drop")
+        AppShortcut(intent: LogDirtyDiaperIntent(),
+                    phrases: [
+                              "Log a dirty diaper in \(.applicationName)",
+                              "Log a poop in \(.applicationName)",
+                              "Log a poo in \(.applicationName)",
+                              "Log a bowel movement in \(.applicationName)",
+                              "Record a dirty diaper in \(.applicationName)",
+                              "Add a dirty diaper in \(.applicationName)",
+                              "\(.applicationName) dirty diaper"],
+                    shortTitle: "Dirty diaper",
+                    systemImageName: "cloud.fill")
+        AppShortcut(intent: LogBothDiaperIntent(),
+                    phrases: [
+                              "Log a wet and dirty diaper in \(.applicationName)",
+                              "Log both in \(.applicationName)",
+                              "Log pee and poop in \(.applicationName)",
+                              "Record a wet and dirty diaper in \(.applicationName)",
+                              "Add a wet and dirty diaper in \(.applicationName)"],
+                    shortTitle: "Wet and dirty diaper",
+                    systemImageName: "cloud.rain.fill")
         AppShortcut(intent: LogDiaperIntent(),
-                    phrases: ["Log a \(\.$kind) diaper in \(.applicationName)",
+                    phrases: [
+                              "Log a \(\.$kind) diaper in \(.applicationName)",
                               "Log a diaper in \(.applicationName)"],
                     shortTitle: "Log a diaper",
                     systemImageName: "cloud.fill")
