@@ -1249,5 +1249,45 @@ class TestMain(AppCase):
         self.assertEqual(run.call_args.kwargs["port"], 9000)
 
 
+class TestUpdateAndLanguage(AppCase):
+    """Settings → This app: the string table, the update check, the updater hand-off."""
+
+    def test_strings_table_is_served(self):
+        r = self.c.get("/i18n/strings.json")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("settings.saveSettings", r.get_json()["strings"])
+
+    def test_check_reports_how_far_behind(self):
+        answers = [(True, ""), (True, "3"), (True, "2026-11-13 10:00"), (True, "Fix the sync")]
+        with mock.patch.object(app_mod, "_git", side_effect=answers):
+            r = self.c.get("/api/update/check")
+        self.assertEqual(r.get_json(), {"ok": True, "behind": 3, "current": "2026-11-13 10:00",
+                                        "latest": "Fix the sync"})
+
+    def test_check_up_to_date_names_no_commit(self):
+        with mock.patch.object(app_mod, "_git", side_effect=[(True, ""), (True, "0"), (True, "2026-11-13 10:00")]):
+            r = self.c.get("/api/update/check")
+        self.assertEqual(r.get_json()["behind"], 0)
+        self.assertEqual(r.get_json()["latest"], "")
+
+    def test_check_says_why_when_fetch_fails(self):
+        with mock.patch.object(app_mod, "_git", return_value=(False, "fatal: unable to access")):
+            r = self.c.get("/api/update/check")
+        self.assertFalse(r.get_json()["ok"])
+        self.assertIn("unable", r.get_json()["error"])
+
+    def test_run_hands_off_to_the_updater(self):
+        with mock.patch.object(app_mod, "_spawn_updater", return_value=(True, "")) as spawn:
+            r = self.c.post("/api/update/run", json={})
+        self.assertEqual(r.status_code, 200)
+        spawn.assert_called_once()
+
+    def test_run_reports_a_missing_python(self):
+        with mock.patch.object(app_mod, "_spawn_updater", return_value=(False, "Python is not on PATH")):
+            r = self.c.post("/api/update/run", json={})
+        self.assertEqual(r.status_code, 500)
+        self.assertIn("Python", r.get_json()["error"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

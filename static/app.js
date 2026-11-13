@@ -1794,6 +1794,48 @@ async function loadDeleted() {
   if (state.view === "settings") renderSettings();
 }
 
+// Language (per PC, takes effect on reload) and updating the app from GitHub. The check runs
+// once when Settings is first opened; Update hands off to tools/update.py, which closes this
+// app, rebuilds it and opens it again.
+function appCard() {
+  const lang = el("select", { onchange: (x) => { I18n.setChoice(x.target.value); location.reload(); } },
+    el("option", { value: "", selected: I18n.choice() === "" }, "Follow this PC"),
+    el("option", { value: "en", selected: I18n.choice() === "en" }, "English"),
+    el("option", { value: "zh-Hans", selected: I18n.choice() === "zh-Hans" }, "简体中文"));
+  const line = el("span", { class: "muted small" }, "");
+  const now = el("button", { class: "primary", type: "button", onclick: async (x) => {
+    x.target.disabled = true;
+    try {
+      await postJSON("/api/update/run", {});
+      line.textContent = "Updating: a window shows the progress; this app closes and opens again in about a minute.";
+    } catch (e) {
+      line.textContent = e.message;
+      x.target.disabled = false;
+    }
+  } }, "Update now");
+  now.hidden = true;
+  const check = async () => {
+    line.textContent = "Checking GitHub…";
+    now.hidden = true;
+    try {
+      const r = await (await fetch("/api/update/check", { cache: "no-store" })).json();
+      if (!r.ok) { line.textContent = `Could not check for updates: ${r.error || "?"}`; return; }
+      if (r.behind > 0) {
+        line.textContent = `${r.behind} update(s) available — latest: ${r.latest}`;
+        now.hidden = false;
+      } else {
+        line.textContent = `Up to date · ${r.current}`;
+      }
+    } catch (e) { line.textContent = `Could not check for updates: ${e.message}`; }
+  };
+  check();
+  return el("section", { class: "card" },
+    el("div", { class: "h2" }, "This app"),
+    el("div", { class: "form" }, el("label", { class: "field" }, el("span", {}, "Language"), lang)),
+    el("div", { class: "row" },
+      el("button", { type: "button", onclick: check }, "Check for updates"), now, line));
+}
+
 function renderSettings() {
   const view = document.getElementById("view-settings");
   const s = state.settings || {};
@@ -1846,7 +1888,7 @@ function renderSettings() {
       f.quick_custom.parentElement.hidden = mode !== "custom";
     };
     showQuickFields();
-    view.replaceChildren(settingsCard,
+    view.replaceChildren(settingsCard, appCard(),
       el("section", { class: "card", id: "settings-child" }),
       el("section", { class: "card", id: "settings-needs" }),
       el("section", { class: "card", id: "settings-deleted" }));

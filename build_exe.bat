@@ -15,6 +15,7 @@ python -m PyInstaller --noconfirm --clean --windowed --onefile ^
   --icon "%~dp0icon.ico" ^
   --add-data "%~dp0static;static" ^
   --add-data "%~dp0docs\core.js;docs" ^
+  --add-data "%~dp0i18n\strings.json;i18n" ^
   --hidden-import pystray._win32 ^
   --distpath "%~dp0." ^
   --workpath "%~dp0build" ^

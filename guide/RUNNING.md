@@ -254,6 +254,17 @@ range — one row per day — which is the thing to take to the pediatrician.
 
 ---
 
+### Language and updates on the PC
+
+Settings → **This app**: **Language** is *Follow this PC* (Chinese when Windows is in
+Chinese), *English* or *简体中文*; the page reloads in that language. Anything not yet in the
+string table stays in English.
+
+The same card checks GitHub each time Settings is first opened and says *Up to date* or
+*N update(s) available*. **Update now** opens a small window that downloads the new code and
+rebuilds the app; Baby Log closes and opens again by itself in about a minute. Nothing is
+lost: every saved entry is already a file. (`update.bat` still does the same by hand.)
+
 ## Part 5 — A second computer
 
 The app is not tied to one machine. A laptop can run the same thing and the two stay in step,

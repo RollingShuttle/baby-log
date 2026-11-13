@@ -20,6 +20,8 @@ import argparse
 import json
 import logging
 import os
+import shutil
+import subprocess
 import sys
 import threading
 import time as _time
@@ -46,6 +48,55 @@ def _resource_dir():
 
 STATIC_DIR = _resource_dir() / "static"
 CORE_JS = _resource_dir() / "docs" / "core.js"
+I18N_JSON = _resource_dir() / "i18n" / "strings.json"
+# The git checkout the app was built from: the exe sits in it; from source, this file does.
+REPO_DIR = (Path(sys.executable).resolve().parent if getattr(sys, "frozen", False)
+            else Path(__file__).resolve().parent)
+
+
+def _git(*args, timeout=60):
+    """(ok, output) of one git command in the checkout, with no console window flashing."""
+    flags = 0x08000000 if os.name == "nt" else 0   # CREATE_NO_WINDOW
+    try:
+        done = subprocess.run(["git", *args], cwd=str(REPO_DIR), capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", timeout=timeout, creationflags=flags)
+    except (OSError, subprocess.SubprocessError) as e:
+        return False, str(e)
+    return done.returncode == 0, (done.stdout + done.stderr).strip()
+
+
+def update_status():
+    """How far this checkout is behind GitHub's main, for the Settings card. Fetches; never pulls."""
+    if not (REPO_DIR / ".git").exists():
+        return {"ok": False, "error": "this copy is not a git checkout"}
+    ok, out = _git("fetch", "--quiet", "origin", "main")
+    if not ok:
+        return {"ok": False, "error": out[-200:] or "git fetch failed"}
+    ok, behind = _git("rev-list", "--count", "HEAD..origin/main")
+    if not ok:
+        return {"ok": False, "error": behind[-200:]}
+    n = int(behind) if behind.strip().isdigit() else 0
+    _, current = _git("log", "-1", "--format=%cd", "--date=format:%Y-%m-%d %H:%M", "HEAD")
+    latest = _git("log", "-1", "--format=%s", "origin/main")[1][:120] if n else ""
+    return {"ok": True, "behind": n, "current": current, "latest": latest}
+
+
+def _spawn_updater():
+    """Start tools/update.py --relaunch in its own console and return at once. It closes this
+    app (which holds its own exe open), rebuilds it and opens it again; its window stays open
+    only when something failed."""
+    python = shutil.which("python") or shutil.which("py")
+    if not python:
+        return False, "Python is not on PATH"
+    script = REPO_DIR / "tools" / "update.py"
+    if not script.exists():
+        return False, f"{script} is missing"
+    flags = 0x00000010 if os.name == "nt" else 0   # CREATE_NEW_CONSOLE
+    try:
+        subprocess.Popen([python, str(script), "--relaunch"], cwd=str(REPO_DIR), creationflags=flags)
+    except OSError as e:
+        return False, str(e)
+    return True, ""
 
 # The one settings shape every device has (§6.1). The phone adds `device`; the PC does not.
 SETTINGS_DEFAULTS = {
@@ -326,6 +377,25 @@ def create_app(config_path="config.yaml", *, app_folder=None, output_folder=None
         resp = send_from_directory(CORE_JS.parent, CORE_JS.name, mimetype="text/javascript")
         resp.headers["Cache-Control"] = "no-cache"
         return resp
+
+    @app.get("/i18n/strings.json")
+    def i18n_json():
+        """The English/Chinese table static/i18n.js translates the page with."""
+        resp = send_from_directory(I18N_JSON.parent, I18N_JSON.name, mimetype="application/json")
+        resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+    # -- updating this PC ----------------------------------------------------
+    @app.get("/api/update/check")
+    def api_update_check():
+        return jsonify(update_status())
+
+    @app.post("/api/update/run")
+    def api_update_run():
+        ok, why = _spawn_updater()
+        if not ok:
+            return _err(why, 500)
+        return jsonify({"ok": True})
 
     # -- config and settings -------------------------------------------------
     @app.get("/api/config")

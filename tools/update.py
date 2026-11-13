@@ -143,6 +143,7 @@ def rebuild():
         "--icon", str(ROOT / "icon.ico"),
         "--add-data", f"{ROOT / 'static'};static",
         "--add-data", f"{ROOT / 'docs' / 'core.js'};docs",
+        "--add-data", f"{ROOT / 'i18n' / 'strings.json'};i18n",
         "--hidden-import", "pystray._win32",
         "--distpath", str(ROOT),
         "--workpath", str(ROOT / "build"),
@@ -157,7 +158,14 @@ def rebuild():
     return True
 
 
-def main():
+def start_app():
+    """Open the freshly built app again: the in-app Update button closed it to rebuild."""
+    if os.name == "nt" and EXE.exists():
+        print("Opening it again...")
+        os.startfile(str(EXE))
+
+
+def main(relaunch=False):
     print("Baby Log — update")
     print("=" * 46)
 
@@ -193,8 +201,19 @@ def main():
         print("  the app itself is built and fine — run tools/make_shortcut.py by hand.")
     print()
     print("Done. Open it from the Desktop icon.")
+    if relaunch:
+        start_app()
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # --relaunch: started by the app's Update button. Its window closes by itself on success
+    # and waits on failure, so the message can be read.
+    RELAUNCH = "--relaunch" in sys.argv[1:]
+    code = main(relaunch=RELAUNCH)
+    if RELAUNCH:
+        if code:
+            input("\nPress Enter to close this window.")
+        else:
+            time.sleep(3)
+    sys.exit(code)

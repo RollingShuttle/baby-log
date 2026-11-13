@@ -202,8 +202,11 @@ class TestTheBuildMatchesBuildExeBat(unittest.TestCase):
         self.assertIn('--add-data "%~dp0docs\\core.js;docs"', bat)
         self.assertIn("\"--add-data\", f\"{ROOT / 'static'};static\"", src)
         self.assertIn("\"--add-data\", f\"{ROOT / 'docs' / 'core.js'};docs\"", src)
-        self.assertEqual(bat.count("--add-data"), 2)
-        self.assertEqual(src.count("--add-data"), 2)
+        # ...and the English/Chinese table the page translates itself with (/i18n/strings.json).
+        self.assertIn('--add-data "%~dp0i18n\strings.json;i18n"', bat)
+        self.assertIn("\"--add-data\", f\"{ROOT / 'i18n' / 'strings.json'};i18n\"", src)
+        self.assertEqual(bat.count("--add-data"), 3)
+        self.assertEqual(src.count("--add-data"), 3)
 
     def test_both_build_the_same_named_app(self):
         """The updater stops the app by image name and the shortcut points at the exe by name, so

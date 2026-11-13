@@ -1709,6 +1709,51 @@
       "where": "planned: progress line",
       "zh-Hans": "还有 {n} 项未勾选"
     },
+    "pc.app": {
+      "en": "This app",
+      "where": "PC Settings: the card with the language and the update",
+      "zh-Hans": "本程序"
+    },
+    "pc.checkUpdates": {
+      "en": "Check for updates",
+      "where": "PC Settings: button",
+      "zh-Hans": "检查更新"
+    },
+    "pc.checking": {
+      "en": "Checking GitHub…",
+      "where": "PC Settings: while the check runs",
+      "zh-Hans": "正在检查 GitHub…"
+    },
+    "pc.followPc": {
+      "en": "Follow this PC",
+      "where": "PC Settings: language follows Windows",
+      "zh-Hans": "跟随电脑"
+    },
+    "pc.upToDate": {
+      "en": "Up to date · {when}",
+      "where": "PC Settings: nothing newer; {when} is the current code's date",
+      "zh-Hans": "已是最新 · {when}"
+    },
+    "pc.updateFailed": {
+      "en": "Could not check for updates: {why}",
+      "where": "PC Settings: the check failed",
+      "zh-Hans": "无法检查更新：{why}"
+    },
+    "pc.updateNow": {
+      "en": "Update now",
+      "where": "PC Settings: button, shown when GitHub has newer code",
+      "zh-Hans": "立即更新"
+    },
+    "pc.updatesAvailable": {
+      "en": "{n} update(s) available — latest: {what}",
+      "where": "PC Settings: newer code on GitHub",
+      "zh-Hans": "有 {n} 个更新 — 最新：{what}"
+    },
+    "pc.updating": {
+      "en": "Updating: a window shows the progress; this app closes and opens again in about a minute.",
+      "where": "PC Settings: after Update now",
+      "zh-Hans": "正在更新：会弹出一个窗口显示进度，本程序会关闭，约一分钟后自动重新打开。"
+    },
     "photos.accessNeeded": {
       "en": "Baby Log needs access to your photos to sort them by {name}'s age.",
       "where": "planned: the photo-library permission prompt",

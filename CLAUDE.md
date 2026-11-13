@@ -199,3 +199,13 @@ companion target `ios/BabyLogWatch` (no journal, no sign-in: WatchConnectivity t
 phone pushes a summary; `Sync/WatchBridge.swift` + `AppModel.handleWatch`). Each round was checked
 by a three-agent Workflow of verifiers before pushing; their findings are fixed. Version and build
 number live at project level so the two apps always match.
+
+**13 Nov 2026 — PC language and Update button.** `static/i18n.js` (global `I18n`, Node-testable,
+`tests/test_i18n_pc.py`) translates the PC page into Chinese by swapping any text that matches
+`i18n/strings.json` (exact or `{placeholder}` templates) through a MutationObserver, so app.js
+stays English; the choice is `localStorage["bl.pc.lang"]`. The table is served at
+`/i18n/strings.json` and bundled into the exe (a third `--add-data` in `build_exe.bat` and
+`tools/update.py`). Settings → *This app* runs `GET /api/update/check` (git fetch, commits behind)
+and **Update now** → `POST /api/update/run`, which starts `tools/update.py --relaunch` in its own
+console: pull, close the app, rebuild, reopen. iOS work no longer gets verifier workflows: the
+owner's Xcode build is the check (owner's request, 7 Nov 2026).
