@@ -1678,7 +1678,9 @@ function validateDraft(d) {
     }
   }
   if (t > Date.now() + 10 * MIN) return "Start can't be more than 10 minutes in the future";
-  if (d.end !== null) {
+  // A feed's End is hidden (a bottle has no useful end), so it cannot be checked against the
+  // Start the user just moved; Save recomputes it from the Start instead.
+  if (d.end !== null && d.type !== "feed") {
     const en = ms(d.end);
     if (Number.isNaN(en)) return "End needs a date and time, or leave it blank";
     if (en < t) return "End can't be before Start";
@@ -1709,7 +1711,7 @@ async function saveEditor() {
     if (d.end !== null && data.timer) data = foldTimer(data, ms(d.end));
     // A feed typed in after the fact has no timer: it is over, so it gets its end (Core.isRunning
     // reads end === null as "still going").
-    if (d.end === null && !data.timer) d.end = Core.isoLocal(new Date(ms(d.time) + Core.breastSeconds({ type: "feed", data, end: null }, 0) * 1000));
+    if (!data.timer) d.end = Core.isoLocal(new Date(ms(d.time) + Core.breastSeconds({ type: "feed", data, end: null }, 0) * 1000));
     if (!e.unusualOk && Core.unusual(Core.bottleMl({ data }), recentMls())) {
       setMsg("That's more than twice his biggest recent feed. Save anyway?", "ask");
       return;

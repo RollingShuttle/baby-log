@@ -23,6 +23,9 @@ struct SettingsView: View {
                 if !model.journal.pending.isEmpty {
                     Text(S("syncCard.waiting", ["n": String(model.journal.pending.count)])).font(.footnote)
                 }
+                if let retry = model.sync.state.retry, !retry.isEmpty {
+                    Text(S("sync.retrying", ["n": String(retry.count)])).font(.footnote).foregroundStyle(.secondary)
+                }
                 if let error = model.sync.state.lastError {
                     Text(error).font(.footnote).foregroundStyle(.red)
                 }

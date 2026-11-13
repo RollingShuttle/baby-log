@@ -6,6 +6,9 @@ struct SyncState: Codable {
     var lastSyncAt: Date?
     var lastError: String?
     var lastErrorAt: Date?
+    /// Files whose download failed (relative path -> item id): retried on the next sync, so one
+    /// bad link never holds back everything else.
+    var retry: [String: String]?
 }
 
 /// One sync: flush the outbox, then walk the delta and download what the mirror lacks. The
@@ -80,12 +83,21 @@ final class SyncEngine: ObservableObject {
             var link = state.deltaLink
             var newDelta: String? = nil
             var wanted: [GraphItem] = []
+            var seen = Set<String>()
+            for (rel, id) in state.retry ?? [:] where !journal.exists(rel) {
+                let name = String(rel.split(separator: "/").last ?? "")
+                wanted.append(GraphItem(id: id, name: name, relative: rel, isFolder: false, deleted: false,
+                                        size: 1, downloadUrl: nil))
+                seen.insert(rel)
+            }
             repeat {
                 let page = try await graph.delta(folderId: folderId, link: link)
                 for item in page.items where !item.isFolder && !item.deleted && item.size > 0 {
-                    guard let rel = item.relative, Names.parseName(item.name) != nil, !journal.exists(rel) else {
+                    guard let rel = item.relative, Names.parseName(item.name) != nil, !journal.exists(rel),
+                          !seen.contains(rel) else {
                         continue
                     }
+                    seen.insert(rel)
                     wanted.append(item)
                 }
                 link = page.nextLink
@@ -93,39 +105,53 @@ final class SyncEngine: ObservableObject {
                 phase = S("sync.reading", ["n": String(wanted.count)])
             } while link != nil
             // 3. The downloads, a few at a time; each file is kept as soon as it arrives.
+            var failed: [String: String] = [:]
             if !wanted.isEmpty {
                 let graph = self.graph
-                try await withThrowingTaskGroup(of: (String, Data, Record?).self) { group in
+                try await withThrowingTaskGroup(of: (String, Data?, Record?, String, Int).self) { group in
                     var next = 0
                     while next < wanted.count && next < SyncEngine.parallel {
                         let item = wanted[next]
                         next += 1
                         group.addTask {
-                            let data = try await graph.download(item)
                             let rel = item.relative ?? ""
-                            return (rel, data, Journal.parse(data: data, relative: rel))
+                            do {
+                                let data = try await graph.download(item)
+                                return (rel, data, Journal.parse(data: data, relative: rel), item.id, 0)
+                            } catch GraphError.http(let code, _) {
+                                return (rel, nil, nil, item.id, code)
+                            }
                         }
                     }
                     // Written and indexed in one step here: a file on disk that this session has
                     // not indexed would be skipped by every later sync until a relaunch.
-                    while let (rel, data, record) = try await group.next() {
-                        try Journal.writeFile(root: journal.root, relative: rel, data: data)
-                        if let record = record { journal.insert(relative: rel, record: record) }
-                        received += 1
+                    while let (rel, data, record, id, code) = try await group.next() {
+                        if let data = data {
+                            try Journal.writeFile(root: journal.root, relative: rel, data: data)
+                            if let record = record { journal.insert(relative: rel, record: record) }
+                            received += 1
+                        } else if code != 404 {
+                            failed[rel] = id     // a 404 is gone for good; anything else is tried again
+                        }
                         phase = S("sync.reading", ["n": String(wanted.count - received)])
                         if next < wanted.count {
                             let item = wanted[next]
                             next += 1
                             group.addTask {
-                                let data = try await graph.download(item)
                                 let rel = item.relative ?? ""
-                                return (rel, data, Journal.parse(data: data, relative: rel))
+                                do {
+                                    let data = try await graph.download(item)
+                                    return (rel, data, Journal.parse(data: data, relative: rel), item.id, 0)
+                                } catch GraphError.http(let code, _) {
+                                    return (rel, nil, nil, item.id, code)
+                                }
                             }
                         }
                     }
                 }
             }
             if let d = newDelta { state.deltaLink = d }
+            state.retry = failed.isEmpty ? nil : failed
             state.lastSyncAt = Date()
             state.lastError = nil
             save()

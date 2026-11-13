@@ -2274,6 +2274,11 @@
       "where": "pill during the download phase",
       "zh-Hans": "同步中… 正在读取 {n} 条新记录"
     },
+    "sync.retrying": {
+      "en": "{n} file(s) will be retried on the next sync",
+      "where": "iOS Settings, Sync card: downloads that failed and are retried",
+      "zh-Hans": "{n} 个文件将在下次同步时重试"
+    },
     "sync.sending": {
       "en": "Syncing… sending {done} of {total}",
       "where": "pill during the flush phase",

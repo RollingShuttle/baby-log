@@ -99,22 +99,34 @@ struct Graph {
         return nil
     }
 
+    /// The bytes of one file. First the pre-authenticated link from the listing (no token, off
+    /// Graph's budget); then /content with the token, which redirects to a fresh link; then the
+    /// listing's link with the token, because some personal-OneDrive links answer 401 without it.
     func download(_ item: GraphItem) async throws -> Data {
+        var last = 0
         if let u = item.downloadUrl, let url = URL(string: u) {
-            let (data, resp) = try await URLSession.shared.data(from: url)
-            if (resp as? HTTPURLResponse)?.statusCode == 200 { return data }
+            let (data, code) = try await fetch(url, bearer: nil)
+            if code == 200 { return data }
+            last = code
         }
-        // The listing's URL is missing or has expired: ask for the item again and use its fresh one.
-        let (meta, http) = try await request("GET", URL(string: Graph.base + "/me/drive/items/" + item.id)!)
-        guard http.statusCode == 200, let u = json(meta)["@microsoft.graph.downloadUrl"] as? String,
-              let url = URL(string: u) else {
-            throw GraphError.http(http.statusCode, "download " + item.name)
+        let bearer = try await token()
+        let content = URL(string: Graph.base + "/me/drive/items/" + item.id + "/content")!
+        let (data, code) = try await fetch(content, bearer: bearer)
+        if code == 200 { return data }
+        if code == 429 || code == 503 { throw GraphError.throttled(30) }
+        last = code
+        if let u = item.downloadUrl, let url = URL(string: u) {
+            let (data2, code2) = try await fetch(url, bearer: bearer)
+            if code2 == 200 { return data2 }
+            last = code2
         }
-        let (data, resp) = try await URLSession.shared.data(from: url)
-        guard (resp as? HTTPURLResponse)?.statusCode == 200 else {
-            throw GraphError.http((resp as? HTTPURLResponse)?.statusCode ?? 0, "download " + item.name)
-        }
-        return data
+        throw GraphError.http(last, "download " + item.name)
+    }
+    private func fetch(_ url: URL, bearer: String?) async throws -> (Data, Int) {
+        var req = URLRequest(url: url)
+        if let b = bearer { req.setValue("Bearer " + b, forHTTPHeaderField: "Authorization") }
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        return (data, (resp as? HTTPURLResponse)?.statusCode ?? 0)
     }
 
     /// Simple upload; a 409 means the same name is already there, i.e. this file landed on an
