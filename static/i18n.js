@@ -26,6 +26,22 @@
     return String(nav).toLowerCase().indexOf("zh") === 0 ? "zh-Hans" : "en";
   }
 
+  // Dates the Chinese way. The shared core.js (also the frozen phone web app) keeps its
+  // English formatters; on this page they are swapped for these when the language is Chinese.
+  const ZH_DOW = "日一二三四五六";
+  function zhDay(iso) {
+    const s = String(iso);
+    const y = Number(s.slice(0, 4)), m = Number(s.slice(5, 7)), d = Number(s.slice(8, 10));
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    if (Number.isNaN(dt.getTime())) return s.slice(0, 10);
+    return `${y}年${m}月${d}日 周${ZH_DOW[dt.getUTCDay()]}`;
+  }
+  function chineseDates(core) {
+    if (!core || typeof core.fmtTime !== "function") return;
+    core.fmtDay = zhDay;
+    core.fmtDateTime = (iso) => `${zhDay(iso)} ${core.fmtTime(iso)}`;
+  }
+
   const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   /** A translate(text) for one table: exact strings first, then the templates, longest first so
@@ -101,6 +117,8 @@
     const doc = root.document;
     doc.documentElement.lang = lang === "zh-Hans" ? "zh-Hans" : "en";
     if (lang !== "zh-Hans") return;
+    // Before the first await: app.js has not drawn anything yet, so every date comes out Chinese.
+    chineseDates(root.Core);
     // Hidden until translated, so the English does not flash; shown regardless after 2 s.
     doc.documentElement.style.visibility = "hidden";
     const show = () => { doc.documentElement.style.visibility = ""; };
@@ -128,7 +146,7 @@
     show();
   }
 
-  const api = { make, resolved, choice, setChoice, start };
+  const api = { make, resolved, choice, setChoice, start, zhDay, chineseDates };
   if (typeof module !== "undefined" && module.exports) {
     module.exports = api;
   } else {

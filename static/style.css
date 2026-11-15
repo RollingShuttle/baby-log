@@ -463,3 +463,7 @@ button.linkish.danger { color: var(--danger); }
 .pill-btn { cursor: pointer; border: 1px solid var(--line); background: transparent; font: inherit; }
 .pill-btn:hover { background: var(--night); }
 .pill-btn:disabled { opacity: .5; cursor: progress; }
+
+/* Chinese mode: a Hei (sans-serif) face for everything, Latin digits included */
+:root[lang="zh-Hans"] { --sans: "Microsoft YaHei UI", "Microsoft YaHei", "SimHei", "PingFang SC", sans-serif; }
+:root[lang="zh-Hans"] input, :root[lang="zh-Hans"] select, :root[lang="zh-Hans"] textarea { font-family: var(--sans); }

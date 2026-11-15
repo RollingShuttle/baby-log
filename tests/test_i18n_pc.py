@@ -46,6 +46,8 @@ const out = {
   name: t("Yisen"),
   date: t("2026-11-13 10:20"),
   zhSystem: I18n.resolved("zh-CN"),
+  zhDay: I18n.zhDay("2026-11-01"),
+  zhDayTime: (function () { const C = { fmtTime: () => "21:02" }; I18n.chineseDates(C); return C.fmtDateTime("2026-11-13T21:02:00-08:00"); })(),
   enSystem: I18n.resolved("en-US"),
 };
 console.log(JSON.stringify(out));
@@ -68,6 +70,8 @@ class TestUnderNode(unittest.TestCase):
         self.assertEqual(got["name"], "Yisen")
         self.assertEqual(got["date"], "2026-11-13 10:20")
         self.assertEqual((got["zhSystem"], got["enSystem"]), ("zh-Hans", "en"))
+        self.assertEqual(got["zhDay"], "2026年11月1日 周日")
+        self.assertEqual(got["zhDayTime"], "2026年11月13日 周五 21:02")
 
     def test_parses_under_node_check(self):
         if not _node.NODE:
