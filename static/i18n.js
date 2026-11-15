@@ -118,7 +118,9 @@
     doc.documentElement.lang = lang === "zh-Hans" ? "zh-Hans" : "en";
     if (lang !== "zh-Hans") return;
     // Before the first await: app.js has not drawn anything yet, so every date comes out Chinese.
-    chineseDates(root.Core);
+    // core.js declares Core with a top-level const, which is a global name but not a window
+    // property, so it is looked up by name.
+    chineseDates(typeof Core !== "undefined" ? Core : root.Core);   // eslint-disable-line no-undef
     // Hidden until translated, so the English does not flash; shown regardless after 2 s.
     doc.documentElement.style.visibility = "hidden";
     const show = () => { doc.documentElement.style.visibility = ""; };
