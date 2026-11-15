@@ -449,3 +449,12 @@ button.linkish.danger { color: var(--danger); }
   .sides { grid-template-columns: 1fr; }
   .modal { padding: 12px 8px; }
 }
+
+/* Trends: bottle per day and milk through the day */
+.ch-bar { fill: var(--feed); opacity: .55; }
+.ch-bar.today { opacity: 1; }
+.ch-val { font-size: 11px; fill: currentColor; opacity: .75; }
+.ch-line { fill: none; stroke: #9aa3ad; stroke-width: 1.5; opacity: .55; }
+.ch-line.today { stroke: var(--feed); stroke-width: 3; opacity: 1; }
+.ch-now { stroke: #E4A374; stroke-width: 1.5; stroke-dasharray: 4 3; }
+.ch-forecast { margin-top: 8px; font-size: 14px; line-height: 1.6; }

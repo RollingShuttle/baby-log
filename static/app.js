@@ -1610,6 +1610,13 @@ function renderTrends() {
   const target = (v) => el("td", { class: "t-num" }, v ? `target ${v}` : "");
   view.replaceChildren(
     el("section", { class: "card" },
+      el("div", { class: "h2" }, "Bottle per day", el("span", { class: "sub" }, "Last 14 days")),
+      bottleChart(days)),
+    el("section", { class: "card" },
+      el("div", { class: "h2" }, "Milk through the day",
+        el("span", { class: "sub" }, "each line adds up one day's bottles hour by hour; today in blue, the dotted line is now")),
+      ...intakeChart(days.slice(-7))),
+    el("section", { class: "card" },
       el("div", { class: "h2" }, "Last 14 days", el("span", { class: "sub" }, "a row opens that day")),
       el("div", { class: "t-scroll" }, el("table", { class: "t-table" },
         el("thead", {}, el("tr", {}, ...["Day", "Feeds", "Bottle", "Breast min", "Wet", "Dirty", "Sleeps", "Sleep", "Pumps", "Pumped"].map((h) => el("th", {}, h))),
@@ -1625,6 +1632,102 @@ function renderTrends() {
         el("span", {}, el("i", { style: "background:var(--wet); border-radius:50%" }), "wet"),
         el("span", {}, el("i", { style: "background:var(--dirty); border-radius:50%" }), "dirty"),
         el("span", {}, el("i", { style: "background:var(--night); border:1px solid var(--line)" }), `night ${(state.settings || {}).night_from || "21:00"}–${(state.settings || {}).night_to || "07:00"}`))));
+}
+
+// -- milk charts (the iPhone's Trends, drawn by hand like the rhythm) -----------------------
+
+const mdLabel = (day) => `${Number(day.slice(5, 7))}/${Number(day.slice(8, 10))}`;
+// A round top for a ml axis: 100, 200, 500, 1000 ... steps above the largest value.
+function axisTop(max) {
+  for (const step of [100, 200, 250, 500, 1000, 2000]) if (max <= step * 4) return Math.max(step, Math.ceil(max / step) * step);
+  return Math.ceil(max / 1000) * 1000;
+}
+
+/** One day's bottles as a running total: [{h, ml}] from (0, 0); a past day runs to 24 h, today to now. */
+function intakeOf(day, isToday, nowH) {
+  const feeds = Core.onDay(state.events, day).filter((e) => e.type === "feed")
+    .map((e) => ({ h: hourOf(e.time), ml: Core.bottleMl(e) })).filter((f) => Number.isFinite(f.h)).sort((a, b) => a.h - b.h);
+  const pts = [{ h: 0, ml: 0 }];
+  let run = 0;
+  for (const f of feeds) { run += f.ml; pts.push({ h: f.h, ml: run }); }
+  pts.push({ h: isToday ? Math.max(nowH, pts[pts.length - 1].h) : 24, ml: run });
+  return { day, isToday, total: run, pts };
+}
+
+function bottleChart(days) {
+  const W = 800, L = 56, R = 12, T = 22, PH = 160, B = 24;
+  const PW = W - L - R, H = T + PH + B;
+  const today = todayStr();
+  const vals = days.map((d) => intakeOf(d, d === today, 24).total);
+  const top = axisTop(Math.max(1, ...vals));
+  const y = (ml) => T + PH - (ml / top) * PH;
+  const slot = PW / days.length, bw = slot * 0.62;
+  const kids = [];
+  for (let i = 0; i <= 4; i++) {
+    const v = (top / 4) * i;
+    kids.push(svg("line", { class: "rh-grid", x1: L, y1: y(v), x2: W - R, y2: y(v) }));
+    kids.push(svg("text", { class: "rh-hour", x: L - 6, y: y(v) + 4, "text-anchor": "end" }, document.createTextNode(amount(v))));
+  }
+  days.forEach((d, i) => {
+    const x = L + slot * i + (slot - bw) / 2, v = vals[i];
+    kids.push(svg("rect", { class: `ch-bar${d === today ? " today" : ""}`, x, y: y(v), width: bw, height: Math.max(0, T + PH - y(v)), rx: 2 },
+      svg("title", {}, document.createTextNode(`${Core.fmtDay(d)} · ${amount(v)}`))));
+    if (v) kids.push(svg("text", { class: "ch-val", x: x + bw / 2, y: y(v) - 4, "text-anchor": "middle" }, document.createTextNode(amount(v))));
+    kids.push(svg("text", { class: "rh-hour", x: x + bw / 2, y: H - 6, "text-anchor": "middle" }, document.createTextNode(mdLabel(d))));
+  });
+  return svg("svg", { class: "rhythm", viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Bottle per day" }, ...kids);
+}
+
+/** The cumulative chart and, under it, today against the past days' pace. */
+function intakeChart(days) {
+  const W = 800, L = 56, R = 12, T = 16, PH = 200, B = 24;
+  const PW = W - L - R, H = T + PH + B;
+  const today = todayStr();
+  const now = new Date();
+  const nowH = now.getHours() + now.getMinutes() / 60;
+  const series = days.map((d) => intakeOf(d, d === today, nowH));
+  const top = axisTop(Math.max(1, ...series.map((s) => s.total)));
+  const x = (h) => L + (h / 24) * PW;
+  const y = (ml) => T + PH - (ml / top) * PH;
+  const kids = [];
+  for (let i = 0; i <= 4; i++) {
+    const v = (top / 4) * i;
+    kids.push(svg("line", { class: "rh-grid", x1: L, y1: y(v), x2: W - R, y2: y(v) }));
+    kids.push(svg("text", { class: "rh-hour", x: L - 6, y: y(v) + 4, "text-anchor": "end" }, document.createTextNode(amount(v))));
+  }
+  for (const h of [0, 6, 12, 18, 24]) {
+    kids.push(svg("line", { class: "rh-grid", x1: x(h), y1: T, x2: x(h), y2: T + PH }));
+    kids.push(svg("text", { class: "rh-hour", x: x(h), y: H - 6, "text-anchor": "middle" }, document.createTextNode(`${pad(h % 24)}:00`)));
+  }
+  // Steps, not slopes: the total jumps at each feed and stays flat between them.
+  const path = (pts) => pts.map((p, i) => (i ? `H ${x(p.h).toFixed(1)} V ${y(p.ml).toFixed(1)}` : `M ${x(p.h).toFixed(1)} ${y(p.ml).toFixed(1)}`)).join(" ");
+  for (const s of series.filter((s) => !s.isToday)) {
+    kids.push(svg("path", { class: "ch-line", d: path(s.pts) }, svg("title", {}, document.createTextNode(`${Core.fmtDay(s.day)} · ${amount(s.total)}`))));
+  }
+  const t = series.find((s) => s.isToday);
+  if (t) kids.push(svg("path", { class: "ch-line today", d: path(t.pts) }, svg("title", {}, document.createTextNode(`${Core.fmtDay(t.day)} · ${amount(t.total)}`))));
+  kids.push(svg("line", { class: "ch-now", x1: x(nowH), y1: T, x2: x(nowH), y2: T + PH }));
+  const chart = svg("svg", { class: "rhythm", viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Milk through the day" }, ...kids);
+
+  // The forecast: the mean share of a past day's total drunk by this hour, and what today's
+  // total so far says about the rest of it. Only past days that had bottles count.
+  const lines = [];
+  const past = series.filter((s) => !s.isToday && s.total > 0);
+  if (t) {
+    lines.push(`Today so far: ${amount(t.total)}`);
+    if (past.length) {
+      const byNow = (s) => { let v = 0; for (const p of s.pts) if (p.h <= nowH) v = p.ml; return v; };
+      const share = past.reduce((a, s) => a + byNow(s) / s.total, 0) / past.length;
+      const avg = Math.round(past.reduce((a, s) => a + s.total, 0) / past.length);
+      lines.push(`On the last ${past.length} days, ${Math.round(share * 100)}% of the day's milk was drunk by this time`);
+      if (share >= 0.1 && t.total > 0) {
+        const total = Math.round(t.total / share);
+        lines.push(el("b", {}, `At that pace today ends near ${amount(total)}: about ${amount(Math.max(0, total - t.total))} more`));
+      }
+      lines.push(`Average day ${amount(avg)}: ${amount(Math.max(0, avg - t.total))} more to reach it`);
+    }
+  }
+  return [chart, el("div", { class: "ch-forecast" }, ...lines.map((l) => el("div", {}, l)))];
 }
 
 // Hand-drawn SVG: one row per day, midnight to midnight.
