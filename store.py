@@ -26,7 +26,7 @@ import tempfile
 import threading
 import time as _time
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePath
 
 import yaml
 
@@ -367,23 +367,39 @@ class Journal:
 
     # -- reading -------------------------------------------------------------
     def _candidate_files(self):
-        """Every `*.json` under children/ and events/<day>/. A folder that cannot be listed (a
-        placeholder OneDrive has not materialised) is skipped, not fatal."""
-        for p in self._list(self._dir("children")):
-            if p.is_file() and p.suffix == ".json":
-                yield p
-        for day in self._list(self._dir("events")):
-            if day.is_dir():
-                for p in self._list(day):
-                    if p.is_file() and p.suffix == ".json":
-                        yield p
+        """Every `*.json` under children/ and events/<day>/ as (path, DirEntry). A folder that
+        cannot be listed (a placeholder OneDrive has not materialised) is skipped, not fatal."""
+        children = self._dir("children")
+        for e in self._list(children):
+            if self._is_json_file(e):
+                yield children / e.name, e
+        events = self._dir("events")
+        for d in self._list(events):
+            if d.is_dir():
+                day = events / d.name
+                for e in self._list(day):
+                    if self._is_json_file(e):
+                        yield day / e.name, e
+
+    @staticmethod
+    def _is_json_file(entry):
+        # PurePath's suffix, not splitext: they disagree on a name like "..json".
+        return entry.is_file() and PurePath(entry.name).suffix == ".json"
 
     @staticmethod
     def _list(folder):
+        """The folder's entries in sorted(Path.iterdir()) order. os.scandir, not iterdir: on
+        Windows its DirEntry carries is_file/is_dir/stat from the listing itself, where
+        Path.is_file and Path.stat each opened the file — at 12,000 files that was 0.9 s of a
+        1 s rescan, held under the lock."""
         try:
-            return sorted(folder.iterdir())
+            with os.scandir(folder) as it:
+                entries = list(it)
         except OSError:
             return []
+        # sorted(Path) compares each part with normcase within one folder; match it.
+        entries.sort(key=lambda e: os.path.normcase(e.name))
+        return entries
 
     def _read(self, path):
         text = path.read_text(encoding="utf-8")
@@ -403,13 +419,13 @@ class Journal:
                     _time.monotonic() - self._scanned_at < SCAN_TTL_S:
                 return self
             index, unreadable, files = {}, [], 0
-            for p in self._candidate_files():
+            for p, entry in self._candidate_files():
                 files += 1
                 key = str(p)
-                if parse_name(p.name) is None:
+                if parse_name(entry.name) is None:
                     continue
                 try:
-                    st = p.stat()
+                    st = entry.stat()
                     known = self._index.get(key)
                     if known and known[0] == st.st_size and known[1] == st.st_mtime_ns:
                         index[key] = known

@@ -4,6 +4,22 @@ enum JournalError: Error {
     case badRecord
 }
 
+/// The scan's per-lane results, handed back under a lock (a class, not a captured var, so the
+/// lanes never mutate shared state directly).
+private final class ScanResults: @unchecked Sendable {
+    private let lock = NSLock()
+    private(set) var parts: [[String: Record]]
+
+    init(_ n: Int) {
+        parts = Array(repeating: [:], count: n)
+    }
+    func put(_ i: Int, _ part: [String: Record]) {
+        lock.lock()
+        parts[i] = part
+        lock.unlock()
+    }
+}
+
 /// The local mirror of the OneDrive app folder (the same children/ and events/<day>/ files)
 /// plus an outbox of the files this phone wrote and has not uploaded yet. Files are immutable
 /// (CLAUDE.md rule 1): a change is a new file, and sync only ever copies files across.
@@ -34,15 +50,35 @@ final class Journal {
         func list(_ rel: String) -> [String] {
             (try? fm.contentsOfDirectory(atPath: root.appendingPathComponent(rel).path)) ?? []
         }
-        var out: [String: Record] = [:]
+        var found: [String] = []
         for name in list("children") where Names.parseName(name) != nil {
-            if let rec = read(root: root, relative: "children/" + name) { out["children/" + name] = rec }
+            found.append("children/" + name)
         }
         for day in list("events") where day.count == 10 {
             for name in list("events/" + day) where Names.parseName(name) != nil {
-                let rel = "events/" + day + "/" + name
-                if let rec = read(root: root, relative: rel) { out[rel] = rec }
+                found.append("events/" + day + "/" + name)
             }
+        }
+        // Reading and parsing is most of a cold launch's wait, so it is spread over the
+        // cores. Each lane takes every lanes-th path, not a folder: the import days hold hundreds
+        // of files. A small journal stays on one lane, as before. Every path is unique and read
+        // by one lane only, so the merge never has to choose.
+        let paths = found
+        let lanes = max(1, min(ProcessInfo.processInfo.activeProcessorCount * 4, paths.count / 50))
+        let results = ScanResults(lanes)
+        DispatchQueue.concurrentPerform(iterations: lanes) { lane in
+            var part: [String: Record] = [:]
+            var i = lane
+            while i < paths.count {
+                if let rec = Journal.read(root: root, relative: paths[i]) { part[paths[i]] = rec }
+                i += lanes
+            }
+            results.put(lane, part)
+        }
+        var out: [String: Record] = [:]
+        out.reserveCapacity(paths.count)
+        for part in results.parts {
+            out.merge(part) { current, _ in current }
         }
         return out
     }

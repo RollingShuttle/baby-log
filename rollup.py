@@ -360,12 +360,14 @@ def _sheet(wb, title, headers, rows, widths=None):
     for c in ws[1]:
         c.fill, c.font = HEAD_FILL, HEAD_FONT
         c.alignment = Alignment(vertical="center")
-    for r in rows:
+    for n, r in enumerate(rows, start=2):
         ws.append(r)
         # openpyxl files any string that opens with "=" as a formula, so a note "=same as the
         # 3:12 one" opened in Excel as #NAME? with a repair prompt, on every regeneration.
         # Every string here is text; key off what openpyxl decided rather than re-checking.
-        for c in ws[ws.max_row]:
+        # The row number is tracked, not read back: ws.max_row and ws[n] both walk every cell
+        # already in the sheet, which made a year's Feeds sheet take 12 s instead of 0.2 s.
+        for c in next(ws.iter_rows(min_row=n, max_row=n, max_col=len(r))):
             if c.data_type == "f":
                 c.data_type = "s"
     ws.freeze_panes = "A2"
@@ -481,9 +483,15 @@ def daily_rows(events, d1, d2, now=None):
         last = datetime.strptime(d2, "%Y-%m-%d")
     except (TypeError, ValueError):
         return out
+    # Bucket once: totals() walks whatever it is given, and handing it the whole journal for
+    # every day of a year-long Daily sheet was days x events. Each bucket keeps input order,
+    # and totals still filters it, so every sum runs in the same order as before.
+    by_day = {}
+    for e in events:
+        by_day.setdefault(local_date(e.get("time")), []).append(e)
     while day <= last:
         date = day.strftime("%Y-%m-%d")
-        t = totals(events, date, now)
+        t = totals(by_day.get(date, []), date, now)
         out.append({"date": date, "feeds": t["feeds"], "bottle_ml": t["bottle_ml"],
                     "breast_min": _round_half_up_to(t["breast_s"] / 60, 1), "wet": t["wet"],
                     "dirty": t["dirty"], "sleeps": t["sleeps"],

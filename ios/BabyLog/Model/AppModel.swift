@@ -73,6 +73,9 @@ final class AppModel: ObservableObject {
     }
 
     @Published private(set) var loading = true
+    /// formulaChoices for the current `events`, cleared where `events` is assigned: the feed
+    /// sheet reads it on every redraw, twice per keystroke, and it walks every feed.
+    private var formulaCache: [String]? = nil
     private var syncTask: Task<Void, Never>? = nil
     private var loadTask: Task<Void, Never>? = nil
     private var bag = Set<AnyCancellable>()
@@ -117,6 +120,7 @@ final class AppModel: ObservableObject {
     func refresh() {
         if loading { return }
         events = journal.events
+        formulaCache = nil
         child = journal.child
         signedIn = auth.isSignedIn
         pushWatchSummary()
@@ -242,7 +246,10 @@ final class AppModel: ObservableObject {
     var lastFeed: Record? { events.last(where: { $0.type == "feed" }) }
     var lastDiaper: Record? { events.last(where: { $0.type == "diaper" }) }
     var formulaChoices: [String] {
-        Record.formulaChoices(events.filter { $0.type == "feed" }.reversed().compactMap { $0.formula })
+        if let cached = formulaCache { return cached }
+        let choices = Record.formulaChoices(events.filter { $0.type == "feed" }.reversed().compactMap { $0.formula })
+        formulaCache = choices
+        return choices
     }
     var quickAmounts: [Int] {
         guard quickStep > 0, quickTo >= quickFrom else { return [] }
