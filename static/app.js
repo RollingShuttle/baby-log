@@ -1637,10 +1637,12 @@ function renderTrends() {
 // -- milk charts (the iPhone's Trends, drawn by hand like the rhythm) -----------------------
 
 const mdLabel = (day) => `${Number(day.slice(5, 7))}/${Number(day.slice(8, 10))}`;
-// A round top for a ml axis: 100, 200, 500, 1000 ... steps above the largest value.
-function axisTop(max) {
-  for (const step of [100, 200, 250, 500, 1000, 2000]) if (max <= step * 4) return Math.max(step, Math.ceil(max / step) * step);
-  return Math.ceil(max / 1000) * 1000;
+// A ml axis in round steps (100, 200, 250, 500 ...), at most four of them above zero.
+function axisSteps(max) {
+  for (const step of [100, 200, 250, 500, 1000, 2000]) {
+    if (max <= step * 4) { const top = Math.max(step, Math.ceil(max / step) * step); return { top, step }; }
+  }
+  return { top: Math.ceil(max / 5000) * 5000, step: 5000 };
 }
 
 /** One day's bottles as a running total: [{h, ml}] from (0, 0); a past day runs to 24 h, today to now. */
@@ -1659,12 +1661,11 @@ function bottleChart(days) {
   const PW = W - L - R, H = T + PH + B;
   const today = todayStr();
   const vals = days.map((d) => intakeOf(d, d === today, 24).total);
-  const top = axisTop(Math.max(1, ...vals));
+  const { top, step } = axisSteps(Math.max(1, ...vals));
   const y = (ml) => T + PH - (ml / top) * PH;
   const slot = PW / days.length, bw = slot * 0.62;
   const kids = [];
-  for (let i = 0; i <= 4; i++) {
-    const v = (top / 4) * i;
+  for (let v = 0; v <= top; v += step) {
     kids.push(svg("line", { class: "rh-grid", x1: L, y1: y(v), x2: W - R, y2: y(v) }));
     kids.push(svg("text", { class: "rh-hour", x: L - 6, y: y(v) + 4, "text-anchor": "end" }, document.createTextNode(amount(v))));
   }
@@ -1686,12 +1687,11 @@ function intakeChart(days) {
   const now = new Date();
   const nowH = now.getHours() + now.getMinutes() / 60;
   const series = days.map((d) => intakeOf(d, d === today, nowH));
-  const top = axisTop(Math.max(1, ...series.map((s) => s.total)));
+  const { top, step } = axisSteps(Math.max(1, ...series.map((s) => s.total)));
   const x = (h) => L + (h / 24) * PW;
   const y = (ml) => T + PH - (ml / top) * PH;
   const kids = [];
-  for (let i = 0; i <= 4; i++) {
-    const v = (top / 4) * i;
+  for (let v = 0; v <= top; v += step) {
     kids.push(svg("line", { class: "rh-grid", x1: L, y1: y(v), x2: W - R, y2: y(v) }));
     kids.push(svg("text", { class: "rh-hour", x: L - 6, y: y(v) + 4, "text-anchor": "end" }, document.createTextNode(amount(v))));
   }
