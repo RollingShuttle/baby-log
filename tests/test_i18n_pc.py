@@ -29,6 +29,16 @@ class TestStatic(unittest.TestCase):
         for bad in ("??=", ".at(", "||=", "&&="):
             self.assertNotIn(bad, src)
 
+    def test_growth_texts_are_the_tables_english(self):
+        # i18n.js swaps whole text nodes, so a hyphen typed for an en dash would stay English.
+        src = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+        keys = [k for k in TABLE if k.startswith("growth.")]
+        self.assertGreater(len(keys), 30)
+        for key in keys:
+            for piece in re.split(r"\{[a-zA-Z]+\}", TABLE[key]["en"]):
+                if piece.strip():
+                    self.assertIn(piece, src, key)
+
     def test_bundled_into_the_exe(self):
         for f in ("build_exe.bat", "tools/update.py"):
             self.assertIn("strings.json", (ROOT / f).read_text(encoding="utf-8"), f)

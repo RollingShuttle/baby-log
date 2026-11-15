@@ -266,6 +266,44 @@ final class AppModel: ObservableObject {
         return S("age.monthsWeeks", ["m": String(days / 30), "w": String((days % 30) / 7)])
     }
 
+    /// The weight-for-age chart's points: the birth weight on the birth day, then every
+    /// weighing by time, each rated against WS/T 423-2022 when the child's sex is set (a
+    /// length- or head-only entry is not a point). Nil until the child has a birth date.
+    func weightChart() -> WeightChart? {
+        guard let c = child, let born = c.string("born"), Growth.ymd(born) != nil else { return nil }
+        let rawSex = c.string("sex") ?? ""
+        let sex: String? = (rawSex == "boy" || rawSex == "girl") ? rawSex : nil
+        let std = Growth.standard
+        var points: [WeightPoint] = []
+        func add(day: String, grams: Double) {
+            // Over a tonne is a typo, and would only stretch the axis past use.
+            guard grams > 0, grams < 1_000_000, Growth.ymd(day) != nil else { return }
+            let age = Growth.ageMonths(born: born, day: day)
+            var z: Double? = nil
+            var median: Double? = nil
+            if let std = std, let age = age, let t = std.table(sex) {
+                z = Growth.zScore(std, sex: sex, age: age, kg: grams / 1000)
+                median = Growth.rowAt(t.p, t.ages, age)?[3]
+            }
+            let dayText = Names.dateOfDay(day).map { $0.formatted(.dateTime.year().month(.abbreviated).day()) } ?? day
+            points.append(WeightPoint(id: points.count, day: day, dayText: dayText, grams: grams,
+                                      ageMonths: age, ageText: growthAgeText(born: born, day: day),
+                                      z: z, percentile: z.map { Growth.percentile($0) }, median: median))
+        }
+        let birthGrams: Double? = (c.body["birth_weight_g"] as? Double) ?? c.int("birth_weight_g").map { Double($0) }
+        if let g = birthGrams { add(day: born, grams: g) }
+        for rec in events where rec.type == "growth" {
+            if let g = rec.number("weight_g") { add(day: rec.day, grams: g) }
+        }
+        return WeightChart(sex: sex, points: points)
+    }
+    /// "23 days old" in the first month, then "1 mo 23 d": calendar months from the birth day.
+    private func growthAgeText(born: String, day: String) -> String {
+        guard let parts = Growth.ageParts(born: born, day: day) else { return "" }
+        if parts.months == 0 { return SP("growth.ageDays", parts.days) }
+        return S("growth.ageMonthsDays", ["m": String(parts.months), "d": String(parts.days)])
+    }
+
     /// Hours since local midnight of a record's start, read off the time string itself (the
     /// writer's clock, never re-zoned).
     private func hourOf(_ rec: Record) -> Double? {

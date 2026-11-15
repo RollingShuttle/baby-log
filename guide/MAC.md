@@ -148,8 +148,13 @@ delete. Settings: sign-in, sync, who, the quick-amount range, language (follow t
 English, 简体中文). Sync runs when the app opens, two seconds after every save, and on
 pull-to-refresh or a tap on the pill.
 
-Not yet: sleep and pump timers, growth, health, the bath type, photos, the outing checklist,
-reminders, Siri, widgets, TestFlight. The plan's Stages 2–5 list them in order.
+Added since: Undo on one-tap diapers; weight, length and head entries; the previous feed and
+typed amounts in the feed sheet; **Trends** (the weight-for-age chart on China's growth standard
+at the top, then bottle per day, feeds, diapers, milk through the day with a forecast, and the
+24-hour rhythm); Siri; the Apple Watch app and its complication; TestFlight.
+
+Not yet: sleep and pump timers, health, the bath type, photos, the outing checklist, reminders.
+The plan's Stages 2–5 list them in order.
 
 ## How sync works now (and why it is fast)
 

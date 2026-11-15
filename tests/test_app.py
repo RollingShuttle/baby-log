@@ -134,6 +134,22 @@ class TestStatic(AppCase):
         self.assertIn(b"size: Letter", r.data)
         r.close()
 
+    def test_growth_standard_is_served_for_the_chart(self):
+        # static/app.js fetches this once for the Growth screen's weight-for-age chart.
+        r = self.c.get("/static/growth_wfa.json")
+        self.assertEqual(r.status_code, 200)
+        body = json.loads(r.data.decode("utf-8"))
+        r.close()
+        self.assertEqual(body["boy"]["ages"][0], 0)
+        self.assertEqual(body["boy"]["ages"][-1], 81)
+        self.assertEqual(len(body["boy"]["p"]), len(body["boy"]["ages"]))
+        self.assertEqual(body["boy"]["p"][0], [2.8, 3.0, 3.2, 3.5, 3.7, 4.0, 4.2])
+        self.assertIn("girl", body)
+        r = self.c.get("/static/growth.js")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn(b"zScore", r.data)
+        r.close()
+
     def test_static_dir_is_a_public_module_name(self):
         self.assertTrue(str(app_mod.STATIC_DIR).endswith("static"))
         self.assertTrue((app_mod.STATIC_DIR / "icon.ico").exists(), "the tray reads this")

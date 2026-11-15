@@ -32,6 +32,19 @@ class TestIOS(unittest.TestCase):
         self.assertEqual(copy.read_bytes(), (ROOT / "i18n" / "strings.json").read_bytes(),
                          "copy i18n/strings.json to ios/BabyLog/Resources/strings.json")
 
+    def test_growth_standard_is_bundled(self):
+        swift = (IOS / "BabyLog" / "Core" / "Growth.swift").read_text(encoding="utf-8")
+        self.assertIn("30.4375", swift)
+        self.assertIn('"growth_wfa"', swift)
+        # The label truncates like tools/growth_standard.pct_label, so it never leaves its band.
+        label = swift[swift.index("static func pctLabel"):]
+        label = label[:label.index("\n    }\n")]
+        self.assertIn("String(Int(floor(pc)))", label)
+        self.assertNotIn("+ 0.5", label)
+        self.assertEqual((IOS / "BabyLog" / "Resources" / "growth_wfa.json").read_bytes(),
+                         (ROOT / "static" / "growth_wfa.json").read_bytes(),
+                         "copy static/growth_wfa.json to ios/BabyLog/Resources/growth_wfa.json")
+
     def test_watch_catalogs_are_copies_of_the_phone_ones(self):
         for name in ("AppShortcuts.xcstrings", "Localizable.xcstrings"):
             self.assertEqual((IOS / "BabyLogWatch" / name).read_bytes(), (IOS / "BabyLog" / name).read_bytes(), name)

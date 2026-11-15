@@ -64,7 +64,7 @@ label. The **Settings** tab carries a small number while anything is under Needs
 |---|---|
 | **Today** | The entry screen. At the top, the *Now* panel: **Last feed** and **Last diaper** tiles with "45 m ago", a sleep that is running with a live clock and **Stop**, the usual gap ("Usually every 2 h 40 m · next around 14:20"), and today's totals against the pediatrician's targets when you have set them. Below it the day sheet in the hospital's layout — **Feeding** on the left, **Diapers** on the right, **Other** underneath for sleeps, pumps, weights, health and notes — with **‹ prev** / **next ›** to walk through the days. Then the log buttons: **Feed**, **Wet** / **Dirty** / **Both**, **Sleep**, **Pump**, **Weight**, **More ▾** (Health, Note), and **Catch up** for a paper slip. |
 | **Trends** | **Last 14 days**: one row per day with feeds, bottle, breast minutes, wet, dirty, sleeps, pumps; a number under its target is marked. Clicking a row opens that day on Today. Below it the **24-hour rhythm** chart for the last 7 days: feeds as bars by start time (longer bar, longer breast feed), wet and dirty as dots, the night hours shaded. |
-| **Growth** | Every weight, length and head measurement, with the change from birth weight and since the last one. **Add weight** at the top right. Birth weight comes from Settings → Child. |
+| **Growth** | **Weight for age** on top: the child's weights on China's growth curves (see *The weight-for-age chart* below). Under it every weight, length and head measurement, with the change from birth weight and since the last one, the age, and each weight's percentile and rating. **Add weight** at the top right. Birth weight and sex come from Settings → Child. |
 | **Health** | Medicines and temperatures. Each medicine shows *last given 5 h ago*, which is the question you actually have at 2 a.m. Vitamin D is a medicine named `Vitamin D`. |
 | **Reports** | **Print day sheet** for a chosen day, **Save day sheet** (writes it into Yisen File), **Print daily totals** for a date range, and **Rebuild Baby Log.xlsx**. It also shows where the journal and the output folder are. |
 | **Settings** | This PC's label, units (ml or oz), the −/+ step, the quick amounts (a range, the last ten feeds, or your own list), night hours; Yisen's record (name, born, time of birth, birth weight, and the targets the pediatrician gave you); **Needs check**; **Deleted**. |
@@ -261,6 +261,28 @@ upload, and Baby Log reads that folder every minute. **Sync now**, beside the en
 at the top right, reads it at once and says *Synced · N new* or *Synced · nothing new*.
 If a phone's entry is still missing, the OneDrive app has not downloaded it yet: click the
 OneDrive cloud in the taskbar to see whether it is syncing or paused.
+
+### The weight-for-age chart
+
+Growth (PC) and the top of Trends (iPhone) draw the child's weights on the curves of China's
+national standard **WS/T 423—2022 *7岁以下儿童生长标准*** (National Health Commission, in force
+since 1 March 2023; its data are 83,628 healthy children measured in 2015 in nine cities,
+Shanghai and Guangzhou among them). The grey lines are the 3rd, 10th, 25th, 50th (bold), 75th,
+90th and 97th percentiles for the child's sex; the shaded band is the middle half. The switch
+above the chart picks *0–6 months*, *0–12 months*, *0–24 months* or *0–7 years*; it starts on
+the smallest that holds the latest weight.
+
+The line above the chart reads the latest weight, e.g. *5.60 kg · percentile 54*, with the
+standard's own rating: **Upper** (≥P97), **Above average** (P75–P97), **Average** (P25–P75),
+**Below average** (P3–P25), **Lower** (<P3). Anything from P3 to P97 is in the normal range; a
+weight outside it says *worth showing the doctor*. The percentile comes from the standard's SD
+table, in between its monthly rows by straight lines, and drops its decimals (54.9 reads 54) so
+the number never sits in a different band from the rating. Other calculators that use the older
+2009 reference may show a few points more. Without the child's sex (Settings → Child) there is
+no chart, and the standard stops at 6 years 9 months.
+
+The numbers live in `static/growth_wfa.json` (the iPhone carries the same file);
+`tools/growth_standard.py` rebuilds it from the text of the official PDF if it is ever revised.
 
 ### Language and updates on the PC
 

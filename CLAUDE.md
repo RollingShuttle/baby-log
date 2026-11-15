@@ -77,7 +77,7 @@ and the JS tests skip with a message without it. The suite must never depend on 
 
 ## State as of 24 Sep 2026
 
-**Built and committed, 473 tests passing** (`python -m unittest discover -s tests`): `store.py` (the journal, defensive
+**Built and committed, 578 tests passing** (`python -m unittest discover -s tests`): `store.py` (the journal, defensive
 reader, index keyed by path/size/mtime), `docs/core.js` (shared logic; `test_core.py` runs the
 whole fixture under Node), `app.py` (every §6.1 route, the debounced `Rollup` worker: startup,
 20 s after an API write, and a 60 s scan for files the phones dropped through OneDrive),
@@ -209,3 +209,15 @@ stays English; the choice is `localStorage["bl.pc.lang"]`. The table is served a
 and **Update now** → `POST /api/update/run`, which starts `tools/update.py --relaunch` in its own
 console: pull, close the app, rebuild, reopen. iOS work no longer gets verifier workflows: the
 owner's Xcode build is the check (owner's request, 7 Nov 2026).
+
+**15 Nov 2026 — weight-for-age chart.** The owner chose China's national standard WS/T 423—2022
+(2015 nine-city data, Shanghai and Guangzhou included; no current Shanghai- or Guangzhou-only
+infant curve exists). `static/growth_wfa.json` holds tables A.1/A.2/B.1/B.2 (boys and girls,
+0–81 months) and is the copy of record; `ios/BabyLog/Resources/growth_wfa.json` is byte-identical.
+`tools/growth_standard.py` rebuilds it from the PDF's text and is the reference arithmetic:
+age = days / 30.4375, linear between rows, z from the SD columns (extrapolated past ±3 along the
+outer step), percentile = Φ(z), rating per the standard's Table 1 on the exact percentile, and
+the label **truncates** (24.99 → "24") so it never sits in another band. `static/growth.js`
+(global `Growth`) and `ios/BabyLog/Core/Growth.swift` follow it against
+`tests/fixtures/growth_cases.json` (`tests/test_growth_standard.py`). The chart is on the PC's
+Growth screen and at the top of the iPhone's Trends (`Views/WeightForAgeSection.swift`).

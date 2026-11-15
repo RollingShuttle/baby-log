@@ -1139,6 +1139,51 @@
       "where": "Growth: button",
       "zh-Hans": "添加体重"
     },
+    "growth.ageDays.one": {
+      "en": "{n} day old",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart: age at a weighing under one month",
+      "zh-Hans": "{n}天大"
+    },
+    "growth.ageDays.other": {
+      "en": "{n} days old",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart: age at a weighing under one month",
+      "zh-Hans": "{n}天大"
+    },
+    "growth.ageMonthsDays": {
+      "en": "{m} mo {d} d",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart: age at a weighing, whole months and days",
+      "zh-Hans": "{m}个月{d}天"
+    },
+    "growth.axisMonths": {
+      "en": "months",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart: x-axis unit",
+      "zh-Hans": "月龄"
+    },
+    "growth.band.above": {
+      "en": "Above average",
+      "where": "the standard's Table 1 rating, P75–P97",
+      "zh-Hans": "中上"
+    },
+    "growth.band.average": {
+      "en": "Average",
+      "where": "the standard's Table 1 rating, P25–P75",
+      "zh-Hans": "中"
+    },
+    "growth.band.below": {
+      "en": "Below average",
+      "where": "the standard's Table 1 rating, P3–P25",
+      "zh-Hans": "中下"
+    },
+    "growth.band.lower": {
+      "en": "Lower",
+      "where": "the standard's Table 1 rating, <P3",
+      "zh-Hans": "下"
+    },
+    "growth.band.upper": {
+      "en": "Upper",
+      "where": "the standard's Table 1 rating, ≥P97",
+      "zh-Hans": "上"
+    },
     "growth.birthWeight": {
       "en": "birth weight {weight}",
       "where": "Growth: sub heading",
@@ -1148,6 +1193,11 @@
       "en": "birth weight not set — Settings → Child",
       "where": "Growth: sub heading when unset",
       "zh-Hans": "未设置出生体重——设置 → 孩子"
+    },
+    "growth.colAge": {
+      "en": "Age",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart: table column",
+      "zh-Hans": "月龄"
     },
     "growth.colHead": {
       "en": "Head",
@@ -1159,6 +1209,16 @@
       "where": "Growth column",
       "zh-Hans": "身长"
     },
+    "growth.colPercentile": {
+      "en": "Percentile",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart and the Growth table: column",
+      "zh-Hans": "百分位"
+    },
+    "growth.colRating": {
+      "en": "Rating",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart and the Growth table: column",
+      "zh-Hans": "评价"
+    },
     "growth.colWhen": {
       "en": "When",
       "where": "Growth and Health columns",
@@ -1169,20 +1229,95 @@
       "where": "growth editor field",
       "zh-Hans": "头围（厘米）"
     },
+    "growth.inRange": {
+      "en": "within P3–P97, the normal range",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart: verdict pill",
+      "zh-Hans": "在 P3–P97 正常范围内"
+    },
+    "growth.latest": {
+      "en": "Latest weight · {date} · {age}",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart: heading of the verdict",
+      "zh-Hans": "最近一次体重 · {date} · {age}"
+    },
     "growth.lengthCm": {
       "en": "Length (cm)",
       "where": "growth editor field",
       "zh-Hans": "身长（厘米）"
+    },
+    "growth.needSex": {
+      "en": "The child's sex is not set — set it on the PC under Settings → Child.",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart: shown instead of the chart",
+      "zh-Hans": "还没有填写孩子的性别——请在电脑端 设置 → 孩子 里填写。"
     },
     "growth.noWeightsYet": {
       "en": "No weights yet.",
       "where": "Growth: empty state",
       "zh-Hans": "还没有体重记录。"
     },
+    "growth.outOfRange": {
+      "en": "outside P3–P97 — worth showing the doctor",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart: verdict pill",
+      "zh-Hans": "超出 P3–P97，建议给医生看看"
+    },
+    "growth.pastStandard": {
+      "en": "Past 6 years 9 months — the standard stops there.",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart: shown instead of a percentile",
+      "zh-Hans": "已超过 6 岁 9 个月，标准只到这里。"
+    },
+    "growth.percentile": {
+      "en": "percentile {n}",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart: a weight's percentile; n is a whole number, <1 or >99",
+      "zh-Hans": "第 {n} 百分位"
+    },
+    "growth.range12": {
+      "en": "0–12 months",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart: range switch",
+      "zh-Hans": "0–12 个月"
+    },
+    "growth.range24": {
+      "en": "0–24 months",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart: range switch",
+      "zh-Hans": "0–24 个月"
+    },
+    "growth.range6": {
+      "en": "0–6 months",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart: range switch",
+      "zh-Hans": "0–6 个月"
+    },
+    "growth.rangeAll": {
+      "en": "0–7 years",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart: range switch",
+      "zh-Hans": "0–7 岁"
+    },
+    "growth.ratingNote": {
+      "en": "Ratings follow the standard's Table 1: ≥P97 upper, P75–P97 above average, P25–P75 average, P3–P25 below average, <P3 lower. Anything from P3 to P97 is normal; a steady course along the lines matters more than the exact number.",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart: footnote",
+      "zh-Hans": "评价按标准表 1：≥P97 上，P75–P97 中上，P25–P75 中，P3–P25 中下，<P3 下。P3–P97 之间都正常；沿着曲线稳定增长比具体数字更重要。"
+    },
     "growth.weightG": {
       "en": "Weight (g)",
       "where": "growth editor field",
       "zh-Hans": "体重（克）"
+    },
+    "growth.wfaLegend": {
+      "en": "Grey lines, bottom to top: P3, P10, P25, P50 (bold), P75, P90, P97. The shaded band is P25–P75.",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart legend",
+      "zh-Hans": "灰线从下到上：P3、P10、P25、P50（加粗）、P75、P90、P97；浅色带为 P25–P75。"
+    },
+    "growth.wfaSource": {
+      "en": "China's growth standard for children under 7 (WS/T 423—2022)",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart source line",
+      "zh-Hans": "国家标准《7岁以下儿童生长标准》（WS/T 423—2022）"
+    },
+    "growth.wfaTitle": {
+      "en": "Weight for age",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart title",
+      "zh-Hans": "年龄别体重"
+    },
+    "growth.zMedian": {
+      "en": "z-score {z} · median {median}",
+      "where": "Growth screen (PC) and Trends (iPhone): the weight-for-age chart: under the verdict; median is a weight",
+      "zh-Hans": "Z 分 {z} · 中位数 {median}"
     },
     "header.waitingFirstSync": {
       "en": "Waiting for the first sync",

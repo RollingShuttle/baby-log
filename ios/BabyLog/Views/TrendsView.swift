@@ -1,7 +1,8 @@
 import Charts
 import SwiftUI
 
-/// The last 7 or 14 days as charts: bottle ml, feeds, diapers (wet and dirty stacked), the
+/// Weight for age against China's standard (WeightForAgeSection), then
+/// the last 7 or 14 days as charts: bottle ml, feeds, diapers (wet and dirty stacked), the
 /// day's milk as a cumulative line per day with a forecast for the rest of today, and the
 /// 24-hour rhythm (feeds, wet, dirty or all, as dots by time of day), then the same numbers
 /// as a table. Day labels are "M/d" strings, so those axes are categorical and keep their order.
@@ -9,12 +10,18 @@ struct TrendsView: View {
     @EnvironmentObject var model: AppModel
     @State private var span = 7
     @State private var rhythmKind = "feed"
+    @State private var growthRange: Int? = nil     // nil: the default for the latest weighing
 
     var body: some View {
         let stats = model.dailyStats(days: span)
         let labels = stats.map { $0.label }
         let forecast = model.intakeForecast(stats)
+        let weights = model.weightChart()
         List {
+            // Weight for age first: it covers the whole life, not the 7/14 days below.
+            if let w = weights {
+                WeightForAgeSection(chart: w, range: $growthRange)
+            }
             Section {
                 Picker(S("tab.trends"), selection: $span) {
                     Text(S("trends.last7Days")).tag(7)

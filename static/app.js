@@ -25,6 +25,8 @@ const state = {
   lastDiaper: null,   // {event_id, ms}: the last one-click diaper from this PC (the 2-minute rule)
   reports: { paths: [] },
   catchup: { date: null, added: [], records: {} },   // the Catch up screen: its day and what it wrote this session
+  wfa: { std: null, loading: false, error: null, failedAt: 0 },   // static/growth_wfa.json, fetched once
+  growthRange: null,  // {child, months}: the range picked on the Growth chart; null = fit the latest weight
 };
 
 // ---------------------------------------------------------------- small helpers
@@ -1783,23 +1785,186 @@ function rhythmChart(days) {
 }
 
 // ---------------------------------------------------------------- Growth
+// Weight for age against WS/T 423-2022 (static/growth.js does the arithmetic). Every text below is
+// one text node equal to an English entry of i18n/strings.json, placeholders filled, so the
+// Chinese page translates it; that is why the pieces of a line are separate nodes.
+const GROWTH_RANGES = [6, 12, 24, 81];
+const RANGE_TEXT = { 6: "0–6 months", 12: "0–12 months", 24: "0–24 months", 81: "0–7 years" };
+const BAND_TEXT = { upper: "Upper", above: "Above average", average: "Average", below: "Below average", lower: "Lower" };
+const IN_RANGE = { above: true, average: true, below: true };   // P3..P97
+// Always two decimals, with Core's half-up rounding of grams (3425 g is 3.43 kg, 3400 g 3.40 kg).
+const kg2 = (g) => `${(Math.round(g / 10) / 100).toFixed(2)} kg`;
+const fix2 = (v) => (Math.round(v * 100) / 100).toFixed(2);
+
+/** The standard, fetched on the first visit to Growth and kept; the screen redraws when it lands.
+    A failed fetch is tried again on a later redraw (the 30 s poll), not in a loop. */
+function growthStd() {
+  const w = state.wfa;
+  if (w.std || w.loading || (w.error && Date.now() - w.failedAt < 10000)) return w.std;
+  w.loading = true;
+  fetch("/static/growth_wfa.json", { cache: "no-cache" })
+    .then((r) => { if (!r.ok) throw new Error(`${r.status} ${r.statusText}`); return r.json(); })
+    .then((std) => { w.std = std; w.error = null; },
+      (e) => { w.error = e.message || String(e); w.failedAt = Date.now(); })
+    .then(() => { w.loading = false; if (state.view === "growth") renderGrowth(); });
+  return null;
+}
+
+const growthSex = (child) => (child && (child.sex === "boy" || child.sex === "girl") ? child.sex : null);
+
+/** "24 days old" in the first month, then "1 mo 24 d"; null before birth. */
+function growthAge(born, day) {
+  const p = Growth.ageParts(born, day);
+  if (!p) return null;
+  if (p.m) return `${p.m} mo ${p.d} d`;
+  return p.d === 1 ? `${p.d} day old` : `${p.d} days old`;
+}
+
+/** The weighings: the birth weight on the child's birth day, then every growth entry with a
+    weight, by time; each with its age and, when the sex and the standard are known, its rating. */
+function weighings(child, evs, std) {
+  if (!child || !child.born) return [];
+  const sex = growthSex(child);
+  const pts = [];
+  if (child.birth_weight_g != null) pts.push({ day: String(child.born).slice(0, 10), g: child.birth_weight_g, ev: null });
+  evs.filter((ev) => ev.data && ev.data.weight_g != null)
+    .map((ev) => ({ ev, t: ms(ev.time) || 0 })).sort((a, b) => a.t - b.t)
+    .forEach(({ ev }) => pts.push({ day: String(ev.time).slice(0, 10), g: ev.data.weight_g, ev }));
+  for (const p of pts) {
+    p.kg = p.g / 1000;
+    p.age = Growth.ageMonths(child.born, p.day);
+    p.ageText = growthAge(child.born, p.day);
+    p.z = std && sex ? Growth.zScore(std, sex, p.age, p.kg) : null;
+    p.pc = Growth.percentile(p.z);
+    p.label = Growth.pctLabel(p.pc);
+    p.band = Growth.band(p.pc);
+  }
+  return pts;
+}
+
+/** The card above the table: range switch, verdict, chart, and the small print. Null when there
+    is nothing to plot. */
+function wfaCard(child, pts, std) {
+  const dated = pts.filter((p) => p.age != null);
+  if (!dated.length) return null;
+  const sex = growthSex(child);
+  const head = el("div", { class: "h2" }, "Weight for age");
+  const card = (...kids) => el("section", { class: "card" }, head, ...kids);
+  if (!sex) return card(el("div", { class: "empty" }, "The child's sex is not set — set it on the PC under Settings → Child."));
+  if (!std) {
+    return card(el("div", { class: "empty" }, state.wfa.error ? `Could not load the growth standard: ${state.wfa.error}` : "Loading…"));
+  }
+  const last = dated[dated.length - 1];
+  const held = state.growthRange;
+  const range = held && held.child === child.child_id ? held.months
+    : GROWTH_RANGES.find((m) => m >= last.age + 0.5) || 81;
+  head.append(el("div", { class: "gw-seg" }, ...GROWTH_RANGES.map((m) => el("button", {
+    type: "button", class: m === range ? "on" : "", "aria-pressed": m === range ? "true" : "false",
+    onclick: () => { state.growthRange = { child: child.child_id, months: m }; renderGrowth(); },
+  }, RANGE_TEXT[m]))));
+  return card(
+    wfaVerdict(std, sex, last),
+    wfaChart(std, sex, dated, range),
+    el("div", { class: "gw-foot" },
+      el("div", {}, "Grey lines, bottom to top: P3, P10, P25, P50 (bold), P75, P90, P97. The shaded band is P25–P75."),
+      el("div", {}, "Ratings follow the standard's Table 1: ≥P97 upper, P75–P97 above average, P25–P75 average, P3–P25 below average, <P3 lower. Anything from P3 to P97 is normal; a steady course along the lines matters more than the exact number."),
+      el("div", { title: std.source || "" }, "China's growth standard for children under 7 (WS/T 423—2022)")));
+}
+
+function wfaVerdict(std, sex, last) {
+  if (last.age > 81) return el("div", { class: "empty" }, "Past 6 years 9 months — the standard stops there.");
+  const ok = !!IN_RANGE[last.band];
+  const median = Growth.rowAt(std, sex, "p", last.age)[3];
+  return el("div", { class: "gw-verdict" },
+    el("div", {},
+      el("div", { class: "muted small" }, `Latest weight · ${Core.fmtDay(last.day)} · ${last.ageText}`),
+      el("div", { class: "gw-big" }, el("span", {}, kg2(last.g)), el("span", { class: "gw-sep" }, "·"), el("span", {}, `percentile ${last.label}`))),
+    el("div", {},
+      el("span", { class: `gw-pill ${ok ? "ok" : "warn"}` },
+        el("span", {}, ok ? "✓" : "!"), el("b", {}, BAND_TEXT[last.band]), el("span", {}, "·"),
+        el("span", {}, ok ? "within P3–P97, the normal range" : "outside P3–P97 — worth showing the doctor")),
+      el("div", { class: "muted small gw-z" }, `z-score ${fix2(last.z)} · median ${fix2(median)} kg`)));
+}
+
+/** The percentile curves of the standard and the child's weighings on them, 0..range months. */
+function wfaChart(std, sex, pts, range) {
+  const W = 800, H = 440, L = 40, R = 40, T = 22, B = 40;
+  const PW = W - L - R, PH = H - T - B;
+  const shown = pts.filter((p) => p.age <= range);
+  const end = Growth.rowAt(std, sex, "p", range);
+  const kgs = shown.map((p) => p.kg);
+  const lo = Math.floor(Math.min(2, ...kgs));
+  const span = Math.ceil(Math.max(end[6], ...kgs) + 0.5) - lo;
+  const step = span > 32 ? 5 : span > 16 ? 2 : 1;
+  const hi = lo + Math.ceil(span / step) * step;
+  const x = (m) => L + (m / range) * PW;
+  const y = (kg) => T + PH - ((kg - lo) / (hi - lo)) * PH;
+  const pt = (a, kg) => `${x(a).toFixed(1)} ${y(kg).toFixed(1)}`;
+  const kids = [];
+  for (let v = lo; v <= hi; v += step) {
+    kids.push(svg("line", { class: "rh-grid", x1: L, y1: y(v), x2: L + PW, y2: y(v) }));
+    kids.push(svg("text", { class: "rh-hour", x: L - 6, y: y(v) + 4, "text-anchor": "end" }, String(v)));
+  }
+  const tick = { 6: 1, 12: 1, 24: 2 }[range] || 6;
+  const ticks = [];
+  for (let m = 0; m < range; m += tick) ticks.push(m);
+  ticks.push(range);
+  for (const m of ticks) {
+    kids.push(svg("line", { class: "rh-grid", x1: x(m), y1: T, x2: x(m), y2: T + PH }));
+    kids.push(svg("text", { class: "rh-hour", x: x(m), y: T + PH + 16, "text-anchor": "middle" }, String(m)));
+  }
+  kids.push(svg("text", { class: "rh-hour", x: L + PW, y: H - 4, "text-anchor": "end" }, "months"));
+  kids.push(svg("text", { class: "rh-hour", x: L - 6, y: T - 9, "text-anchor": "end" }, "kg"));
+  // The table is linear between its rows, so the curves through its rows (and the range end) are
+  // exact: no finer sampling could change a pixel.
+  const rows = std[sex].ages.filter((a) => a < range).concat([range]).map((a) => [a, Growth.rowAt(std, sex, "p", a)]);
+  const curve = (k) => rows.map(([a, r], i) => `${i ? "L" : "M"}${pt(a, r[k])}`).join(" ");
+  const back = rows.slice().reverse().map(([a, r]) => `L${pt(a, r[2])}`).join(" ");
+  kids.push(svg("path", { class: "gw-band", d: `${curve(4)} ${back} Z` }));
+  std.percentiles.forEach((p, k) => kids.push(svg("path", { class: `gw-curve${p === 50 ? " p50" : ""}`, d: curve(k) })));
+  // Labels at the right end, nudged apart where the curves run close.
+  const ys = end.map((v) => y(v) + 4);
+  for (let k = 1; k < ys.length; k++) ys[k] = Math.min(ys[k], ys[k - 1] - 11);
+  std.percentiles.forEach((p, k) => kids.push(svg("text", { class: `gw-pl${p === 50 ? " p50" : ""}`, x: L + PW + 5, y: ys[k].toFixed(1) }, `P${p}`)));
+  if (shown.length > 1) kids.push(svg("path", { class: "gw-kid", d: shown.map((p, i) => `${i ? "L" : "M"}${pt(p.age, p.kg)}`).join(" ") }));
+  for (const p of shown) {
+    const tip = [Core.fmtDay(p.day), " · ", p.ageText, " · ", kg2(p.g)];
+    if (p.label) tip.push(" · ", `percentile ${p.label}`);
+    kids.push(svg("circle", { class: `gw-dot${p.ev ? " openable" : ""}`, cx: x(p.age).toFixed(1), cy: y(p.kg).toFixed(1), r: 4.5,
+      onclick: p.ev ? () => openEditor({ event: p.ev }) : null }, svg("title", {}, ...tip)));
+  }
+  return svg("svg", { class: "rhythm gw-chart", viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Weight for age" }, ...kids);
+}
+
 function renderGrowth() {
   const view = document.getElementById("view-growth");
+  const child = state.child;
   const evs = state.events.filter((ev) => ev.type === "growth");
-  const birth = state.child && state.child.birth_weight_g;
+  const birth = child && child.birth_weight_g;
   const firstWeight = evs.find((ev) => ev.data.weight_g != null);
   const base = birth != null ? birth : (firstWeight ? firstWeight.data.weight_g : null);
   // Core.describe's rounding, so 3425 g reads 3.43 kg here as on every other screen and in the
   // sheet (toFixed rounds the binary 3.425 down to 3.42).
   const kg = (g) => `${Math.round(g / 10) / 100} kg`;
+  const std = child ? growthStd() : null;
+  const pts = weighings(child, evs, std);
+  const byEvent = new Map(pts.filter((p) => p.ev).map((p) => [p.ev.event_id, p]));
+  const birthPt = pts.find((p) => !p.ev) || null;
+  const rated = !!(std && growthSex(child));     // the Percentile and Rating columns
+  const born = child && child.born;
   let prev = null;
   const rows = evs.map((ev) => {
     const w = ev.data.weight_g;
+    const p = w != null ? byEvent.get(ev.event_id) : null;
+    const age = born ? growthAge(born, String(ev.time).slice(0, 10)) : null;
     const cells = [
       el("td", {}, Core.fmtDateTime(ev.time)),
+      el("td", {}, age || "—"),
       el("td", { class: "t-num" }, w != null ? kg(w) : "—",
         w != null && base != null ? el("span", { class: `delta${w - base >= 0 ? " up" : ""}` }, `${w - base >= 0 ? "+" : ""}${w - base} g from birth`) : null,
         w != null && prev != null ? el("span", { class: "delta" }, `${w - prev >= 0 ? "+" : ""}${w - prev} g since last`) : null),
+      rated ? el("td", { class: "t-num" }, p ? p.label || "—" : "") : null,
+      rated ? el("td", { class: p && p.band && !IN_RANGE[p.band] ? "gw-out" : "" }, p ? BAND_TEXT[p.band] || "—" : "") : null,
       el("td", { class: "t-num" }, ev.data.length_cm != null ? `${ev.data.length_cm} cm` : "—"),
       el("td", { class: "t-num" }, ev.data.head_cm != null ? `${ev.data.head_cm} cm` : "—"),
       el("td", { class: "muted" }, ev.logged_by || ""),
@@ -1808,13 +1973,15 @@ function renderGrowth() {
     if (w != null) prev = w;
     return el("tr", { class: "openable", onclick: () => openEditor({ event: ev }) }, ...cells);
   });
-  view.replaceChildren(el("section", { class: "card" },
+  const heads = ["When", "Age", "Weight"].concat(rated ? ["Percentile", "Rating"] : [], ["Length", "Head", "By", "Note"]);
+  view.replaceChildren(...[wfaCard(child, pts, std), el("section", { class: "card" },
     el("div", { class: "h2" }, "Growth",
-      el("span", { class: "sub" }, birth != null ? `birth weight ${kg(birth)}` : "birth weight not set — Settings → Child"),
+      el("span", { class: "sub" }, birth != null ? `birth weight ${kg(birth)}` : "birth weight not set — Settings → Child",
+        rated && birthPt && birthPt.label ? [" · ", `percentile ${birthPt.label}`, " · ", BAND_TEXT[birthPt.band]] : null),
       el("button", { class: "ghost", type: "button", style: "margin-left:auto", onclick: () => openEditor({ type: "growth" }) }, "Add weight")),
     rows.length ? el("div", { class: "t-scroll" }, el("table", { class: "t-table" },
-      el("thead", {}, el("tr", {}, ...["When", "Weight", "Length", "Head", "By", "Note"].map((h) => el("th", {}, h)))),
-      el("tbody", {}, ...rows))) : el("div", { class: "empty" }, "No weights yet.")));
+      el("thead", {}, el("tr", {}, ...heads.map((h) => el("th", {}, h)))),
+      el("tbody", {}, ...rows))) : el("div", { class: "empty" }, "No weights yet."))].filter(Boolean));
 }
 
 // ---------------------------------------------------------------- Health

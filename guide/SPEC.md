@@ -476,7 +476,12 @@ goodbye handler sets `document.title = "Baby Log (closed)"` as whiskey's does.
 - **Trends**: daily totals table for the last 14 days with targets, and the 24-hour rhythm chart
   (inline SVG, no library: feeds as bars by start time and breast length, wet/dirty as dots, night
   shaded) for the last 7 days.
-- **Growth**: weight/length/head list with change from birth weight; rows open the editor.
+- **Growth**: the weight-for-age chart (WS/T 423—2022 percentile curves for the child's sex, the
+  child's weights, a 0–6 / 0–12 / 0–24 months / 0–7 years switch, the latest weight's
+  percentile and Table 1 rating), then the weight/length/head list with change from birth
+  weight, age, percentile and rating; rows open the editor. The standard is
+  `static/growth_wfa.json`; the arithmetic is `tools/growth_standard.py`, followed by
+  `static/growth.js` and `ios/BabyLog/Core/Growth.swift` against `tests/fixtures/growth_cases.json`.
 - **Health**: medicines and temperatures, "last given 5 h ago" per medicine name; rows open the
   editor.
 - **Reports**: print day sheet, print a date range, Save day sheet to Yisen File, Rebuild
