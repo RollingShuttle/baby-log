@@ -1743,7 +1743,8 @@ function intakeChart(days) {
 
 // Hand-drawn SVG: one row per day, midnight to midnight.
 function rhythmChart(days) {
-  const W = 800, L = 70, R = 14, T = 24, RH = 40, B = 6;
+  // The day labels are "Sun 15 Nov", or "2026年11月15日 周日" in Chinese, which needs twice the room.
+  const W = 800, L = document.documentElement.lang === "zh-Hans" ? 140 : 70, R = 14, T = 24, RH = 40, B = 6;
   const PW = W - L - R;
   const H = T + days.length * RH + B;
   const x = (h) => L + (h / 24) * PW;
