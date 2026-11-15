@@ -269,6 +269,17 @@ async function loadConfig() {
 
 // Everything the screens draw from, in one round: the Now panel, the day sheet, the journal, the
 // pill and the Needs-check count. Called every 30 s and after every write (§6.2).
+// Sync now: re-read the OneDrive folder at once (the 60 s scan does it anyway) and redraw.
+async function syncNow(btn) {
+  btn.disabled = true;
+  try {
+    const r = await postJSON("/api/sync", {});
+    await refreshAll();
+    showStatus("ok", r.new ? `Synced · ${r.new} new` : "Synced · nothing new");
+  } catch (e) { showStatus("err", e.message); }
+  btn.disabled = false;
+}
+
 async function refreshAll() {
   const quiet = (p) => p.catch(() => null);
   const [now, day, evs, health, needs] = await Promise.all([
@@ -2073,3 +2084,9 @@ function childForm(child, onSaved) {
 }
 
 document.addEventListener("DOMContentLoaded", boot);
+
+// The Sync now button sits in the static top bar, so it is wired once.
+(function wireSync() {
+  const b = document.getElementById("sync-now");
+  if (b) b.addEventListener("click", () => syncNow(b));
+})();

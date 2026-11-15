@@ -684,6 +684,11 @@ class Journal:
                     "children": len(self.children()), "files": self._files,
                     "newest_at": newest, "unreadable": list(self._unreadable)}
 
+    def indexed_count(self):
+        """How many files the index held at its last read, without reading the folder again."""
+        with self._lock:
+            return len(self._index)
+
     def fingerprint(self):
         """What the tree holds right now — file count, indexed count, newest mtime — so the
         rollup scan can tell that *any* file arrived. It cannot key on max(created_at): a

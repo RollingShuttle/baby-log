@@ -254,6 +254,14 @@ range — one row per day — which is the thing to take to the pediatrician.
 
 ---
 
+### Sync now on the PC
+
+The PC has no Microsoft sign-in: the OneDrive app on Windows downloads what the phones
+upload, and Baby Log reads that folder every minute. **Sync now**, beside the entries pill
+at the top right, reads it at once and says *Synced · N new* or *Synced · nothing new*.
+If a phone's entry is still missing, the OneDrive app has not downloaded it yet: click the
+OneDrive cloud in the taskbar to see whether it is syncing or paused.
+
 ### Language and updates on the PC
 
 Settings → **This app**: **Language** is *Follow this PC* (Chinese when Windows is in

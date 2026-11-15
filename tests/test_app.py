@@ -1289,5 +1289,27 @@ class TestUpdateAndLanguage(AppCase):
         self.assertIn("Python", r.get_json()["error"])
 
 
+class TestSyncNow(ChildCase):
+    """The top bar's Sync now: a file a phone dropped is counted and indexed at once."""
+
+    def test_reports_nothing_new(self):
+        self.c.post("/api/sync", json={})
+        r = self.c.post("/api/sync", json={})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.get_json()["new"], 0)
+
+    def test_counts_a_file_that_arrived(self):
+        self.c.post("/api/sync", json={})
+        ev = self.event()
+        src = next(self.journal_dir.rglob(ev["event_id"] + "-r1-*.json"))
+        # A second file of the same event, as a phone's revision would land through OneDrive.
+        body = json.loads(src.read_text(encoding="utf-8"))
+        body["revision"] = 2
+        body["note"] = "from the phone"
+        (src.parent / (ev["event_id"] + "-r2-abcd.json")).write_text(json.dumps(body), encoding="utf-8")
+        r = self.c.post("/api/sync", json={})
+        self.assertEqual(r.get_json()["new"], 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

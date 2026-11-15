@@ -657,6 +657,18 @@ def create_app(config_path="config.yaml", *, app_folder=None, output_folder=None
         rollup.schedule()
         return jsonify({"ok": True, "child": rec}), 201
 
+    @app.post("/api/sync")
+    def api_sync():
+        """The PC's Sync now. The PC never calls Graph (the OneDrive client brings the phones'
+        files down); this re-reads the folder at once instead of waiting for the 60 s scan,
+        and rebuilds the workbook when anything arrived."""
+        before = journal.indexed_count()
+        journal.load(force=True)          # past the few-seconds read cache: the point of the button
+        files, indexed, _newest = journal.fingerprint()
+        rebuilt = rollup.scan_once()
+        return jsonify({"ok": True, "new": max(0, indexed - before), "files": files,
+                        "events": len(journal.events()), "rebuilt": rebuilt})
+
     # -- the readable files --------------------------------------------------
     @app.post("/api/rollup")
     def api_rollup():

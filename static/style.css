@@ -458,3 +458,8 @@ button.linkish.danger { color: var(--danger); }
 .ch-line.today { stroke: var(--feed); stroke-width: 3; opacity: 1; }
 .ch-now { stroke: #E4A374; stroke-width: 1.5; stroke-dasharray: 4 3; }
 .ch-forecast { margin-top: 8px; font-size: 14px; line-height: 1.6; }
+
+/* Sync now, beside the journal pill */
+.pill-btn { cursor: pointer; border: 1px solid var(--line); background: transparent; font: inherit; }
+.pill-btn:hover { background: var(--night); }
+.pill-btn:disabled { opacity: .5; cursor: progress; }
