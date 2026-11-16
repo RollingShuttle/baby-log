@@ -67,7 +67,7 @@ label. The **Settings** tab carries a small number while anything is under Needs
 | **Growth** | **Weight for age** on top: the child's weights on China's growth curves (see *The weight-for-age chart* below). Under it every weight, length and head measurement, with the change from birth weight and since the last one, the age, and each weight's percentile and rating. **Add weight** at the top right. Birth weight and sex come from Settings → Child. |
 | **Health** | Medicines and temperatures. Each medicine shows *last given 5 h ago*, which is the question you actually have at 2 a.m. Vitamin D is a medicine named `Vitamin D`. |
 | **Reports** | **Print day sheet** for a chosen day, **Save day sheet** (writes it into Yisen File), **Print daily totals** for a date range, and **Rebuild Baby Log.xlsx**. It also shows where the journal and the output folder are. |
-| **Settings** | This PC's label, units (ml or oz), the −/+ step, the quick amounts (a range, the last ten feeds, or your own list), night hours; Yisen's record (name, born, time of birth, birth weight, and the targets the pediatrician gave you); **Needs check**; **Deleted**. |
+| **Settings** | This PC's label, units (ml or oz), **Bottle made in** (ml or oz, for the Made amount only), the −/+ step, the quick amounts (a range, the last ten feeds, or your own list), night hours; Yisen's record (name, born, time of birth, birth weight, and the targets the pediatrician gave you); **Needs check**; **Deleted**. |
 
 ### Logging on the PC
 
@@ -83,8 +83,12 @@ label. The **Settings** tab carries a small number while anything is under Needs
   the range — **50 · 60 · 70 · 80 · 90 · 100** to begin with — and the small **range** control
   right beside them (from / to / step) moves the whole row up the week his feeds grow; it is saved
   the moment you change it, on that device. **Another portion** adds a second bottle; **Made** /
-  **leftover** — fill in those two and the amount fills itself in. If an amount is more than
-  twice his biggest recent feed, Save asks once — **Save anyway** — in case a zero slipped in.
+  **leftover** — fill in those two and the amount fills itself in. If the formula machine or the
+  ready-to-feed bottle counts in ounces, set Settings → **Bottle made in** to **oz**: Made is then
+  typed in oz (−/+ steps half an ounce; 4 oz is kept as 118 ml), while **leftover** and the amount
+  drunk stay in ml, as the bottle's scale reads. The day sheet then shows *4 oz / 40 ml*. If an
+  amount is more than twice his biggest recent feed, Save asks once — **Save anyway** — in case a
+  zero slipped in.
 - **The formula is remembered.** Under each portion are chips for the formulas you have used,
   newest first (**Similac** and **Enfamil** until you have logged one), with the last one already
   chosen — so a feed is two taps, and switching to plan B is one more. **Other…** takes a new

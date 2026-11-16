@@ -11,7 +11,10 @@ struct EntryDraft: Identifiable {
     var ml: Int
     var mlText: String
     var madeText: String        // the bottle prepared, optional
-    var leftText: String        // what was left in it, optional; made - left fills the amount drunk
+    var madeOz: Bool            // madeText is in oz (the formula machine's unit); stored as ml all the same
+    var keptMadeText: String    // a made text this sheet filled in itself (an edit, the ml/oz switch)...
+    var keptMadeMl: Int?        // ...and the exact ml it stands for, so 120 ml shown as 4.1 oz stays 120
+    var leftText: String        // what was left in it, optional, ml; made - left fills the amount drunk
     var formula: String
     var wet: Bool
     var dirty: Bool
@@ -28,6 +31,9 @@ struct EntryDraft: Identifiable {
         self.ml = ml
         mlText = ml > 0 ? String(ml) : ""
         madeText = ""
+        madeOz = EntryDraft.madeInOz()
+        keptMadeText = ""
+        keptMadeMl = nil
         leftText = ""
         self.formula = formula
         wet = true
@@ -44,7 +50,12 @@ struct EntryDraft: Identifiable {
         time = rec.instant ?? Date()
         ml = Int(rec.bottleMl.rounded())
         mlText = ml > 0 ? String(ml) : ""
-        madeText = rec.madeMl.map { String(Int($0.rounded())) } ?? ""
+        let oz = EntryDraft.madeInOz()
+        let madeShown = rec.madeMl.map { oz ? EntryDraft.ozText($0) : String(Int($0.rounded())) } ?? ""
+        madeOz = oz
+        madeText = madeShown
+        keptMadeText = madeShown
+        keptMadeMl = rec.madeMl.map { Int($0.rounded()) }
         leftText = rec.leftoverMl.map { String(Int($0.rounded())) } ?? ""
         formula = rec.formula ?? ""
         wet = rec.wet
@@ -58,7 +69,31 @@ struct EntryDraft: Identifiable {
     static func trim(_ x: Double) -> String {
         x == x.rounded() ? String(Int(x)) : String(x)
     }
-    var made: Int? { Int(madeText.filter { $0.isNumber }) }
+    static let mlPerOz = 29.5735
+    /// This phone's "Bottle made in" setting (AppModel.madeUnit writes it).
+    static func madeInOz() -> Bool {
+        UserDefaults.standard.string(forKey: "bl.made_unit") == "oz"
+    }
+    /// Whole ml for an amount in oz, half up: 4 oz = 118 ml, 4.5 oz = 133 ml.
+    static func mlFromOz(_ oz: Double) -> Int {
+        Int((oz * mlPerOz).rounded())
+    }
+    /// An ml amount in oz to one decimal, ".0" dropped: 118 -> "4", 133 -> "4.5".
+    static func ozText(_ ml: Double) -> String {
+        trim((ml / mlPerOz * 10).rounded() / 10)
+    }
+    /// The bottle made, in ml whatever unit it was typed in. Untouched since the sheet filled
+    /// it in, it is the ml it came from: an edit in oz mode must not move made_ml by a rounding.
+    var made: Int? {
+        if let kept = keptMadeMl, madeText == keptMadeText { return kept }
+        if madeOz {
+            let text = madeText.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
+            // Bounded, so a pasted "1e400" cannot reach Int() and trap.
+            guard let oz = Double(text), oz.isFinite, oz >= 0, oz < 1000 else { return nil }
+            return EntryDraft.mlFromOz(oz)
+        }
+        return Int(madeText.filter { $0.isNumber })
+    }
     var left: Int? { Int(leftText.filter { $0.isNumber }) }
     /// Made below leftover: refused, as on the PC.
     var madeBelowLeft: Bool {
@@ -75,6 +110,7 @@ struct EntrySheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var d: EntryDraft
     @State private var confirmDelete = false
+    @State private var skipMadeRecompute = false   // the made text was converted by the ml/oz switch
     @FocusState private var focus: Field?
 
     private enum Field: Hashable {
@@ -136,7 +172,15 @@ struct EntrySheet: View {
                 }
             }
             // Made and left both typed: the amount drunk is the difference, as on the PC.
-            .onChange(of: d.madeText) { _, _ in amountFromBottle(typing: .made) }
+            // Not after the ml/oz switch: its one-decimal rounding (120 ml reads 4.1 oz) must not
+            // move the amount drunk, and the field may still have the focus when it is tapped.
+            .onChange(of: d.madeText) { _, _ in
+                if skipMadeRecompute {
+                    skipMadeRecompute = false
+                    return
+                }
+                amountFromBottle(typing: .made)
+            }
             .onChange(of: d.leftText) { _, _ in amountFromBottle(typing: .left) }
         }
     }
@@ -160,6 +204,25 @@ struct EntrySheet: View {
         let drunk = made - left
         let text = drunk > 0 ? String(drunk) : ""
         if d.mlText != text { d.mlText = text }
+    }
+    /// The made row's ml/oz switch: what is typed is converted (118 ml reads 4), and the choice
+    /// becomes this phone's setting. Focus is dropped so the field reopens with the right keypad.
+    private var madeUnitSwitch: Binding<Bool> {
+        Binding(get: { d.madeOz },
+                set: { oz in
+                    guard oz != d.madeOz else { return }
+                    let ml = d.made
+                    d.madeOz = oz
+                    let text = ml.map { oz ? EntryDraft.ozText(Double($0)) : String($0) } ?? ""
+                    d.keptMadeText = text
+                    d.keptMadeMl = ml
+                    if text != d.madeText {
+                        skipMadeRecompute = true
+                        d.madeText = text
+                    }
+                    if focus == .made { focus = nil }
+                    model.madeUnit = oz ? "oz" : "ml"
+                })
     }
     /// The feed before this one (the one being edited does not count): what was drunk, when,
     /// and what was made and left, so a bottle finished now can be read against it.
@@ -190,10 +253,21 @@ struct EntrySheet: View {
             HStack {
                 Text(S("feed.made"))
                 TextField(S("amount.field"), text: $d.madeText)
-                    .keyboardType(.numberPad)
+                    .keyboardType(d.madeOz ? .decimalPad : .numberPad)
                     .multilineTextAlignment(.trailing)
                     .focused($focus, equals: .made)
-                Text(S("settings.unitMl")).foregroundStyle(.secondary)
+                // The unit beside the field is the switch itself; leftover and amount stay ml.
+                Picker(S("settings.madeUnit"), selection: madeUnitSwitch) {
+                    Text(S("settings.unitMl")).tag(false)
+                    Text(S("settings.unitOz")).tag(true)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+            }
+            if d.madeOz, let made = d.made, made > 0 {
+                Text("≈ " + S("amount.ml", ["n": String(made)]))
+                    .font(.footnote).foregroundStyle(.secondary)
             }
             HStack {
                 Text(S("feed.leftover"))

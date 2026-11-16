@@ -37,6 +37,15 @@ const clone = (v) => JSON.parse(JSON.stringify(v));
 const unit = () => (state.settings && state.settings.units) || "ml";
 const myLabel = () => (state.settings && state.settings.label) || "";
 const amount = (ml) => Core.fmtAmount(ml, unit());
+// The Made amount has its own unit (Settings → Bottle made in): the formula machine and the
+// ready-to-feed bottles count in oz, while the bottle's scale — the leftover and the amount drunk —
+// stays in `units`. Stored as whole ml either way.
+const madeUnit = () => (state.settings && state.settings.made_units) || "ml";
+const OZ_ML = 29.5735;   // Core's constant, which it does not export
+// Made in oz reads to one place with ".0" dropped (118 ml -> "4", 133 -> "4.5"), the steps the
+// machine dispenses in; Core.toUnit's two places would show 118 ml as 3.99.
+const madeNum = (ml, u) => (u === "oz" ? String(Math.round((ml / OZ_ML) * 10) / 10) : String(ml));
+const madeAmount = (ml) => (madeUnit() === "oz" ? `${madeNum(ml, "oz")} oz` : Core.fmtAmount(ml, "ml"));
 
 // Milliseconds for a §3.2 string; anything else parses as best it can rather than crashing.
 function ms(iso) {
@@ -545,7 +554,7 @@ function renderDaySheet() {
     }
     const bottles = (ev.data.bottles || []).map((b) => `${amount(b.ml)} ${b.kind === "formula" ? (b.formula || "formula") : "breast milk"}`).join(" + ");
     const made = ev.data.made_ml != null || ev.data.leftover_ml != null
-      ? `${ev.data.made_ml != null ? amount(ev.data.made_ml) : "—"} / ${ev.data.leftover_ml != null ? amount(ev.data.leftover_ml) : "—"}` : "";
+      ? `${ev.data.made_ml != null ? madeAmount(ev.data.made_ml) : "—"} / ${ev.data.leftover_ml != null ? amount(ev.data.leftover_ml) : "—"}` : "";
     // A bottle feed's end is its start (the editor has no End for feeds), so only a real span shows.
     const span = ev.end && ms(ev.end) - ms(ev.time) >= MIN ? `–${Core.fmtTime(ev.end)}` : "";
     return el("tr", { class: run ? "running-row" : "" },
@@ -989,22 +998,33 @@ function changeType(type) {
 
 // An amount control: −/+ by the step, typed in the display unit, stored as whole ml. The stored
 // value is untouched until the user changes it, so oz mode never nudges a 22 ml feed (§8.1).
+// opts.unit overrides the display unit and opts.show the field's text (the Made amount); with
+// opts.ozStep, −/+ in oz walks that grid of oz instead of adding ml, so whole ml never drift it.
 function amountControl(get, set, opts = {}) {
-  const u = unit();
+  const u = opts.unit || unit();
+  const show = (ml) => (ml == null ? "" : opts.show ? opts.show(ml) : String(Core.toUnit(ml, u)));
   const input = el("input", { type: "number", inputmode: u === "oz" ? "decimal" : "numeric", min: "0",
-    step: u === "oz" ? "0.25" : "1", value: get() == null ? "" : String(Core.toUnit(get(), u)),
+    step: u === "oz" ? (opts.ozStep ? "0.1" : "0.25") : "1", value: show(get()),
     placeholder: opts.placeholder || "",
     oninput: (x) => { set(x.target.value === "" ? null : Core.fromUnit(x.target.value, u)); } });
   const nudge = (dir) => {
     const cur = get() == null ? 0 : get();
-    const v = Math.max(0, cur + dir * stepMl());
-    set(v); input.value = String(Core.toUnit(v, u));
+    let v;
+    if (u === "oz" && opts.ozStep) {
+      // To the next grid point: 133 ml (4.497 oz) + is 5 oz, 127 ml (4.3 oz) + is 4.5.
+      const q = cur / OZ_ML / opts.ozStep;
+      const n = dir > 0 ? Math.floor(q + 0.05) + 1 : Math.ceil(q - 0.05) - 1;
+      v = Math.max(0, Core.fromUnit(n * opts.ozStep, "oz"));
+    } else {
+      v = Math.max(0, cur + dir * stepMl());
+    }
+    set(v); input.value = show(v);
   };
   const box = el("span", { class: "amt" },
     el("button", { type: "button", "aria-label": "less", onclick: () => nudge(-1) }, "−"),
     input,
     el("button", { type: "button", "aria-label": "more", onclick: () => nudge(1) }, "+"));
-  box.refresh = () => { input.value = get() == null ? "" : String(Core.toUnit(get(), u)); };
+  box.refresh = () => { input.value = show(get()); };
   return box;
 }
 
@@ -1122,9 +1142,13 @@ function feedSection(d, e) {
     else if (d.data.bottles.length === 1) d.data.bottles[0].ml = ml;
     drawPortions();
   };
+  // Made in its own unit (oz from the formula machine), leftover in the bottle's ml; both stored as ml.
+  const mu = madeUnit();
   out.push(el("div", { class: "portion", style: "margin-top:10px" },
     el("span", { class: "muted small" }, "Made"),
-    amountControl(() => d.data.made_ml, (v) => { d.data.made_ml = v; autoPortion(); }),
+    amountControl(() => d.data.made_ml, (v) => { d.data.made_ml = v; autoPortion(); },
+      { unit: mu, show: (ml) => madeNum(ml, mu), ozStep: 0.5 }),
+    el("span", { class: "unit" }, mu),
     el("span", { class: "muted small" }, "leftover"),
     amountControl(() => d.data.leftover_ml, (v) => { d.data.leftover_ml = v; autoPortion(); }),
     el("span", { class: "unit" }, unit())));
@@ -2135,6 +2159,7 @@ function renderSettings() {
       el("div", { class: "form" },
         field("label", "Label (who logs from here)", el("input", { type: "text", value: s.label || "", placeholder: "Dad, Mom…" })),
         field("units", "Units", el("select", {}, el("option", { value: "ml", selected: s.units !== "oz" }, "ml"), el("option", { value: "oz", selected: s.units === "oz" }, "oz"))),
+        field("made_units", "Bottle made in", el("select", {}, el("option", { value: "ml", selected: s.made_units !== "oz" }, "ml"), el("option", { value: "oz", selected: s.made_units === "oz" }, "oz"))),
         field("step_ml", "−/+ step (ml, blank = automatic)", el("input", { type: "number", min: "1", step: "1", value: s.step_ml == null ? "" : String(s.step_ml) })),
         field("quick_mode", "Quick amounts", el("select", { onchange: () => showQuickFields() },
           el("option", { value: "range", selected: (s.quick_mode || "range") === "range" }, "a range"),
@@ -2150,7 +2175,7 @@ function renderSettings() {
         el("button", { class: "primary", type: "button", onclick: async (x) => {
           const custom = f.quick_custom.value.split(/[,\s]+/).filter(Boolean).map(Number).filter((n) => Number.isFinite(n) && n > 0);
           const nOrNull = (inp) => (inp.value === "" ? null : Number(inp.value));
-          const body = { label: f.label.value.trim(), units: f.units.value, step_ml: nOrNull(f.step_ml),
+          const body = { label: f.label.value.trim(), units: f.units.value, made_units: f.made_units.value, step_ml: nOrNull(f.step_ml),
             quick_mode: f.quick_mode.value, quick_custom: custom,
             quick_from: nOrNull(f.quick_from), quick_to: nOrNull(f.quick_to), quick_step: nOrNull(f.quick_step),
             night_from: f.night_from.value || "21:00", night_to: f.night_to.value || "07:00" };

@@ -100,7 +100,8 @@ def _spawn_updater():
 
 # The one settings shape every device has (§6.1). The phone adds `device`; the PC does not.
 SETTINGS_DEFAULTS = {
-    "label": "", "units": "ml", "step_ml": None, "quick_mode": "range", "quick_custom": [],
+    "label": "", "units": "ml", "made_units": "ml", "step_ml": None, "quick_mode": "range",
+    "quick_custom": [],
     "quick_from": 50, "quick_to": 100, "quick_step": 10,
     "night_from": "21:00", "night_to": "07:00", "child_id": None,
 }
@@ -168,6 +169,10 @@ def validate_settings(patch):
             raise ValueError("label must be a string")
         if k == "units" and v not in ("ml", "oz"):
             raise ValueError("units must be ml or oz")
+        # The Made amount alone may be typed in oz (a formula machine counts in oz); it is
+        # still stored as whole ml, and the leftover and the amount drunk stay in `units`.
+        if k == "made_units" and v not in ("ml", "oz"):
+            raise ValueError("made_units must be ml or oz")
         if k == "step_ml" and v is not None and (not _is_number(v) or v <= 0):
             raise ValueError("step_ml must be null or a number > 0")
         if k == "quick_mode" and v not in ("recent", "range", "custom"):

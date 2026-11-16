@@ -151,10 +151,12 @@ pull-to-refresh or a tap on the pill.
 Added since: Undo on one-tap diapers, and a **Bottom washed · 洗屁股** button beside it (also a
 toggle in the diaper sheet); weight, length and head entries; the previous feed and
 typed amounts in the feed sheet, with **Made** and **leftover** (both typed fills the amount
-drunk; a new amount moves the leftover); a tab bar along the bottom (**Today · Trends · Settings**);
-**Trends** with a switch at the top: *Feeding* (the default: bottle per day, milk through the
-day with a forecast, feeds, diapers, the 24-hour rhythm) or *Weight* (the weight-for-age chart
-on China's growth standard); Siri; the Apple Watch app and its complication; TestFlight.
+drunk; a new amount moves the leftover; Made can be typed in **oz** for a formula machine, with
+the ml/oz switch on its row or in Settings, while leftover and the amount drunk stay ml); a tab
+bar along the bottom (**Today · Trends · Settings**); **Trends** with a switch at the top:
+*Feeding* (the default: bottle per day, milk through the day with a forecast, feeds, diapers,
+the 24-hour rhythm) or *Weight* (the weight-for-age chart on China's growth standard); Siri;
+the Apple Watch app and its complication; TestFlight.
 
 Not yet: sleep and pump timers, health, the bath type, photos, the outing checklist, reminders.
 The plan's Stages 2–5 list them in order.

@@ -236,7 +236,8 @@ class TestConfig(AppCase):
 class TestSettings(AppCase):
     def test_defaults_are_exactly_the_spec_keys(self):
         s = self.c.get("/api/settings").get_json()["settings"]
-        self.assertEqual(s, {"label": "", "units": "ml", "step_ml": None, "quick_mode": "range",
+        self.assertEqual(s, {"label": "", "units": "ml", "made_units": "ml", "step_ml": None,
+                             "quick_mode": "range",
                              "quick_custom": [], "quick_from": 50, "quick_to": 100, "quick_step": 10,
                              "night_from": "21:00", "night_to": "07:00", "child_id": None})
 
@@ -264,6 +265,15 @@ class TestSettings(AppCase):
         self.assertEqual((s["units"], s["quick_custom"], s["night_from"]), ("oz", [30, 60], "21:00"))
         s2 = self.c.post("/api/settings", json={"label": "Mom"}).get_json()["settings"]
         self.assertEqual((s2["units"], s2["label"]), ("oz", "Mom"))
+
+    def test_made_units_takes_oz_and_refuses_anything_else(self):
+        # The formula machine counts in oz; the bottle's scale (leftover, amount drunk) stays ml.
+        s = self.c.post("/api/settings", json={"made_units": "oz"}).get_json()["settings"]
+        self.assertEqual((s["made_units"], s["units"]), ("oz", "ml"))
+        r = self.c.post("/api/settings", json={"made_units": "cups"})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("made_units", r.get_json()["error"])
+        self.assertEqual(self.c.get("/api/settings").get_json()["settings"]["made_units"], "oz")
 
     def test_settings_persist_in_data_dir(self):
         self.c.post("/api/settings", json={"label": "Dad"})

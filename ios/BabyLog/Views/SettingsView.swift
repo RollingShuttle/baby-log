@@ -44,6 +44,11 @@ struct SettingsView: View {
                 Stepper(S("settings.rangeStep") + ": \(model.quickStep)", value: $model.quickStep, in: 5...50, step: 5)
                 Text(model.quickAmounts.map { String($0) }.joined(separator: " · "))
                     .font(.footnote).foregroundStyle(.secondary)
+                // Only the bottle made; leftover and the amount drunk stay ml.
+                Picker(S("settings.madeUnit"), selection: $model.madeUnit) {
+                    Text(S("settings.unitMl")).tag("ml")
+                    Text(S("settings.unitOz")).tag("oz")
+                }
             }
             Section(S("settings.language")) {
                 Picker(S("settings.language"), selection: $model.language) {

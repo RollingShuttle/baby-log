@@ -2189,6 +2189,11 @@
       "where": "planned: the Language option that uses the system language",
       "zh-Hans": "跟随手机"
     },
+    "settings.madeUnit": {
+      "en": "Bottle made in",
+      "where": "Settings (PC and iPhone) and the feed sheet: the unit the Made amount is typed in (ml or oz); the leftover and the amount drunk stay in ml",
+      "zh-Hans": "冲奶单位"
+    },
     "settings.nightFrom": {
       "en": "Night from",
       "where": "Settings field",

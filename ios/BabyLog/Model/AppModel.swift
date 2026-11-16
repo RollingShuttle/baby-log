@@ -71,6 +71,11 @@ final class AppModel: ObservableObject {
     @Published var quickStep: Int {
         didSet { UserDefaults.standard.set(quickStep, forKey: "bl.quick_step") }
     }
+    /// "ml" or "oz": the unit the bottle made is typed and shown in on this phone. Leftover and
+    /// the amount drunk stay ml (the bottle's scale), and made_ml is stored in ml either way.
+    @Published var madeUnit: String {
+        didSet { UserDefaults.standard.set(madeUnit, forKey: "bl.made_unit") }
+    }
 
     @Published private(set) var loading = true
     /// formulaChoices for the current `events`, cleared where `events` is assigned: the feed
@@ -87,6 +92,7 @@ final class AppModel: ObservableObject {
         quickFrom = d.object(forKey: "bl.quick_from") == nil ? 60 : d.integer(forKey: "bl.quick_from")
         quickTo = d.object(forKey: "bl.quick_to") == nil ? 120 : d.integer(forKey: "bl.quick_to")
         quickStep = d.object(forKey: "bl.quick_step") == nil ? 10 : d.integer(forKey: "bl.quick_step")
+        madeUnit = d.string(forKey: "bl.made_unit") == "oz" ? "oz" : "ml"
         // The device id of this install, "d-xxxx" like the web app's: a resolve tie-break only.
         let dev = d.string(forKey: "bl.device") ?? ("d-" + Names.rand4())
         d.set(dev, forKey: "bl.device")
@@ -375,11 +381,14 @@ final class AppModel: ObservableObject {
                               averageTotal: average, pastDays: past.count)
     }
 
-    /// "made 120 ml / left 40 ml" for a feed that recorded its bottle, else nil.
+    /// "made 120 ml / left 40 ml" for a feed that recorded its bottle, else nil; made in oz
+    /// when this phone makes bottles in oz ("made 4 oz / left 40 ml").
     func madeLeftText(_ rec: Record) -> String? {
         guard let made = rec.madeMl, made > 0 else { return nil }
         let left = rec.leftoverMl ?? max(0, made - rec.bottleMl)
-        return S("day.madeLeft", ["made": S("amount.ml", ["n": String(Int(made.rounded()))]),
+        let madeAmount = madeUnit == "oz" ? S("amount.oz", ["n": EntryDraft.ozText(made)])
+                                          : S("amount.ml", ["n": String(Int(made.rounded()))])
+        return S("day.madeLeft", ["made": madeAmount,
                                 "left": S("amount.ml", ["n": String(Int(left.rounded()))])])
     }
     func typeName(_ type: String) -> String {
