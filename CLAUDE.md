@@ -221,3 +221,10 @@ the label **truncates** (24.99 → "24") so it never sits in another band. `stat
 (global `Growth`) and `ios/BabyLog/Core/Growth.swift` follow it against
 `tests/fixtures/growth_cases.json` (`tests/test_growth_standard.py`). The chart is on the PC's
 Growth screen and at the top of the iPhone's Trends (`Views/WeightForAgeSection.swift`).
+
+**16 Nov 2026 — diaper `washed`** (bool, default false): fixture first, then `store.py`,
+`docs/core.js` (a validator change, so `docs/sw.js` went to v10 although docs/ is otherwise
+frozen), the Diapers sheet column, the PC editor's **Bottom washed** toggle, and on the iPhone a
+toggle in the diaper sheet plus a 洗屁股 button in the one-tap toast (`AppModel.markWashed`, a
+revision of the diaper just logged). The PC exe must be rebuilt before a phone writes the field,
+or the old validator rejects those files. An iPhone diaper edit now keeps the entry's other data.

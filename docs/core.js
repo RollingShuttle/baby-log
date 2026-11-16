@@ -33,7 +33,7 @@ const Core = (() => {
   const DEFAULTS = {
     feed: { breast: { left_s: null, right_s: null, total_s: null, last_side: null, approx: false },
             bottles: [], made_ml: null, leftover_ml: null, timer: null },
-    diaper: { wet: false, dirty: false, color: null, texture: null, size: null, rash: false, blowout: false },
+    diaper: { wet: false, dirty: false, color: null, texture: null, size: null, rash: false, blowout: false, washed: false },
     sleep: { where: null, timer: null },
     pump: { left_ml: null, right_ml: null, minutes: null },
     growth: { weight_g: null, length_cm: null, head_cm: null },
@@ -45,7 +45,7 @@ const Core = (() => {
   const FIELDS = {
     feed: { breast: "breast", bottles: "bottles", made_ml: "num", leftover_ml: "num", timer: "feed_timer" },
     diaper: { wet: "bool", dirty: "bool", color: "enum:color", texture: "enum:texture", size: "enum:size",
-              rash: "bool", blowout: "bool" },
+              rash: "bool", blowout: "bool", washed: "bool" },
     sleep: { where: "str", timer: "sleep_timer" },
     pump: { left_ml: "num", right_ml: "num", minutes: "num" },
     growth: { weight_g: "num", length_cm: "num", head_cm: "num" },
@@ -502,6 +502,7 @@ const Core = (() => {
         let text = data.wet && data.dirty ? "Wet + dirty" : data.wet ? "Wet" : data.dirty ? "Dirty" : "Diaper";
         const extra = [data.color, data.texture].filter(Boolean).map(label);
         if (data.blowout) extra.push("blowout");
+        if (data.washed) extra.push("bottom washed");
         if (extra.length) text += ` · ${extra.join(", ")}`;
         return text;
       }

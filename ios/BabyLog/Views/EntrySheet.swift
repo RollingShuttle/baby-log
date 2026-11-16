@@ -15,6 +15,7 @@ struct EntryDraft: Identifiable {
     var formula: String
     var wet: Bool
     var dirty: Bool
+    var washed: Bool            // the bottom washed at this change
     var weightText: String      // grams
     var lengthText: String      // cm
     var headText: String        // cm
@@ -31,6 +32,7 @@ struct EntryDraft: Identifiable {
         self.formula = formula
         wet = true
         dirty = false
+        washed = false
         weightText = ""
         lengthText = ""
         headText = ""
@@ -47,6 +49,7 @@ struct EntryDraft: Identifiable {
         formula = rec.formula ?? ""
         wet = rec.wet
         dirty = rec.dirty
+        washed = rec.washed
         weightText = rec.number("weight_g").map { String(Int($0.rounded())) } ?? ""
         lengthText = rec.number("length_cm").map { EntryDraft.trim($0) } ?? ""
         headText = rec.number("head_cm").map { EntryDraft.trim($0) } ?? ""
@@ -219,6 +222,7 @@ struct EntrySheet: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+            Toggle(S("diaper.washed"), isOn: $d.washed)
         }
     }
     private var growthSection: some View {
@@ -263,7 +267,7 @@ struct EntrySheet: View {
         case "feed":
             model.logFeed(ml: d.ml, formula: d.formula, made: d.made, left: d.left, time: d.time, note: d.note, editing: d.editing)
         case "diaper":
-            model.logDiaper(wet: d.wet || !d.dirty, dirty: d.dirty, time: d.time, note: d.note, editing: d.editing)
+            model.logDiaper(wet: d.wet || !d.dirty, dirty: d.dirty, washed: d.washed, time: d.time, note: d.note, editing: d.editing)
         case "note":
             model.logNote(text: d.note, time: d.time, editing: d.editing)
         case "growth":

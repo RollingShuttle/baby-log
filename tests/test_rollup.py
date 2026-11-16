@@ -244,7 +244,7 @@ class TestStructure(RollupCase):
             "Feeds": "date time end logged_by breast_min left_min right_min bottle_ml formula "
                      "formula_ml "
                      "breast_milk_ml made_ml leftover_ml note event_id",
-            "Diapers": "date time logged_by wet dirty color texture size rash blowout note event_id",
+            "Diapers": "date time logged_by wet dirty color texture size rash blowout washed note event_id",
             "Sleep": "date start end minutes where logged_by note event_id",
             "Daily": "date feeds bottle_ml breast_min wet dirty sleeps sleep_min pumps pump_ml",
         }

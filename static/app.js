@@ -558,6 +558,7 @@ function renderDaySheet() {
     const extra = [dd.color, dd.texture, dd.size].filter(Boolean).map((x) => x.replace(/_/g, " "));
     if (dd.rash) extra.push("rash");
     if (dd.blowout) extra.push("blowout");
+    if (dd.washed) extra.push("bottom washed");
     return el("tr", {},
       cell(ev, "t-time", Core.fmtTime(ev.time)),
       cell(ev, "", glyph(dd.wet, "wet")),
@@ -1165,7 +1166,7 @@ function diaperSection(d) {
   const flag = (key, cls, text) => el("button", { class: `toggle ${cls}${dd[key] ? " on" : ""}`, type: "button",
     onclick: () => { dd[key] = !dd[key]; renderEditor(); } }, text);
   out.push(el("div", { class: "row", style: "margin-top:0" }, flag("wet", "wet", "Wet"), flag("dirty", "dirty", "Dirty"),
-    flag("rash", "", "Rash"), flag("blowout", "", "Blowout")));
+    flag("rash", "", "Rash"), flag("blowout", "", "Blowout"), flag("washed", "", "Bottom washed")));
   const enumRow = (label, key, values, swatch) => el("div", { class: "ed-row" }, el("span", { class: "lbl" }, label),
     el("span", { class: "chips" }, ...values.map((v) => el("button", { class: `chip diaper${dd[key] === v ? " active" : ""}`, type: "button",
       onclick: () => { dd[key] = dd[key] === v ? null : v; renderEditor(); } },

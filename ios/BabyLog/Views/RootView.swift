@@ -44,6 +44,11 @@ struct RootView: View {
         if let message = model.lastMessage {
             HStack(spacing: 14) {
                 Text(message)
+                // A one-tap diaper just logged: the wash is one more tap, not a note.
+                if let rec = model.undoable, rec.type == "diaper", !rec.washed {
+                    Button(S("diaper.washed")) { model.markWashed() }
+                        .fontWeight(.semibold)
+                }
                 if model.undoable != nil {
                     Button(S("toast.undo")) { model.undo() }
                         .fontWeight(.semibold)

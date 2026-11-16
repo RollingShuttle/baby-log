@@ -148,7 +148,8 @@ delete. Settings: sign-in, sync, who, the quick-amount range, language (follow t
 English, 简体中文). Sync runs when the app opens, two seconds after every save, and on
 pull-to-refresh or a tap on the pill.
 
-Added since: Undo on one-tap diapers; weight, length and head entries; the previous feed and
+Added since: Undo on one-tap diapers, and a **Bottom washed · 洗屁股** button beside it (also a
+toggle in the diaper sheet); weight, length and head entries; the previous feed and
 typed amounts in the feed sheet, with **Made** and **leftover** (both typed fills the amount
 drunk; a new amount moves the leftover); a tab bar along the bottom (**Today · Trends · Settings**);
 **Trends** with a switch at the top: *Feeding* (the default: bottle per day, milk through the

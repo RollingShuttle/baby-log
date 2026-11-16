@@ -109,14 +109,14 @@ class SheetTests(PaperCase):
         self.assertEqual(ev["type"], "diaper")
         self.assertEqual(ev["data"], {"wet": True, "dirty": True, "color": "black",
                                       "texture": "sticky", "size": None, "rash": False,
-                                      "blowout": False})
+                                      "blowout": False, "washed": False})
         self.assertEqual(ev["note"], "sticky")
 
     def test_green_solid_diaper_with_check(self):
         ev = self.planned("E-paper-20260923-1130-diaper")
         self.assertEqual(ev["data"], {"wet": False, "dirty": True, "color": "green",
                                       "texture": "solid", "size": None, "rash": False,
-                                      "blowout": False})
+                                      "blowout": False, "washed": False})
         self.assertEqual(ev["note"],
                          'green + solid — Check: the note after "green + solid" is unclear')
 

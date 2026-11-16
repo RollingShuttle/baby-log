@@ -48,7 +48,7 @@ FEED_COLUMNS = ["date", "time", "end", "logged_by", "breast_min", "left_min", "r
                 "bottle_ml", "formula", "formula_ml", "breast_milk_ml", "made_ml", "leftover_ml",
                 "note", "event_id"]
 DIAPER_COLUMNS = ["date", "time", "logged_by", "wet", "dirty", "color", "texture", "size", "rash",
-                  "blowout", "note", "event_id"]
+                  "blowout", "washed", "note", "event_id"]
 SLEEP_COLUMNS = ["date", "start", "end", "minutes", "where", "logged_by", "note", "event_id"]
 PUMP_COLUMNS = ["date", "time", "logged_by", "left_ml", "right_ml", "total_ml", "minutes", "note",
                 "event_id"]
@@ -289,6 +289,8 @@ def describe(ev, unit="ml", now=None):
         extra = [_label(x) for x in (data.get("color"), data.get("texture")) if x]
         if data.get("blowout"):
             extra.append("blowout")
+        if data.get("washed"):
+            extra.append("bottom washed")
         return f"{text} · {', '.join(extra)}" if extra else text
     if kind == "sleep":
         if is_running(ev):
@@ -439,7 +441,8 @@ def _diaper_row(ev):
     d = ev["data"]
     return _common(ev) + [ev.get("logged_by"), _yn(d.get("wet")), _yn(d.get("dirty")),
                           d.get("color"), d.get("texture"), d.get("size"), _yn(d.get("rash")),
-                          _yn(d.get("blowout")), ev.get("note") or None, ev["event_id"]]
+                          _yn(d.get("blowout")), _yn(d.get("washed")), ev.get("note") or None,
+                          ev["event_id"]]
 
 
 def _sleep_row(ev, now):
@@ -657,6 +660,8 @@ def _diaper_table(diapers):
             extra.append("rash")
         if d.get("blowout"):
             extra.append("blowout")
+        if d.get("washed"):
+            extra.append("bottom washed")
         rows.append(
             f"<tr><td class=\"time\">{_esc(fmt_time(ev['time']))}</td>"
             f"<td class=\"mark\">{'✓' if d.get('wet') else ''}</td>"

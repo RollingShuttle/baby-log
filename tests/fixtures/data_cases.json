@@ -21,7 +21,8 @@
       "texture": null,
       "size": null,
       "rash": false,
-      "blowout": false
+      "blowout": false,
+      "washed": false
     },
     "sleep": {
       "where": null,
@@ -218,7 +219,8 @@
         "texture": null,
         "size": null,
         "rash": false,
-        "blowout": false
+        "blowout": false,
+        "washed": false
       }
     },
     {
@@ -240,7 +242,8 @@
         "texture": "solid",
         "size": "medium",
         "rash": false,
-        "blowout": true
+        "blowout": true,
+        "washed": false
       }
     },
     {
@@ -386,6 +389,24 @@
         "made_ml": null,
         "leftover_ml": null,
         "timer": null
+      }
+    },
+    {
+      "name": "washed diaper",
+      "type": "diaper",
+      "data": {
+        "dirty": true,
+        "washed": true
+      },
+      "expect": {
+        "wet": false,
+        "dirty": true,
+        "color": null,
+        "texture": null,
+        "size": null,
+        "rash": false,
+        "blowout": false,
+        "washed": true
       }
     }
   ],
@@ -657,6 +678,14 @@
             "formula": ""
           }
         ]
+      }
+    },
+    {
+      "name": "washed not a bool",
+      "type": "diaper",
+      "data": {
+        "dirty": true,
+        "washed": "yes"
       }
     }
   ],
@@ -1000,6 +1029,25 @@
         "unit": "ml",
         "text": "Weight 3.43 kg",
         "note": "an exact half of 10 g rounds up on both sides"
+      },
+      {
+        "ev": {
+          "type": "diaper",
+          "data": {
+            "wet": false,
+            "dirty": true,
+            "color": null,
+            "texture": null,
+            "size": null,
+            "rash": false,
+            "blowout": true,
+            "washed": true
+          },
+          "time": "2026-11-16T09:10:00-08:00",
+          "end": null
+        },
+        "unit": "ml",
+        "text": "Dirty · blowout, bottom washed"
       }
     ],
     "stepMl": [

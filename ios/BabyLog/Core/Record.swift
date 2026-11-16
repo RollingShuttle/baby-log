@@ -24,6 +24,8 @@ struct Record {
     let formula: String?
     let wet: Bool
     let dirty: Bool
+    /// The bottom was washed at this change (absent in older files: false).
+    let washed: Bool
 
     init(body: [String: Any], file: String) {
         self.body = body
@@ -49,6 +51,7 @@ struct Record {
         }
         wet = (d["wet"] as? Bool) ?? false
         dirty = (d["dirty"] as? Bool) ?? false
+        washed = (d["washed"] as? Bool) ?? false
     }
 
     func string(_ key: String) -> String? { body[key] as? String }

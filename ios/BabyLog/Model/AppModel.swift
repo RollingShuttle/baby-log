@@ -405,8 +405,8 @@ final class AppModel: ObservableObject {
             if let f = rec.formula { text += " · " + f }
             return text
         case "diaper":
-            if rec.wet && rec.dirty { return S("describe.wetDirty") }
-            return rec.dirty ? S("log.dirty") : S("log.wet")
+            let kind = rec.wet && rec.dirty ? S("describe.wetDirty") : (rec.dirty ? S("log.dirty") : S("log.wet"))
+            return rec.washed ? kind + " · " + S("describe.washed") : kind
         case "note":
             return rec.note.isEmpty ? S("log.note") : rec.note
         case "growth":
@@ -479,9 +479,21 @@ final class AppModel: ObservableObject {
                                    "length_cm": orNull(lengthCm), "head_cm": orNull(headCm)]
         write(type: "growth", time: time, data: data, note: note, editing: editing)
     }
+    /// An edit starts from the entry's own data, so what the PC recorded (colour, rash...) stays.
     @discardableResult
-    func logDiaper(wet: Bool, dirty: Bool, time: Date, note: String, editing: Record? = nil) -> Record? {
-        write(type: "diaper", time: time, data: ["wet": wet, "dirty": dirty], note: note, editing: editing)
+    func logDiaper(wet: Bool, dirty: Bool, washed: Bool = false, time: Date, note: String, editing: Record? = nil) -> Record? {
+        var data = editing?.data ?? [:]
+        data["wet"] = wet
+        data["dirty"] = dirty
+        data["washed"] = washed
+        return write(type: "diaper", time: time, data: data, note: note, editing: editing)
+    }
+    /// The toast's 洗屁股 after a one-tap diaper: the same diaper again with the bottom washed,
+    /// still undoable while the toast shows.
+    func markWashed() {
+        guard let rec = undoable, rec.type == "diaper", !rec.washed else { return }
+        undoable = logDiaper(wet: rec.wet, dirty: rec.dirty, washed: true, time: rec.instant ?? Date(),
+                             note: rec.note, editing: rec)
     }
     /// The log bar's one tap: written now, undoable while the toast shows. A mis-tap at 3 a.m.
     /// is one more tap to take back; the journal keeps the tombstone with reason "undo".
@@ -567,7 +579,7 @@ final class AppModel: ObservableObject {
                     "bottles": [[String: Any]](), "made_ml": NSNull(), "leftover_ml": NSNull(), "timer": NSNull()]
         case "diaper":
             return ["wet": false, "dirty": false, "color": NSNull(), "texture": NSNull(), "size": NSNull(),
-                    "rash": false, "blowout": false]
+                    "rash": false, "blowout": false, "washed": false]
         case "note":
             return ["milestone": false]
         case "growth":

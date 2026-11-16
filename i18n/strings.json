@@ -759,6 +759,11 @@
       "where": "Core.describe of a running sleep",
       "zh-Hans": "已睡 {duration}"
     },
+    "describe.washed": {
+      "en": "bottom washed",
+      "where": "Core.describe / AppModel.describe: a diaper whose bottom was washed",
+      "zh-Hans": "洗屁股"
+    },
     "describe.weight": {
       "en": "Weight {weight}",
       "where": "Core.describe of a growth entry; {weight} is amount.kg",
@@ -828,6 +833,11 @@
       "en": "Texture",
       "where": "diaper editor row",
       "zh-Hans": "质地"
+    },
+    "diaper.washed": {
+      "en": "Bottom washed",
+      "where": "diaper editor toggle (PC and iPhone) and the iPhone toast after a one-tap diaper",
+      "zh-Hans": "洗屁股"
     },
     "editor.blankStillGoing": {
       "en": "blank = still going",

@@ -51,7 +51,7 @@ DEFAULTS = {
                         "approx": False},
              "bottles": [], "made_ml": None, "leftover_ml": None, "timer": None},
     "diaper": {"wet": False, "dirty": False, "color": None, "texture": None, "size": None,
-               "rash": False, "blowout": False},
+               "rash": False, "blowout": False, "washed": False},
     "sleep": {"where": None, "timer": None},
     "pump": {"left_ml": None, "right_ml": None, "minutes": None},
     "growth": {"weight_g": None, "length_cm": None, "head_cm": None},
@@ -227,7 +227,7 @@ def _check_feed(d):
 
 
 def _check_diaper(d):
-    for k in ("wet", "dirty", "rash", "blowout"):
+    for k in ("wet", "dirty", "rash", "blowout", "washed"):
         _bool(d[k], k)
     for k in ("color", "texture", "size"):
         _enum(d[k], k, k)

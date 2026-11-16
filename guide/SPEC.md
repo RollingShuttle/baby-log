@@ -182,7 +182,7 @@ preserved by readers.
 | type | data |
 |---|---|
 | `feed` | `{"breast": {"left_s": int\|null, "right_s": int\|null, "total_s": int\|null, "last_side": "left"\|"right"\|null, "approx": bool}, "bottles": [{"kind": "formula"\|"breast_milk", "ml": number, "formula": string\|null}], "made_ml": number\|null, "leftover_ml": number\|null, "timer": {"side": "left"\|"right", "side_started": iso} \| null}` |
-| `diaper` | `{"wet": bool, "dirty": bool, "color": "black"\|"dark_green"\|"green"\|"yellow"\|"brown"\|"other"\|null, "texture": "sticky"\|"seedy"\|"soft"\|"solid"\|"watery"\|null, "size": "small"\|"medium"\|"large"\|null, "rash": bool, "blowout": bool}` |
+| `diaper` | `{"wet": bool, "dirty": bool, "color": "black"\|"dark_green"\|"green"\|"yellow"\|"brown"\|"other"\|null, "texture": "sticky"\|"seedy"\|"soft"\|"solid"\|"watery"\|null, "size": "small"\|"medium"\|"large"\|null, "rash": bool, "blowout": bool, "washed": bool}` — `washed`: the bottom was washed at this change (added 16 Nov 2026; absent in older files, so false) |
 | `sleep` | `{"where": string\|null, "timer": {"running": true} \| null}` |
 | `pump` | `{"left_ml": number\|null, "right_ml": number\|null, "minutes": number\|null}` |
 | `growth` | `{"weight_g": number\|null, "length_cm": number\|null, "head_cm": number\|null}` |
@@ -737,7 +737,7 @@ than aborting.
 `Baby Log.xlsx` sheets, header row 1, one row per live event, oldest first: `Feeds`
 (`date time end logged_by breast_min left_min right_min bottle_ml formula formula_ml breast_milk_ml made_ml
 leftover_ml note event_id` — `formula` is the portions' distinct formula names joined with ` + `), `Diapers` (`date time logged_by wet dirty color texture size rash
-blowout note event_id`), `Sleep` (`date start end minutes where logged_by note event_id`),
+blowout washed note event_id`), `Sleep` (`date start end minutes where logged_by note event_id`),
 `Pumping`, `Growth`, `Health`, `Notes`, and `Daily` (`date feeds bottle_ml breast_min wet dirty
 sleeps sleep_min pumps pump_ml`) — one row for every local date from the first event to today,
 zeros when empty; `*_min` columns are `round(seconds / 60, 1)`.
