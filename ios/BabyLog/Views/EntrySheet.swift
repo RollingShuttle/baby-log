@@ -10,7 +10,8 @@ struct EntryDraft: Identifiable {
     var time: Date
     var ml: Int
     var mlText: String
-    var madeText: String        // the bottle prepared, optional; leftover = made - drunk
+    var madeText: String        // the bottle prepared, optional
+    var leftText: String        // what was left in it, optional; made - left fills the amount drunk
     var formula: String
     var wet: Bool
     var dirty: Bool
@@ -26,6 +27,7 @@ struct EntryDraft: Identifiable {
         self.ml = ml
         mlText = ml > 0 ? String(ml) : ""
         madeText = ""
+        leftText = ""
         self.formula = formula
         wet = true
         dirty = false
@@ -41,6 +43,7 @@ struct EntryDraft: Identifiable {
         ml = Int(rec.bottleMl.rounded())
         mlText = ml > 0 ? String(ml) : ""
         madeText = rec.madeMl.map { String(Int($0.rounded())) } ?? ""
+        leftText = rec.leftoverMl.map { String(Int($0.rounded())) } ?? ""
         formula = rec.formula ?? ""
         wet = rec.wet
         dirty = rec.dirty
@@ -53,6 +56,12 @@ struct EntryDraft: Identifiable {
         x == x.rounded() ? String(Int(x)) : String(x)
     }
     var made: Int? { Int(madeText.filter { $0.isNumber }) }
+    var left: Int? { Int(leftText.filter { $0.isNumber }) }
+    /// Made below leftover: refused, as on the PC.
+    var madeBelowLeft: Bool {
+        if let made = made, let left = left { return made < left }
+        return false
+    }
     var weightG: Int? { Int(weightText.filter { $0.isNumber }) }
     var lengthCm: Double? { Double(lengthText.replacingOccurrences(of: ",", with: ".")) }
     var headCm: Double? { Double(headText.replacingOccurrences(of: ",", with: ".")) }
@@ -66,7 +75,7 @@ struct EntrySheet: View {
     @FocusState private var focus: Field?
 
     private enum Field: Hashable {
-        case ml, made, weight, length, head
+        case ml, made, left, weight, length, head
     }
 
     init(draft: EntryDraft) {
@@ -117,7 +126,15 @@ struct EntrySheet: View {
             }
             .onChange(of: d.mlText) { _, text in
                 d.ml = Int(text.filter { $0.isNumber }) ?? 0
+                // The amount set by hand (typed, or a chip) with the bottle known: the leftover
+                // follows. Not while made/left are being typed — they are what set the amount.
+                if focus != .made && focus != .left, let made = d.made {
+                    d.leftText = made >= d.ml ? String(made - d.ml) : ""
+                }
             }
+            // Made and left both typed: the amount drunk is the difference, as on the PC.
+            .onChange(of: d.madeText) { _, _ in amountFromBottle(typing: .made) }
+            .onChange(of: d.leftText) { _, _ in amountFromBottle(typing: .left) }
         }
     }
 
@@ -126,11 +143,20 @@ struct EntrySheet: View {
     }
     private var canSave: Bool {
         switch d.kind {
-        case "feed": return d.ml > 0
+        case "feed": return d.ml > 0 && !d.madeBelowLeft
         case "note": return !d.note.isEmpty
         case "growth": return (d.weightG ?? 0) > 0 || (d.lengthCm ?? 0) > 0 || (d.headCm ?? 0) > 0
         default: return true
         }
+    }
+    /// Made or left being typed, with both known: the amount drunk is made - left. Only while
+    /// that field has the focus, so the amount's own change (which moves the leftover) cannot
+    /// bounce back here.
+    private func amountFromBottle(typing field: Field) {
+        guard focus == field, let made = d.made, let left = d.left, made >= left else { return }
+        let drunk = made - left
+        let text = drunk > 0 ? String(drunk) : ""
+        if d.mlText != text { d.mlText = text }
     }
     /// The feed before this one (the one being edited does not count): what was drunk, when,
     /// and what was made and left, so a bottle finished now can be read against it.
@@ -166,10 +192,17 @@ struct EntrySheet: View {
                     .focused($focus, equals: .made)
                 Text(S("settings.unitMl")).foregroundStyle(.secondary)
             }
-            if let made = d.made, made > d.ml {
-                Text(S("day.madeLeft", ["made": S("amount.ml", ["n": String(made)]),
-                                        "left": S("amount.ml", ["n": String(made - d.ml)])]))
-                    .font(.footnote).foregroundStyle(.secondary)
+            HStack {
+                Text(S("feed.leftover"))
+                TextField(S("amount.field"), text: $d.leftText)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.trailing)
+                    .focused($focus, equals: .left)
+                Text(S("settings.unitMl")).foregroundStyle(.secondary)
+            }
+            if d.madeBelowLeft {
+                Text(S("validate.madeLessThanLeftover"))
+                    .font(.footnote).foregroundStyle(.red)
             }
         }
         Section(S("feed.formulaName")) {
@@ -228,7 +261,7 @@ struct EntrySheet: View {
     private func save() {
         switch d.kind {
         case "feed":
-            model.logFeed(ml: d.ml, formula: d.formula, made: d.made, time: d.time, note: d.note, editing: d.editing)
+            model.logFeed(ml: d.ml, formula: d.formula, made: d.made, left: d.left, time: d.time, note: d.note, editing: d.editing)
         case "diaper":
             model.logDiaper(wet: d.wet || !d.dirty, dirty: d.dirty, time: d.time, note: d.note, editing: d.editing)
         case "note":

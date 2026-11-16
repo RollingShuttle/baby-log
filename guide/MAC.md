@@ -149,7 +149,8 @@ English, 简体中文). Sync runs when the app opens, two seconds after every sa
 pull-to-refresh or a tap on the pill.
 
 Added since: Undo on one-tap diapers; weight, length and head entries; the previous feed and
-typed amounts in the feed sheet; a tab bar along the bottom (**Today · Trends · Settings**);
+typed amounts in the feed sheet, with **Made** and **leftover** (both typed fills the amount
+drunk; a new amount moves the leftover); a tab bar along the bottom (**Today · Trends · Settings**);
 **Trends** with a switch at the top: *Feeding* (the default: bottle per day, milk through the
 day with a forecast, feeds, diapers, the 24-hour rhythm) or *Weight* (the weight-for-age chart
 on China's growth standard); Siri; the Apple Watch app and its complication; TestFlight.

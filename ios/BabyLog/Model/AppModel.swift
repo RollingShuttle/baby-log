@@ -456,14 +456,18 @@ final class AppModel: ObservableObject {
 
     // -- writes: every one a new revision file, stamped alike (SPEC §3.1)
 
-    /// `made` is the bottle prepared; the leftover is what was not drunk. Both optional.
+    /// `made` is the bottle prepared and `left` what was not drunk, both optional; a leftover not
+    /// typed is worked out from the bottle and the amount drunk.
     @discardableResult
-    func logFeed(ml: Int, formula: String, made: Int?, time: Date, note: String, editing: Record? = nil) -> Record? {
+    func logFeed(ml: Int, formula: String, made: Int?, left: Int? = nil, time: Date, note: String, editing: Record? = nil) -> Record? {
         let portion: [String: Any] = ["kind": "formula", "ml": ml, "formula": orNull(formula)]
         var data: [String: Any] = ["bottles": [portion]]
         if let made = made, made > 0 {
             data["made_ml"] = made
-            data["leftover_ml"] = max(0, made - ml)
+            data["leftover_ml"] = left ?? max(0, made - ml)
+        } else if let left = left, left > 0 {
+            data["made_ml"] = NSNull()
+            data["leftover_ml"] = left
         } else {
             data["made_ml"] = NSNull()
             data["leftover_ml"] = NSNull()
