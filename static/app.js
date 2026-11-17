@@ -88,7 +88,18 @@ function el(tag, props = {}, ...kids) {
     if (kid === null || kid === undefined || kid === false) continue;
     n.append(kid?.nodeType ? kid : document.createTextNode(kid));
   }
+  if (tag === "table" && n.classList.contains("t-table")) alignHeads(n);
   return n;
+}
+// A heading sits where its column's numbers do: a column whose first row is right-aligned
+// (t-num) gets a right-aligned heading, so "Feeds" stands over 11 rather than a cell to its left.
+function alignHeads(table) {
+  const heads = table.querySelectorAll("thead tr:first-child th");
+  const first = Array.from(table.querySelectorAll("tbody tr")).find((tr) => !tr.querySelector("[colspan]"));
+  if (!first) return;
+  Array.from(first.children).forEach((td, i) => {
+    if (heads[i] && td.classList.contains("t-num")) heads[i].classList.add("t-num");
+  });
 }
 const SVG_NS = "http://www.w3.org/2000/svg";
 function svg(tag, props = {}, ...kids) {
