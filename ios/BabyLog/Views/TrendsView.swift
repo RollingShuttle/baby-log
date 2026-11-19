@@ -72,7 +72,7 @@ struct TrendsView: View {
         Section(header: Text(S("trends.intakeTitle")), footer: Text(S("trends.intakeSub"))) {
             Chart {
                 ForEach(stats) { d in
-                    ForEach(d.intake) { pt in
+                    ForEach(stairs(d.intake)) { pt in
                         LineMark(x: .value("hour", pt.hour), y: .value("ml", pt.ml), series: .value("day", d.label))
                             .foregroundStyle(d.isToday ? Color.blue : Color.gray.opacity(0.35))
                             .lineStyle(StrokeStyle(lineWidth: d.isToday ? 3 : 1))
@@ -148,6 +148,21 @@ struct TrendsView: View {
                 .font(.footnote)
             }
         }
+    }
+
+    /// The running total as steps, as the PC draws it: flat between bottles, straight up at each
+    /// one. A plain line between the feeds' totals made a ramp, as if milk were drunk between
+    /// bottles; so each feed gets a point at the old total just before its own, and the line
+    /// (joined in the order given) draws the stair.
+    private func stairs(_ pts: [IntakePoint]) -> [IntakePoint] {
+        var out: [IntakePoint] = []
+        for (i, p) in pts.enumerated() {
+            if i > 0 {
+                out.append(IntakePoint(id: out.count, hour: p.hour, ml: pts[i - 1].ml))
+            }
+            out.append(IntakePoint(id: out.count, hour: p.hour, ml: p.ml))
+        }
+        return out
     }
 
     private func forecastText(_ f: IntakeForecast) -> some View {
