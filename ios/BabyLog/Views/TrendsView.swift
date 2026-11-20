@@ -126,13 +126,18 @@ struct TrendsView: View {
                             .foregroundStyle(by: .value("kind", pt.kind))
                     }
                 }
+                // The time now, down every day: what usually comes next is to its right.
+                RuleMark(x: .value("now", model.hourNow))
+                    .foregroundStyle(Color.orange.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
             }
             .chartForegroundStyleScale([S("log.feed"): Color.blue, S("log.wet"): Color.teal,
                                         S("log.dirty"): Color.brown])
             .chartLegend(rhythmKind == "all" ? .visible : .hidden)
             .chartXScale(domain: 0...24)
             .chartXAxis { AxisMarks(values: [0, 6, 12, 18, 24]) }
-            .chartYScale(domain: labels.reversed())
+            // Oldest at the top, today at the bottom, as on the PC.
+            .chartYScale(domain: labels)
             .frame(height: CGFloat(stats.count) * 24 + 40)
         }
         Section(S("trends.dayTable")) {

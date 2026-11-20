@@ -1702,8 +1702,13 @@ function renderTrends() {
             el("td", {}, ""), target(tg.feeds_per_day), el("td"), el("td"), target(tg.wet_per_day), target(tg.dirty_per_day), el("td"), el("td"), el("td"), el("td")) : null),
         el("tbody", {}, ...rows)))),
     el("section", { class: "card" },
-      el("div", { class: "h2" }, "24-hour rhythm", el("span", { class: "sub" }, "last 7 days · feeds as bars by start time and breast length · wet and dirty as dots · night shaded")),
-      rhythmChart(days.slice(-7)),
+      el("div", { class: "h2" }, "24-hour rhythm",
+        el("span", { class: "sub" }, "feeds as bars by start time and breast length · wet and dirty as dots · night shaded · the dashed line is now"),
+        el("span", { class: "gw-seg" }, ...[7, 14].map((n) => el("button", {
+          type: "button", class: rhythmDays() === n ? "on" : "",
+          onclick: () => { setRhythmDays(n); renderTrends(); },
+        }, n === 7 ? "Last 7 days" : "Last 14 days")))),
+      rhythmChart(days.slice(-rhythmDays())),
       el("div", { class: "legend" },
         el("span", {}, el("i", { style: "background:var(--feed)" }), "breast feed (length)"),
         el("span", {}, el("i", { style: "background:#E4A374" }), "bottle only"),
@@ -1808,7 +1813,16 @@ function intakeChart(days) {
   return [chart, el("div", { class: "ch-forecast" }, ...lines.map((l) => el("div", {}, l)))];
 }
 
-// Hand-drawn SVG: one row per day, midnight to midnight.
+// The rhythm's 7 or 14 days, remembered on this PC.
+function rhythmDays() {
+  try { return localStorage.getItem("bl.pc.rhythm_days") === "14" ? 14 : 7; } catch { return 7; }
+}
+function setRhythmDays(n) {
+  try { localStorage.setItem("bl.pc.rhythm_days", String(n)); } catch { /* a convenience only */ }
+}
+
+// Hand-drawn SVG: one row per day, midnight to midnight, the oldest at the top and today at the
+// bottom. The dashed line is the time now, down every row, so what usually comes next is to its right.
 function rhythmChart(days) {
   // The day labels are "Sun 15 Nov", or "2026年11月15日 周日" in Chinese, which needs twice the room.
   const W = 800, L = document.documentElement.lang === "zh-Hans" ? 140 : 70, R = 14, T = 24, RH = 40, B = 6;
@@ -1846,6 +1860,8 @@ function rhythmChart(days) {
       }
     }
   });
+  const nowH = now.getHours() + now.getMinutes() / 60;
+  kids.push(svg("line", { class: "ch-now", x1: x(nowH), y1: T - 4, x2: x(nowH), y2: H - B }));
   return svg("svg", { class: "rhythm", viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "24-hour rhythm chart" }, ...kids);
 }
 

@@ -2965,14 +2965,14 @@
       "zh-Hans": "24 小时节律图"
     },
     "trends.rhythmPhone": {
-      "en": "each dot is one entry, by its time of day",
+      "en": "each dot is one entry, by its time of day; the dashed line is now",
       "where": "Trends (iOS): footer under the 24-hour rhythm chart",
-      "zh-Hans": "每个点是一条记录，按一天中的时间排列"
+      "zh-Hans": "每个点是一条记录，按一天中的时间排列；虚线是现在"
     },
     "trends.rhythmSub": {
-      "en": "last 7 days · feeds as bars by start time and breast length · wet and dirty as dots · night shaded",
+      "en": "feeds as bars by start time and breast length · wet and dirty as dots · night shaded · the dashed line is now",
       "where": "PC Trends: the chart sub heading",
-      "zh-Hans": "最近 7 天 · 喂奶按开始时间画成条，长度为母乳时长 · 尿湿和便便为点 · 夜间加阴影"
+      "zh-Hans": "喂奶按开始时间画成条，长度为母乳时长 · 尿湿和便便为点 · 夜间加阴影 · 虚线是现在"
     },
     "trends.rowOpensDay": {
       "en": "a row opens that day",
