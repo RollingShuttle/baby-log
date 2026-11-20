@@ -1869,6 +1869,16 @@
       "where": "PC Settings: while the check runs",
       "zh-Hans": "正在检查 GitHub…"
     },
+    "pc.elsewhereNote": {
+      "en": "Only one window works at a time. Switch to that one, or use this one instead.",
+      "where": "PC: the cover over a second window or browser tab while another page holds the app",
+      "zh-Hans": "同一时间只能用一个窗口。请切换到那个窗口，或者改用这个窗口。"
+    },
+    "pc.elsewhereTitle": {
+      "en": "Baby Log is open in another window",
+      "where": "PC: the cover over a second window or browser tab while another page holds the app",
+      "zh-Hans": "宝宝日志已经在另一个窗口打开"
+    },
     "pc.followPc": {
       "en": "Follow this PC",
       "where": "PC Settings: language follows Windows",
@@ -1898,6 +1908,11 @@
       "en": "Updating: a window shows the progress; this app closes and opens again in about a minute.",
       "where": "PC Settings: after Update now",
       "zh-Hans": "正在更新：会弹出一个窗口显示进度，本程序会关闭，约一分钟后自动重新打开。"
+    },
+    "pc.useThisWindow": {
+      "en": "Use this window",
+      "where": "PC: the cover over a second window or browser tab while another page holds the app",
+      "zh-Hans": "改用这个窗口"
     },
     "photos.accessNeeded": {
       "en": "Baby Log needs access to your photos to sort them by {name}'s age.",

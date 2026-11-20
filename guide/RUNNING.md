@@ -44,8 +44,13 @@ window — no address bar, no tabs, and no black console window behind it.
   once and the phones' entries keep being turned into `Baby Log.xlsx` meanwhile. To bring the
   window back, double-click the Desktop icon again, or double-click the small icon by the clock.
 - **To actually quit**, right-click that small icon → **Quit**.
-- Double-clicking the icon twice does not open two copies; the second click brings the existing
-  window to the front.
+- Baby Log runs once, like any program. Double-clicking the icon again does not open a second
+  copy or a second window; it brings the existing window to the front (in English or Chinese).
+  If the app is opened anywhere else as well — a browser tab at `http://127.0.0.1:8766`, an old
+  window — only one page works: the others are covered with *Baby Log is open in another
+  window* (宝宝日志已经在另一个窗口打开) and stop refreshing. **Use this window** (改用这个窗口)
+  moves the app to that page, and the other one is covered instead. When the working window is
+  closed, a covered one takes over by itself within a few seconds.
 - If it fails to start it says so: a message box, and the same text in `error.log` in the
   project folder.
 

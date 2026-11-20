@@ -114,12 +114,32 @@ def claim_single_instance(name):
     return True
 
 
-def find_app_window(title="Baby Log"):
+def app_titles():
+    """Every title the live window can have. In Chinese the page renames itself (static/i18n.js
+    translates the title too), and looking only for "Baby Log" then found nothing, so each
+    launch opened one more window. The names come from the same string table the page uses."""
+    titles = {"Baby Log", "宝宝日志"}
+    try:
+        import json
+        table = json.loads(Path(app_mod.I18N_JSON).read_text(encoding="utf-8"))["strings"]
+        for entry in table.values():
+            if entry.get("en") == "Baby Log" and entry.get("zh-Hans"):
+                titles.add(entry["zh-Hans"])
+    except Exception:                          # noqa: BLE001 — the two above still work
+        pass
+    return titles
+
+
+def find_app_window(titles=None):
     """The window belongs to the browser rather than to us, so it can only be found by what it
     says. The match is exact: a window merely *mentioning* the app — an editor, a folder — is not
     it, and a window whose server has gone renames itself so it cannot be mistaken for a live one."""
     if os.name != "nt":
         return None
+    if titles is None:
+        titles = app_titles()
+    elif isinstance(titles, str):
+        titles = {titles}
     import ctypes
     from ctypes import wintypes
     user32 = ctypes.WinDLL("user32", use_last_error=True)
@@ -131,7 +151,7 @@ def find_app_window(title="Baby Log"):
             return True
         buf = ctypes.create_unicode_buffer(512)
         user32.GetWindowTextW(hwnd, buf, 512)
-        if buf.value == title:
+        if buf.value in titles:
             found.append(hwnd)
             return False
         return True
@@ -264,6 +284,28 @@ def serve(application, host, port):
     application.run(host=host, port=port, debug=False, use_reloader=False, threaded=True)
 
 
+# A page whose heartbeat has not been heard for this long no longer holds the app. Long, because
+# a minimised window's timers are throttled to about once a minute after five minutes hidden.
+PAGE_STALE_S = 75.0
+
+
+def page_owner(state, page, claim=False, now=None):
+    """Whether `page` is the one page allowed to work, like a program that runs once.
+
+    The first page to beat holds it; another page is told it is not the one, and shows so,
+    until it asks to take over (`claim`), the holder says goodbye, or the holder goes quiet for
+    PAGE_STALE_S. A beat without an id (an old page) is always let through."""
+    now = time.monotonic() if now is None else now
+    if not page:
+        return True
+    holder = state.get("page")
+    if claim or not holder or holder == page or now - state.get("page_seen", 0.0) > PAGE_STALE_S:
+        state["page"] = page
+        state["page_seen"] = now
+        return True
+    return False
+
+
 def attach_lifecycle(application, state):
     """Let the page report that it is still there, and that it is closing.
 
@@ -271,15 +313,24 @@ def attach_lifecycle(application, state):
     machinery. A reload fires the same goodbye, so the caller waits a few seconds and any
     heartbeat — from the reloaded page, or from a second window — cancels the shutdown.
     """
+    from flask import request
+
     @application.post("/api/heartbeat")
     def _heartbeat():
         state["last"] = time.monotonic()
         state["closing"] = None
-        return {"ok": True}
+        body = request.get_json(silent=True) or {}
+        owner = page_owner(state, body.get("page"), bool(body.get("claim")))
+        return {"ok": True, "owner": owner}
 
     @application.post("/api/goodbye")
     def _goodbye():
         state["closing"] = time.monotonic()
+        # The beacon carries the page's id as plain text; the holder leaving frees the app for
+        # another open page at its next beat instead of after PAGE_STALE_S.
+        page = request.get_data(as_text=True).strip()
+        if page and page == state.get("page"):
+            state["page"] = None
         return "", 204
 
     @application.post("/api/window")

@@ -222,20 +222,49 @@ const byId = (id) => state.events.find((ev) => ev.event_id === id) || null;
 
    A reload fires pagehide too, so the launcher waits a few seconds before acting and any heartbeat
    cancels it. Run under `python app.py` these simply 404 and are ignored. */
+// Each page has its own id, so the launcher can let one page work at a time, as a program that
+// runs once (launch.py page_owner): a second window or browser tab is told so and steps aside.
+const PAGE_ID = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+
 function watchWindow() {
   // Quitting from the tray leaves this window on screen with nothing behind it, so the page has
   // to notice. Two missed beats is ten seconds: past a hiccup, short enough to still be useful.
   let missed = 0;
-  const beat = () => fetch("/api/heartbeat", { method: "POST" })
-    .then(() => { missed = 0; })
+  // A page that has shown "closed" stays a corpse: after an update the app comes back on the
+  // same port, and its beat must not win the app from the fresh window.
+  const beat = (claim) => document.getElementById("stopped") ? Promise.resolve() : fetch("/api/heartbeat", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ page: PAGE_ID, claim: !!claim }),
+  })
+    .then((r) => { missed = 0; return r.ok ? r.json().catch(() => null) : null; })
+    .then((j) => { if (j && j.owner === false) showElsewhere(() => beat(true)); else if (j && j.owner) hideElsewhere(); })
     .catch(() => { if (++missed >= 2) showStopped(); });
   beat();
-  setInterval(beat, 5000);
+  setInterval(() => beat(false), 5000);
   const goodbye = () => {
-    try { navigator.sendBeacon("/api/goodbye"); } catch { /* closing anyway */ }
+    try { navigator.sendBeacon("/api/goodbye", PAGE_ID); } catch { /* closing anyway */ }
   };
   window.addEventListener("pagehide", goodbye);
   window.addEventListener("beforeunload", goodbye);
+}
+
+// Another page holds the app: this one covers itself and stops refreshing until it is the one in
+// use again (the other closes, or "Use this window" takes over here).
+function showElsewhere(takeOver) {
+  state.elsewhere = true;
+  if (document.getElementById("elsewhere")) return;
+  document.body.append(el("div", { id: "elsewhere", class: "stopped" },
+    el("div", { class: "stopped-card" },
+      el("div", { class: "stopped-title" }, "Baby Log is open in another window"),
+      el("div", { class: "stopped-note" }, "Only one window works at a time. Switch to that one, or use this one instead."),
+      el("button", { class: "primary", type: "button", style: "margin-top:14px", onclick: takeOver }, "Use this window"))));
+}
+function hideElsewhere() {
+  const was = state.elsewhere;
+  state.elsewhere = false;
+  const n = document.getElementById("elsewhere");
+  if (n) n.remove();
+  if (was) refreshAll();
 }
 
 function showStopped() {
@@ -276,7 +305,7 @@ async function boot() {
   }
   await refreshAll();
   showView("today");
-  setInterval(refreshAll, POLL_MS);
+  setInterval(() => { if (!state.elsewhere) refreshAll(); }, POLL_MS);
   setInterval(tick, 1000);
   watchWindow();
 }

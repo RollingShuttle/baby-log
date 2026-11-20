@@ -228,3 +228,10 @@ frozen), the Diapers sheet column, the PC editor's **Bottom washed** toggle, and
 toggle in the diaper sheet plus a 洗屁股 button in the one-tap toast (`AppModel.markWashed`, a
 revision of the diaper just logged). The PC exe must be rebuilt before a phone writes the field,
 or the old validator rejects those files. An iPhone diaper edit now keeps the entry's other data.
+
+**19 Nov 2026 — one window, one page.** `launch.find_app_window` matches every title the page
+can have (`app_titles()`: "Baby Log" and the table's Chinese 宝宝日志) — in Chinese mode it
+found nothing and every launch opened another window. Pages beat with their own id and
+`launch.page_owner` lets one hold the app (claim to take over; goodbye or 75 s of silence frees
+it); the others show a cover and skip the poll. A page showing "closed" never beats again, so
+after an update it cannot win the app from the fresh window.

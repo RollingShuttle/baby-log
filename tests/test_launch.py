@@ -153,6 +153,36 @@ class TestLifecycle(unittest.TestCase):
         c.post("/api/heartbeat")
         self.assertIsNone(state["closing"])
 
+    def test_one_page_at_a_time(self):
+        """Like a program that runs once: the first page holds the app, a second is told it is
+        not the one until it takes over, and the first is then told so in turn."""
+        c, state = self.app()
+        beat = lambda page, claim=False: c.post("/api/heartbeat", json={"page": page, "claim": claim}).get_json()["owner"]
+        self.assertTrue(beat("a"))
+        self.assertFalse(beat("b"))
+        self.assertTrue(beat("a"))
+        self.assertTrue(beat("b", claim=True))
+        self.assertFalse(beat("a"))
+
+    def test_the_holder_leaving_frees_the_app(self):
+        c, state = self.app()
+        c.post("/api/heartbeat", json={"page": "a"})
+        c.post("/api/goodbye", data="b")                 # someone else's goodbye changes nothing
+        self.assertEqual(state["page"], "a")
+        c.post("/api/goodbye", data="a")
+        self.assertTrue(c.post("/api/heartbeat", json={"page": "b"}).get_json()["owner"])
+
+    def test_a_silent_holder_goes_stale(self):
+        state = {}
+        self.assertTrue(launch.page_owner(state, "a", now=100.0))
+        self.assertFalse(launch.page_owner(state, "b", now=100.0 + launch.PAGE_STALE_S - 1))
+        self.assertTrue(launch.page_owner(state, "b", now=100.0 + launch.PAGE_STALE_S + 1))
+
+    def test_a_beat_without_an_id_is_let_through(self):
+        c, state = self.app()
+        c.post("/api/heartbeat", json={"page": "a"})
+        self.assertTrue(c.post("/api/heartbeat").get_json()["owner"])
+
     def test_it_waits_while_the_window_is_open(self):
         state = {"last": time.monotonic(), "closing": None}
         started = time.monotonic()
@@ -217,6 +247,11 @@ class TestSingleInstance(unittest.TestCase):
     def test_the_claim_is_not_the_whiskey_apps(self):
         """Both apps may run at once (SPEC §0), so the mutex name must be this app's own."""
         self.assertIn("BabyLog", launch.instance_name(8766))
+
+    def test_the_window_is_found_by_its_chinese_title_too(self):
+        """In Chinese the page renames itself; missing that opened a new window on every launch."""
+        self.assertLessEqual({"Baby Log", "宝宝日志"}, launch.app_titles())
+        self.assertNotIn("Baby Log (closed)", launch.app_titles())
 
     def test_a_title_nothing_uses_finds_no_window(self):
         self.assertIsNone(launch.find_app_window("no window is called this 8f3ac1"))
